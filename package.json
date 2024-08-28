@@ -1,0 +1,24 @@
+{
+  "name": "express-js-template",
+  "version": "0.0.1",
+  "description": "Template for Expressjs projects",
+  "main": "app.mjs",
+  "scripts": {
+    "start": "node app.mjs",
+    "dev": "node --watch --env-file=stagings.env ./server/app.mjs",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "SNR",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-mongo": "^5.1.0",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-async-handler": "^1.2.0",
+    "express-session": "^1.18.0",
+    "mongodb": "^6.8.0",
+    "passport": "^0.7.0",
+    "passport-local": "^1.0.0",
+    "posthog-node": "^4.1.1"
+  }
+}

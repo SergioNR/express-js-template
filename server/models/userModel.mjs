@@ -1,78 +1,71 @@
-import { client } from "../database/mongoDB.database.mjs";
+import { connectToDatabase } from "../database/mongoDB.mjs";
 import { ObjectId } from "mongodb";
-import { posthogUserSignedUp } from "../config/posthog-node.mjs";
 
-const usersDB = client.db(`users`); 
-const usersCollection = usersDB.collection(`users`)
-
-class User {
-  constructor(email) {
-    this.email = email || `email not defined`;
-    this.role = `customer`;
-    this.createdDate = new Date().toLocaleString(`es-ES`) || `no info`;
-    this.lastUpdatedDate = new Date().toLocaleString(`es-ES`) || `no info`;
-  }
-}
+import { logger } from "../config/logger.mjs";
 
 
-export const createUserInDB = async (userEmail) => {
+export const createUserInDB = async (user) => {
     try {
       
-      await client.connect();
+      const db = await connectToDatabase();
 
-      const UserToBeInserted = new User(userEmail);
+      const usersCollection = db.collection("users");
 
-      const insertedUser = await usersCollection.insertOne(UserToBeInserted)
+      await usersCollection.insertOne(user)
 
-      posthogUserSignedUp(UserToBeInserted._id, UserToBeInserted.email);
+      logger.info({
+        message: `User created in DB`,
+        userId: user._id,
+        userData: user
+
+      });
         
-      return UserToBeInserted;
+      return user;
       
     } catch (error) {
         throw error;
-    } finally {
-        await client.close();
-    }
+    } 
 };
 
 export const updateUserLastUpdatedDate = async (userId) => {
   try {
-      await client.connect();
+
+      const dbConnection = await connectToDatabase();
 
       const filter = { "_id": new ObjectId(`${userId}`) };
 
-      const update = { $set: { "lastUpdatedDate": new Date().toLocaleString(`es-ES`) } };
+      const update = { 
+        $set: { 
+          "lastUpdatedDate": new Date() 
+        } };
 
       return await usersCollection.updateOne(filter, update);
 
   } catch (error) {
       console.log(`updateUserLastUpdatedDate`,error);
-  } finally {
-     await  client.close();
-  };
+  } 
 };
 
 
 export const getUserByEmail = async (userEmail) => {
   try {
-    await client.connect();
+
+    const db = await connectToDatabase();
 
     const filter = { "email": userEmail };
 
-    const user = await usersCollection.findOne(filter);
+    const user = await db.findOne(filter);
 
     return user;
 
   } catch (error) {
       throw error;
-  } finally {
-      await client.close();
   }
 };
 
 // export const getAllUsers = async () => {
 //   try {
-//     await client.connect();
+
 
 //     const filter = {};
 
@@ -85,19 +78,19 @@ export const getUserByEmail = async (userEmail) => {
 //   catch (error) {
 //     throw error;
 
-//   } finally {
-//       await client.close();
-//   }
+//   } 
 // }; //! Commented out because we are not using this function in the current version of the app. Possible usage would be if we wanted to display a list of users in the admin dashboard.
 
 export const getUserByUserId = async (userId) => {
   try {
-    await client.connect();
 
-    const filter = { "_id": new ObjectId(`${userId}`) };
+    const db = connectToDatabase();
 
+    const filter = { 
+      "_id": new ObjectId(`${userId}`) 
+      };
 
-    const user = await usersCollection.findOne(filter);
+    const user = await db.findOne(filter);
 
     return user;
 
@@ -105,7 +98,5 @@ export const getUserByUserId = async (userId) => {
   catch (error) {
     throw error;
 
-  } finally {
-      await client.close();
   }
-}; //! Commented out because we are not using this function in the current version of the app. Possible usage would be if we wanted to display a user profile page.
+}; 

@@ -1,10 +1,15 @@
 import { PostHog } from 'posthog-node'
 
 
-export const client =  new PostHog(
-    `${process.env.POSTHOG_API_KEY}`,
-    { host: 'https://eu.i.posthog.com',}
-); 
+export const client = process.env.NODE_ENV === `production` ? new PostHog(
+    process.env.POSTHOG_API_KEY_PROD,
+    { host: process.env.POSTHOG_HOST_PROD }
+) : new PostHog(
+    process.env.POSTHOG_API_KEY_DEV,
+    { host: process.env.POSTHOG_HOST_DEV }
+);
+
+
 
 
 export const posthogUserPaymentCompleted = async (distinct_id) => {
@@ -17,27 +22,12 @@ export const posthogUserPaymentCompleted = async (distinct_id) => {
     } catch (error) {
         throw error;
     } finally {
-        await client.shutdown()
+        client.shutdown()
     };
 }; 
 
 
-export const posthogUserSignedUp = async (distinct_id, userEmail) => {
-    try {
-        client.capture({
-            distinctId: `${distinct_id}`,
-            event: `userSignUp`,
-            properties: {
-                userEmail: `${userEmail}`
-            }
-        });
 
-    } catch (error) {
-        throw error;
-    } finally {
-        await client.shutdown()
-    };
-}; 
 
 // export const posthogUserLoggedIn = async (distinct_id) => {
 //     try {

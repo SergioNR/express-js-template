@@ -1,7 +1,7 @@
 import passport from "passport";
 import LocalStrategy from "passport-local";
 import { getUserByEmail, getUserByUserId } from "../models/userModel.mjs";
-import { posthogUserLoggedOut, posthogUserLoggedIn } from "../models/posthog.model.mjs";
+import { posthogUserLoggedOut, posthogUserLoggedIn } from "../models/posthogModel.mjs";
 import bcrypt from "bcryptjs";
 
 export const passportAuth = passport.authenticate("local", {
@@ -11,6 +11,7 @@ export const passportAuth = passport.authenticate("local", {
 
 passport.use(
     new LocalStrategy(async(username, password, done) => {
+        
         try {
         const user = await getUserByEmail(username);
 

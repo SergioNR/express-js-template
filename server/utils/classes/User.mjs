@@ -1,8 +1,11 @@
+import bcrypt from "bcryptjs";
+
+
 export class User {
     constructor(req) {
         this.userDetails = {
             email: req.body.userEmail,
-            password: `not set`,
+            password: req.body.userPassword,
             role: `customer`,
         }
         this.createdDate = new Date();

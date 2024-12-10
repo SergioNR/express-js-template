@@ -15,7 +15,7 @@ export const app = express();
 app.use(helmetMiddleware);
 
 //* Set the views directory to the views folder & view engine to EJS
-app.set(`views`, path.join(`.`, `/views/`)); 
+app.set(`views`, path.join(`.`, `/server/views/`)); 
 app.set("view engine", "ejs"); 
 
 // * Middleware to serve static files
@@ -36,6 +36,9 @@ app.use(passport.session());
 
 
 //* Route to authenticate the user with passport    
+app.get(`/register`, (req, res) => {
+  res.sendFile(`./public/register.html`, { root: `.` });
+})
 app.post("/login", passportAuth); 
 app.get("/logout", passportLogout);
 

@@ -1,48 +1,30 @@
 import { connectToDatabase } from "../database/mongoDB.mjs";
 import { ObjectId } from "mongodb";
-
 import { logger } from "../config/logger.mjs";
+import bcrypt from "bcryptjs";
 
 
 export const createUserInDB = async (user) => {
-    try {
-      
-      const db = await connectToDatabase();
-
-      const usersCollection = db.collection("users");
-
-      await usersCollection.insertOne(user)
-
-      logger.info({
-        message: `User created in DB`,
-        userId: user._id,
-        userData: user
-
-      });
-        
-      return user;
-      
-    } catch (error) {
-        throw error;
-    } 
-};
-
-export const updateUserLastUpdatedDate = async (userId) => {
   try {
+    const hashedPassword = await bcrypt.hash(user.userDetails.password, 10);
+    user.userDetails.password = hashedPassword;
 
-      const dbConnection = await connectToDatabase();
+    const db = await connectToDatabase();
 
-      const filter = { "_id": new ObjectId(`${userId}`) };
+    const usersCollection = db.collection("users");
 
-      const update = { 
-        $set: { 
-          "lastUpdatedDate": new Date() 
-        } };
+    await usersCollection.insertOne(user);
 
-      return await usersCollection.updateOne(filter, update);
-
+    logger.info({
+    message: `User created in DB`,
+    userId: user._id,
+    userData: user,
+    });
+    
+    return user;
+    
   } catch (error) {
-      console.log(`updateUserLastUpdatedDate`,error);
+    throw error;
   } 
 };
 
@@ -52,9 +34,13 @@ export const getUserByEmail = async (userEmail) => {
 
     const db = await connectToDatabase();
 
-    const filter = { "email": userEmail };
+    const usersCollection = db.collection("users");
 
-    const user = await db.findOne(filter);
+    const filter = { 
+      "userDetails.email": userEmail 
+    };
+
+    const user = await usersCollection.findOne(filter);
 
     return user;
 
@@ -84,13 +70,15 @@ export const getUserByEmail = async (userEmail) => {
 export const getUserByUserId = async (userId) => {
   try {
 
-    const db = connectToDatabase();
+    const db = await connectToDatabase();
+
+    const usersCollection = db.collection("users");
 
     const filter = { 
-      "_id": new ObjectId(`${userId}`) 
+      "_id": ObjectId.createFromHexString(`${userId}`) 
       };
 
-    const user = await db.findOne(filter);
+    const user = await usersCollection.findOne(filter);
 
     return user;
 

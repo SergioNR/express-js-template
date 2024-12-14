@@ -46,11 +46,14 @@ app.get("/logout", passportLogout);
 app.use(`/user/`, userRouter);
 // app.use(`/api/`, apiRouter)
 
-//* Router to handle non-recognised requests
+
+//* Route to render the home page
 
 app.get(`/`, (req, res) => {
-  res.sendFile(`./public/index.html`, { root: `.` });
-});
+  res.render(`index.ejs`, { title: `Template Home` });
+}); //? Maybe convert this into a index router?
+
+//* Router to handle non-recognised requests
 
 app.get(`/*fallback`, (req, res) => { 
   res.status(404).sendFile(`./public/404.html`, { root: `.` });

@@ -1,6 +1,3 @@
-import bcrypt from "bcryptjs";
-
-
 export class User {
     constructor(req) {
         this.userDetails = {

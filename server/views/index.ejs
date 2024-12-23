@@ -9,8 +9,8 @@
     content="Análisis de diseño & CX / UX / UI de Páginas Web y Apps móviles(iPhone & Android). Recibe feedback de la Usabilidad & Experiencia de usuario de tu Web o App de un experto.">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-
-  <!--  START PostHog -->
+    <%- include ('./components/jsHead.ejs') %>
+    <%- include ('./components/stylesHead.ejs') %>
   <script defer type="module" src="./js/PostHog.js"></script>
   <!--  END PostHog -->
 
@@ -25,9 +25,12 @@
 
 <body>
   <!-- * START Google Tag Manager -->
-  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MWWFR64" height="0" width="0"
-      style="display:none;visibility:hidden"></iframe></noscript>
-  <!-- * END Google Tag Manager (noscript) -->
+    <%- include ('./components/gtmBody.ejs') %>
+  <!-- * END Google Tag Manager -->
+
+  <!-- * START Bootstrap -->
+    <%- include ('./components/bootstrapBody.ejs') %>
+  <!-- * END Boostrap -->
 
   <p class="h1">Welcome to expressJS template</p>
 

@@ -7,7 +7,7 @@ import { queryParser } from "./middlewares/queryParser.mjs";
 import { helmetMiddleware } from "./middlewares/helmet.mjs";
 // import { apiRouter } from "./API/apiRouter.mjs";
 import { storeSessionsInMongoDb } from "./middlewares/mongoDbSessions.mjs";
-
+import { environmentChecker } from "./middlewares/enviromentChecker.mjs";
 
 export const app = express();
 
@@ -24,16 +24,13 @@ app.use(express.static(`./public`, { "extensions": [`html`] })); // add .html if
 //* Middleware to create parse request (read req.body from form data & JSON) & parse query
 app.use(express.urlencoded());
 app.use(express.json());
+app.use(environmentChecker); // https://app.clickup.com/t/86976mxym
 // app.use(queryParser) //! FIX
-
-
 
 //* Middleware to store sessions in MongoDB
 app.use(storeSessionsInMongoDb);
 
 app.use(passport.session());
-
-
 
 //* Route to authenticate the user with passport    
 app.get(`/register`, (req, res) => {
@@ -50,8 +47,8 @@ app.use(`/user/`, userRouter);
 //* Route to render the home page
 
 app.get(`/`, (req, res) => {
-  res.render(`index.ejs`, { title: `Template Home` });
-}); //? Maybe convert this into a index router?
+  res.render(`index.ejs`);
+}); // https://app.clickup.com/t/86976n109
 
 //* Router to handle non-recognised requests
 
@@ -60,9 +57,9 @@ app.get(`/*fallback`, (req, res) => {
 })
 
 //* Middleware to catch & handle errors
-// app.use((err, req, res, next) => {
-//   res.status(err.statusCode ||  500).send(err.message);
-// });
+app.use((err, req, res, next) => {
+  res.status(err.statusCode ||  500).send(err.message);
+});
 
 
 //* Start the server

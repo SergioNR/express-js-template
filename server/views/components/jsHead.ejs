@@ -1,0 +1,32 @@
+  <!--  START PostHog -->
+  <script defer type="module" src="./js/PostHog.js"></script>
+  <!--  END PostHog -->
+
+
+<!-- Google Tag Manager -->
+<% if (locals.environment === 'production') { %>
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0], j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src= 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f); })(window,document,'script','dataLayer','GTM-MM6DBK3P');</script>
+<% } else { %>
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl+ '&gtm_auth=WScCDNUt9M3o-ObMkvUlmg&gtm_preview=env-33&gtm_cookies_win=x';f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-MM6DBK3P');</script>
+<% } %>
+<!-- End Google Tag Manager -->
+
+
+<!-- I need to get one GTM or the other to run based on process.env -->
+
+
+<!--  IMPORT Google Tag Manager events -->
+<script src="./js/eventsGTM.js"></script>
+<!--  END Google Tag Manager -->
+
+<!-- START custom form JS - * Loading in pages that dont have forms for practicity--> 
+<script defer src="/js/formValidator.js"></script>
+<script defer src="/js/formController.js"></script>
+<!-- END custom form JS -->
+
+
+

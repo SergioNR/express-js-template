@@ -1,23 +1,25 @@
 import session from "express-session";
-import MongoStore from "connect-mongo";
+import  connectMongoDBSession  from "connect-mongodb-session";
 
-export const storeSessionsInMongoDb = session({ 
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true,
-    cookie: { 
-        maxAge: 7200000, // 2 hours
-        secure: process.env.NODE_ENV === 'production', // Secure in production
-        httpOnly: true,
-        sameSite: 'strict'
-    }, 
-    store: MongoStore.create({  //* SHOULD ONLY BE USED IN PROD - IN DEV WE SHOULD USE IN-MEMORY STORE OR DEV DB
-        mongoUrl: process.env.MONGODB_CONNECTIONSTRING, 
-        dbName: "main", 
-        collectionName: "sessions",
-        ttl: 7200, // 2 hours in seconds
-        autoRemove: 'interval',
-        autoRemoveInterval: 10 // Minutes between cleanup
-    })
+const MongoDBStore = connectMongoDBSession(session);
+
+
+const store = new MongoDBStore({
+    uri: process.env.MONGODB_CONNECTIONSTRING,
+    databaseName: "main",
+    collection: "sessions"
 });
 
+
+export const storeSessionsInMongoDb = session({ 
+        secret: process.env.SESSION_SECRET,
+        resave: false, // https://www.npmjs.com/package/express-session#resave - Set to false because `touch` is implemented
+        saveUninitialized: false, // https://www.npmjs.com/package/express-session#saveuninitialized - Set to false because we'll only save sessions with req.session data (eg: logins, storing relevant info that we want to keep)
+        cookie: { 
+            maxAge: 7200000, // 2 hours
+            secure: process.env.NODE_ENV === 'production', // Secure in production
+            httpOnly: true,
+            sameSite: 'strict'
+        }, 
+        store: store,
+    });

@@ -15,7 +15,7 @@
     "@logtail/pino": "^0.5.0",
     "axios": "^1.7.7",
     "bcryptjs": "^2.4.3",
-    "connect-mongo": "^5.1.0",
+    "connect-mongodb-session": "^5.0.0",
     "ejs": "^3.1.10",
     "express": "^5.0.1",
     "express-async-handler": "^1.2.0",

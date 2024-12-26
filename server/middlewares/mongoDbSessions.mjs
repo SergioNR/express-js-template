@@ -4,7 +4,7 @@ import  connectMongoDBSession  from "connect-mongodb-session";
 const MongoDBStore = connectMongoDBSession(session);
 
 
-const store = new MongoDBStore({
+const mongoDBSessionStore = new MongoDBStore({
     uri: process.env.MONGODB_CONNECTIONSTRING,
     databaseName: "main",
     collection: "sessions"
@@ -21,5 +21,5 @@ export const storeSessionsInMongoDb = session({
             httpOnly: true,
             sameSite: 'strict'
         }, 
-        store: store,
+        store: mongoDBSessionStore,
     });

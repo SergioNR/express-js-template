@@ -11,5 +11,5 @@ indexRouter.get(`/`, (req, res) => {
 
 
 indexRouter.get(`/*fallback`, (req, res) => { 
-    res.status(404).render(`404.ejs`);
+    res.status(404).render(`404.ejs`, { title: `404`, description: `404` });
 })

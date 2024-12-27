@@ -34,9 +34,6 @@ app.use(storeSessionsInMongoDb);
 app.use(passport.session());
 
 //* Route to authenticate the user with passport    
-app.get(`/register`, (req, res) => {
-  res.sendFile(`./public/register.html`, { root: `.` });
-})
 app.post("/login", passportAuth); 
 app.get("/logout", passportLogout);
 

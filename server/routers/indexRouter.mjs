@@ -6,8 +6,9 @@ indexRouter.get(`/`, (req, res) => {
     res.render(`index.ejs`);
     });
 
-
-
+indexRouter.get(`/login`, (req, res) => {
+    res.render(`login.ejs`, { title: `Login`, description: `Login` });
+    });
 
 
 indexRouter.get(`/*fallback`, (req, res) => { 

@@ -14,6 +14,10 @@ indexRouter.get(`/register`, (req, res) => {
     res.render(`register.ejs`, { title: `Register`, description: `Register` });
 });
 
+indexRouter.get(`/terminos-condiciones`, (req, res) => {
+    res.render(`terminos-condiciones.ejs`, { title: `Términos y Condiciones`, description: `Términos y Condiciones` });
+});
+
 indexRouter.get(`/*fallback`, (req, res) => { 
     res.status(404).render(`404.ejs`, { title: `404`, description: `404` });
 })

@@ -11,10 +11,7 @@ userRouter.post(`/register/`, registerUser);
 
 userRouter.get(`/`, authenticationChecker, (req, res) => {
 
-   
-
     res.render(`userDashboard.ejs`, { user: req.user, title: `User Dashboard`, description: `User Dashboard` }); 
-    //  TODO fix  https://app.clickup.com/t/86976m58a
 });
 
 userRouter.get("/*fallback", (req, res) => {

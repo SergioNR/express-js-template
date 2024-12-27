@@ -78,6 +78,6 @@ export const passportLogout = (req, res, next) => {
         console.log(`req.user`, req.user);
 
 
-        res.redirect("/confirmLogout.html");
+        res.redirect("/"); // Redirect to the homepage
         });
 };

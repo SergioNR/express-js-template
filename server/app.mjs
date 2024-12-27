@@ -42,8 +42,8 @@ app.get("/logout", passportLogout);
 
 //* Router selectors
 
-app.use(`/`, indexRouter);
 app.use(`/user/`, userRouter);
+app.use(`/`, indexRouter); //* Remember this should be in last position to avoid cannibalizing other routes
 // app.use(`/api/`, apiRouter)
 
 //* Router to handle non-recognised requests

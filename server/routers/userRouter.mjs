@@ -4,13 +4,12 @@ import { authenticationChecker } from "../middlewares/isAuthenticated.mjs";
 
 export const userRouter = Router();
 
-// userRouter.use(authenticationChecker)
-
 userRouter.post(`/register/`, registerUser);
 
 
 userRouter.get(`/`, authenticationChecker, (req, res) => {
 
+    res.set('Cache-Control', 'no-store');
     res.render(`userDashboard.ejs`, { user: req.user, title: `User Dashboard`, description: `User Dashboard` }); 
 });
 

@@ -8,6 +8,7 @@ import { helmetMiddleware } from "./middlewares/helmet.mjs";
 // import { apiRouter } from "./API/apiRouter.mjs";
 import { storeSessionsInMongoDb } from "./middlewares/mongoDbSessions.mjs";
 import { environmentChecker } from "./middlewares/enviromentChecker.mjs";
+import { indexRouter } from "./routers/indexRouter.mjs";
 
 export const app = express();
 
@@ -33,28 +34,18 @@ app.use(storeSessionsInMongoDb);
 app.use(passport.session());
 
 //* Route to authenticate the user with passport    
-app.get(`/register`, (req, res) => {
-  res.sendFile(`./public/register.html`, { root: `.` });
-})
 app.post("/login", passportAuth); 
 app.get("/logout", passportLogout);
 
 //* Router selectors
+
 app.use(`/user/`, userRouter);
+app.use(`/`, indexRouter); //* Remember this should be in last position to avoid cannibalizing other routes
 // app.use(`/api/`, apiRouter)
-
-
-//* Route to render the home page
-
-app.get(`/`, (req, res) => {
-  res.render(`index.ejs`);
-}); // https://app.clickup.com/t/86976n109
 
 //* Router to handle non-recognised requests
 
-app.get(`/*fallback`, (req, res) => { 
-  res.status(404).sendFile(`./public/404.html`, { root: `.` });
-})
+
 
 //* Middleware to catch & handle errors
 app.use((err, req, res, next) => {

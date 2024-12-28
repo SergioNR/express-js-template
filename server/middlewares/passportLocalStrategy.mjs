@@ -66,18 +66,11 @@ export const deserializeUser = passport.deserializeUser(async function(id, done)
 
 export const passportLogout = (req, res, next) => {   
 
-    console.log(`req.user`, req);
-
-    // posthogUserLoggedOut(req.user._id);
-
     req.logout(function (err) {
         if (err) {
             return next(err);
         }
 
-        console.log(`req.user`, req.user);
-
-
-        res.redirect("/confirmLogout.html");
+        res.redirect("/"); // Redirect to the homepage
         });
 };

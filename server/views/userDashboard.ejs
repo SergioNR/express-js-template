@@ -8,7 +8,7 @@
     <meta name="description"
         content="<%= description %>"
         > 
-<!-- TODO fix  https://app.clickup.com/t/86976m58a -->
+
         
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -16,7 +16,13 @@
     <%- include ('./components/stylesHead.ejs') %>
 
 
-    
+    <script defer>
+        const logoutButton = document.querySelector('.logoutButton');
+
+        logoutButton.addEventListener(`click`, () => {
+            posthog.reset();
+        });
+    </script> 
 
 </head>
 <body>
@@ -35,7 +41,7 @@
             <li><a href="/user/profile">Profile</a></li>
             <li><a href="/user/settings">Settings</a></li>
         </ul>
-        <a class="btn btn-primary col-3" href="/logout">logout</a>
+        <a class="btn btn-primary col-3 logoutButton" href="/logout">logout</a>
     </div>
 </nav>
 

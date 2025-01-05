@@ -1,11 +1,10 @@
 import { posthogUserSignedUp } from "../models/posthogModel.mjs";
-import asyncHandler from "express-async-handler";
 import { User } from "../utils/classes/User.mjs";
 import { createUserInDB, getUserByEmail } from "../models/userModel.mjs";
 import { validateEmail } from "../utils/validators/emailValidation.mjs";
 
 
-export const registerUser = asyncHandler(async (req, res) => {
+export const registerUser = async (req, res) => {
 
     if (!req.body.userEmail) {
         return res.status(400).send("Email is required");
@@ -35,4 +34,4 @@ export const registerUser = asyncHandler(async (req, res) => {
         res.redirect("/user/");
     }
     
-});
+};

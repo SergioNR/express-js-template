@@ -1,7 +1,10 @@
 {
-  "name": "express-js-template",
-  "version": "0.0.1",
-  "description": "Template for Expressjs projects",
+"name": "express-js-template",
+"version": "0.0.1",
+"engines": {
+    "node": ">=22.0.0"
+},
+"description": "Template for Expressjs projects",
   "main": "app.mjs",
   "scripts": {
     "start": "NODE_ENV=production node ./server/app.mjs",

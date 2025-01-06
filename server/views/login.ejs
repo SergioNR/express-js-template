@@ -130,16 +130,24 @@ body {
 <body class="d-flex align-items-center py-4 bg-body-tertiary">
     
   <main class="form-signin w-100 m-auto">
+    
     <form action="/login" method="POST">
       <img class="mb-4" src="/docs/5.3/assets/brand/bootstrap-logo.svg" alt="" width="72" height="57">
       <h1 class="h3 mb-3 fw-normal">Please sign in</h1>
 
+      <% if (typeof message !== 'undefined') { %>
+        <div class="alert alert-danger" role="alert">
+          <p class="text-center errorMessage"><%= message %></p>
+        </div>
+      <% } %>
+
       <div class="form-floating">
-        <input type="email" class="form-control" id="floatingInput" placeholder="name@example.com" value="s.navarroredondo@gmail.com" name="username">
+        <input type="email" class="form-control" id="floatingInput" placeholder="name@example.com" name="username" required>
         <label for="floatingInput">Email address</label>
       </div>
+
       <div class="form-floating">
-        <input type="password" class="form-control" id="floatingPassword" placeholder="Password" value="1234" name="password">
+        <input type="password" class="form-control" id="floatingPassword" placeholder="Password" name="password" required>
         <label for="floatingPassword">Password</label>
       </div>
 

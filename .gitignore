@@ -22,3 +22,7 @@ node_modules/
 # .env files
 
 staging.env
+
+# test results
+
+/test-results

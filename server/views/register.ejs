@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <title><%= title %></title>
+  <title>Register</title>
   <meta name="description"
       content="ExpressJS Template Description">
 
@@ -134,12 +134,22 @@ body {
     <img class="mb-4" src="/docs/5.3/assets/brand/bootstrap-logo.svg" alt="" width="72" height="57">
     <h1 class="h3 mb-3 fw-normal">Please sign up</h1>
 
+    <% if (typeof message !== 'undefined') { %>
+      <div class="alert alert-danger d-flex align-items-center justify-content-center" role="alert">
+        <p class=" errorMessage m-0"><%= message %>
+            <% if (message === 'User already exists') { %>
+            - Please login <a href="/login">here</a>
+            <% } %>
+        </p>
+      </div>
+    <% } %>
+
     <div class="form-floating">
-      <input type="email" class="form-control" id="floatingInput" placeholder="name@example.com" name="userEmail">
+      <input type="email" class="form-control" id="floatingInput" placeholder="name@example.com" name="userEmail" required autocomplete="email">
       <label for="floatingInput">Email address</label>
     </div>
     <div class="form-floating">
-      <input type="password" class="form-control" id="floatingPassword" placeholder="Password" name="userPassword">
+      <input type="password" class="form-control" id="floatingPassword" placeholder="Password" name="userPassword" required autocomplete="new-password">
       <label for="floatingPassword">Password</label>
     </div>
 
@@ -150,6 +160,9 @@ body {
       </label> 
     </div> -->
     <button class="btn btn-primary w-100 py-2" type="submit">Create Account</button>
+    <div class="py-3">
+      <p class="text-secondary">Already have an account? Login <a href="/login">here</a></p>
+    </div>
     <p class="mt-5 mb-3 text-body-secondary">© 2025</p>
   </form>
 </main>

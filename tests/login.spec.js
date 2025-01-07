@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { checkNavbarAndFooter } from './utils/sitewideUtils';
 
 import config from './config/playwrightConfig.mjs';
 

@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { checkNavbarAndFooter } from './utils/sitewideUtils';
 
 import config from './config/playwrightConfig.mjs';
 
@@ -20,7 +19,7 @@ test(`should register successfully`, async ({ page }) => {
     
     await page.fill(`input[type="email"]`, randomEmail,);
 
-    await page.fill(`input[type="password"]`, `1234` );
+    await page.fill(`input[type="password"]`, `123456` );
 
     await page.click(`button[type="submit"]`);
 
@@ -34,7 +33,7 @@ test(`should fail registration because user already exists`, async ({ page }) =>
 
     await page.fill(`input[type="email"]`, `s.navarroredondo@gmail.com` );
 
-    await page.fill(`input[type="password"]`, `1234` );
+    await page.fill(`input[type="password"]`, `123456` );
 
     await page.click(`button[type="submit"]`);
 

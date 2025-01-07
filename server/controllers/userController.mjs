@@ -6,18 +6,6 @@ import { validateEmail } from "../utils/validators/emailValidation.mjs";
 
 export const registerUser = async (req, res) => {
 
-    if (!req.body.userEmail) {
-        return res.render(`register.ejs`, { message: `Please input an email address` });
-    };
-
-    if (!validateEmail(req.body.userEmail)) {
-        return res.render(`register.ejs`, { message: `Please enter a valid email address` });
-    };
-
-    if (!req.body.userPassword) {
-        return res.render(`register.ejs`, { message: `Please input a password` });
-    };
-    
     const newUser = new User(req);
 
     // Check if user exists in DB

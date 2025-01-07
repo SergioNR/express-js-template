@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { registerUser } from "../controllers/userController.mjs";
 import { authenticationChecker } from "../middlewares/isAuthenticated.mjs";
+import { emailSanitizer } from "../utils/sanitizers/emailSanitizer.mjs";
+import { passwordSanitizer } from "../utils/sanitizers/passwordSanitizer.mjs";
+import { sanitizerResult } from "../middlewares/sanitizerResult.mjs";
 
 export const userRouter = Router();
 
-userRouter.post(`/register/`, registerUser);
-
+userRouter.post(`/register/`, emailSanitizer, passwordSanitizer, sanitizerResult, registerUser);
 
 userRouter.get(`/`, authenticationChecker, (req, res) => {
 

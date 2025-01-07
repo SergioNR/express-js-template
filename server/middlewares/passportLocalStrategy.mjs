@@ -69,7 +69,7 @@ passport.use(
             } else {
                 // passwords do not match!
 
-                return done(null, false, { message: "Incorrect password" });
+                return done(null, false, { message: "Password is incorrect" });
             }
         });
     } catch(err) {

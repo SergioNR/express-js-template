@@ -28,7 +28,7 @@ test.describe(`terminos-condiciones.ejs`, () => {
   });
 
   test('should load a navbar and footer', async ({ page }) => {
-    await page.goto(`/`);
+    await page.goto(`/terminos-condiciones`);
     await checkNavbarAndFooter(page);
   });
 

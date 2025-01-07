@@ -1,7 +1,7 @@
 import { body } from 'express-validator';
 
 export const emailSanitizer = 
-    body('userEmail')
+    body('username')
         .isEmail()
         .withMessage('Please enter a valid email address')
         .normalizeEmail()

@@ -43,15 +43,10 @@ app.use(`/user/`, userRouter);
 app.use(`/`, indexRouter); //* Remember this should be in last position to avoid cannibalizing other routes
 // app.use(`/api/`, apiRouter)
 
-//* Router to handle non-recognised requests
-
-
-
 //* Middleware to catch & handle errors
 app.use((err, req, res, next) => {
   res.status(err.statusCode ||  500).send(err.message);
 });
-
 
 //* Start the server
 app.listen(process.env.PORT, process.env.HOSTNAME, () => {

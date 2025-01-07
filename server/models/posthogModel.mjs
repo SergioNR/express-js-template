@@ -11,12 +11,6 @@ export const posthogUserSignedUp = async (createdUser) => {
             }
         });
 
-        logger.info({
-            message: `User signed up event sent to Posthog`,
-            userId: createdUser._id,
-            userEmail: createdUser.userDetails.email
-        });
-
     } catch (error) {
         console.log(`error`, error)
         throw error;
@@ -32,12 +26,6 @@ export const posthogUserSuccessLoggedIn = async (distinct_id) => {
             event: `userLoggedIn`
         });
 
-
-        logger.info({
-            message: `User logged in event sent to Posthog`,
-            userId: {distinct_id},
-        });
-
     } catch (error) {
         throw error;
     } finally {
@@ -45,18 +33,12 @@ export const posthogUserSuccessLoggedIn = async (distinct_id) => {
     };
 };
 
-
 export const posthogUserLoggedOut = async (distinct_id) => {
     try {
         client.capture({
             distinctId: `${distinct_id}`,
             event: `userLoggedOut`
-        });
-
-        logger.info({
-            message: `User logged out event sent to Posthog`,
-            userId: createdUser._id,
-        });
+        });        
 
     } catch (error) {
         throw error;

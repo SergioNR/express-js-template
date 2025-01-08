@@ -19,11 +19,12 @@ export const posthogUserSignedUp = async (createdUser) => {
     };
 };
 
-export const posthogUserSuccessLoggedIn = async (distinct_id) => {
+export const posthogUserSuccessLoggedIn = async (distinct_id, loginMethod) => {
     try {
         client.capture({
             distinctId: `${distinct_id}`,
-            event: `userLoggedIn`
+            event: `userLoggedIn`,
+            loginMethod: `${loginMethod}`,
         });
 
     } catch (error) {

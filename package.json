@@ -1,1 +1,40 @@
-{"name":"express-js-template","version":"0.0.1","engines":{"node":">=22.0.0"},"description":"Template for Expressjs projects","main":"app.mjs","scripts":{"start":"NODE_ENV=production node ./server/app.mjs","local-dev":"node --watch --env-file=staging.env ./server/app.mjs","deploy-dev":"node ./server/app.mjs","test":"npx playwright test"},"author":"SNR","dependencies":{"@getbrevo/brevo":"^2.2.0","@logtail/pino":"^0.5.0","axios":"^1.7.7","bcryptjs":"^2.4.3","connect-mongodb-session":"^5.0.0","ejs":"^3.1.10","express":"^5.0.1","express-async-handler":"^1.2.0","express-session":"^1.18.0","express-validator":"^7.2.1","helmet":"^8.0.0","mongodb":"^6.8.0","passport":"^0.7.0","passport-local":"^1.0.0","pino":"^9.6.0","pino-pretty":"^13.0.0","posthog-node":"^4.1.1"},"devDependencies":{"@playwright/test":"^1.49.1","playwright":"^1.49.1"}}
+{
+    "name": "express-js-template",
+    "version": "0.0.1",
+    "engines": {
+        "node": ">=22.0.0"
+    },
+    "description": "Template for Expressjs projects",
+    "main": "app.mjs",
+    "scripts": {
+        "start": "NODE_ENV=production node ./server/app.mjs",
+        "local-dev": "node --watch --env-file=staging.env ./server/app.mjs",
+        "deploy-dev": "node ./server/app.mjs",
+        "test": "npx playwright test"
+    },
+    "author": "SNR",
+    "dependencies": {
+        "@getbrevo/brevo": "^2.2.0",
+        "@logtail/pino": "^0.5.0",
+        "axios": "^1.7.7",
+        "bcryptjs": "^2.4.3",
+        "connect-mongodb-session": "^5.0.0",
+        "ejs": "^3.1.10",
+        "express": "^5.0.1",
+        "express-async-handler": "^1.2.0",
+        "express-session": "^1.18.0",
+        "express-validator": "^7.2.1",
+        "helmet": "^8.0.0",
+        "mongodb": "^6.8.0",
+        "passport": "^0.7.0",
+        "passport-local": "^1.0.0",
+        "pino": "^9.6.0",
+        "pino-mongodb": "^4.3.0",
+        "pino-pretty": "^13.0.0",
+        "posthog-node": "^4.1.1"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.49.1",
+        "playwright": "^1.49.1"
+    }
+}

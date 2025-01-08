@@ -1,4 +1,3 @@
-import { logger } from "../config/logger.mjs";
 import { client } from "../config/posthog-node.mjs";
 
 export const posthogUserSignedUp = async (createdUser) => {

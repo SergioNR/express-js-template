@@ -1,7 +1,7 @@
 import { connectToDatabase } from "../database/mongoDB.mjs";
 import { ObjectId } from "mongodb";
-import { logger } from "../config/logger.mjs";
 import bcrypt from "bcryptjs";
+import { logUserCreatedInDB } from "../config/loggerFunctions.mjs";
 
 
 export const createUserInDB = async (user) => {
@@ -15,11 +15,7 @@ export const createUserInDB = async (user) => {
 
     await usersCollection.insertOne(user);
 
-    logger.info({
-    message: `User created in DB`,
-    userId: user._id,
-    userData: user,
-    });
+    logUserCreatedInDB(user._id, user);
     
     return user;
     

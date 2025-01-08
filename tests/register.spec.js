@@ -26,6 +26,21 @@ test(`should register successfully`, async ({ page }) => {
     await expect(page).toHaveURL('/login');
 });
 
+test(`should register successfully with random caps in the username`, async ({ page }) => {
+
+    await page.goto(`/register`);
+    
+    const randomEmail = `asddSSSD${Math.random()}SDDD@gmaSSil.com`;
+    
+    await page.fill(`input[type="email"]`, randomEmail,);
+
+    await page.fill(`input[type="password"]`, `123456` );
+
+    await page.click(`button[type="submit"]`);
+
+    await expect(page).toHaveURL('/login');
+});
+
 
 test(`should fail registration because user already exists`, async ({ page }) => {
     

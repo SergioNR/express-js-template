@@ -50,9 +50,7 @@ passport.use(
         
         try {
 
-        const user = await getUserByEmail(userEmail.toLowerCase());
-
-        console.log(`user` , user);
+        const user = await getUserByEmail(userEmail);
 
         if (!user) { //* Triggers if username and password are filled but user DOES NOT exist
 

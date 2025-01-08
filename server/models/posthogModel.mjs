@@ -24,7 +24,9 @@ export const posthogUserSuccessLoggedIn = async (distinct_id, loginMethod) => {
         client.capture({
             distinctId: `${distinct_id}`,
             event: `userLoggedIn`,
-            loginMethod: `${loginMethod}`,
+            properties: {
+                loginMethod: `${loginMethod}`
+            }
         });
 
     } catch (error) {

@@ -21,6 +21,7 @@ export const logger = process.env.NODE_ENV === 'production' ? pino({
         }
     }
 }) : process.env.HOSTNAME === `localhost` ? pino({
+    redact: redactOptions,
     transport: {
         targets: [ 
                     {

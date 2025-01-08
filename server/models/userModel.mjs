@@ -49,6 +49,29 @@ export const getUserByEmail = async (userEmail) => {
   }
 };
 
+export const updateLastLoginDate = async (userId) => {
+  try {
+    const db = await connectToDatabase();
+
+    const usersCollection = db.collection("users");
+
+    const filter = { 
+      "_id": ObjectId.createFromHexString(`${userId}`) 
+      };
+
+    await usersCollection.updateOne(filter, {
+      $set: {
+        "lastLoginDate": new Date()
+      }
+    });
+
+    return;
+
+  } catch (error) {
+      throw error;
+  }
+}
+
 // export const getAllUsers = async () => {
 //   try {
 

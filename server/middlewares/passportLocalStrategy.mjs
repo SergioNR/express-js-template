@@ -34,7 +34,7 @@ export const passportAuth = (req, res, next) =>
                 return next(err);
             }
 
-            posthogUserSuccessLoggedIn(user._id);
+            updateLastLoginDate(user._id);
 
             logger.info({
                 message: `User logged in successfully`,

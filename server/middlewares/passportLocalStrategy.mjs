@@ -3,7 +3,7 @@ import LocalStrategy from "passport-local";
 import { getUserByEmail, getUserByUserId, updateLastLoginDate } from "../models/userModel.mjs";
 import { posthogUserLoggedOut, posthogUserSuccessLoggedIn } from "../models/posthogModel.mjs";
 import bcrypt from "bcryptjs";
-import { logger } from "../config/logger.mjs";
+import { logUserLoggedInSuccessfully, logFailedLoginUserDoesNotExist, logErrorInUserLogin } from "../config/loggerFunctions.mjs";
 
 export const passportAuth = (req, res, next) => 
     passport.authenticate("local", (err, user, info) => {
@@ -12,13 +12,9 @@ export const passportAuth = (req, res, next) =>
             return next(err);
         }       
 
-        if (!user) { //* User OR password do not exist or are incorrect
+        if (!user) { //* Triggers when user does not exist
 
-            logger.info({
-                message: `Login attempt failed`,
-                error: info.message, //* Logging the error message from passport
-                userEmail: req.body.userEmail,
-            });
+            logFailedLoginUserDoesNotExist(info.message);
 
             return res.render("login", { message: `The combination of username and password is incorrect or does not exist` }); //* Show a security-oriented error message to the user
         }
@@ -26,11 +22,7 @@ export const passportAuth = (req, res, next) =>
         req.logIn(user, (err) => {
             if (err) {
 
-                logger.error({
-                    message: `Failed login attempt - Error logging in`,
-                    userId: user._id,
-                    error: err,
-                });
+                logErrorInUserLogin(err);
 
                 return next(err);
             }
@@ -39,11 +31,7 @@ export const passportAuth = (req, res, next) =>
 
             posthogUserSuccessLoggedIn(user._id, `passportLocalStrategy`);
 
-            logger.info({
-                message: `User logged in successfully`,
-                userId: user._id,
-                loginMethod: `passportLocalStrategy`,
-            });
+            logUserLoggedInSuccessfully(user._id, `passportLocalStrategy`);
 
             return res.redirect("/user/");
         });

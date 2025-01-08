@@ -1,5 +1,5 @@
 import { MongoClient, ServerApiVersion } from "mongodb";
-import { logger } from "../config/logger.mjs";
+import { logMongoDbConnectionError } from "../config/loggerFunctions.mjs";
 
 const uri = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_URI}/?retryWrites=true`;
 
@@ -30,10 +30,7 @@ export const connectToDatabase = async () => {
 
       } catch (error) {
 
-        logger.fatal({
-          message: `[DB CONNECTION] Cant connect to MongoDB - ${error.errmsg}`,
-          error: error,
-        })
+        logMongoDbConnectionError(error);
         
         return error;
       }

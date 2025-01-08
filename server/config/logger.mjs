@@ -1,5 +1,9 @@
 import pino from 'pino';
-import pretty from 'pino-pretty';
+
+const redactOptions = {
+    paths: ['context.userData.email', 'context.userData.password'],
+    censor: '[REDACTED]'
+};
 
 
 export const logger = process.env.NODE_ENV === 'production' ? pino({
@@ -24,7 +28,10 @@ export const logger = process.env.NODE_ENV === 'production' ? pino({
             ignore: 'pid,hostname', // Optional: ignore the pid and hostname fields
         },
     },
-    
+    transport: {
+        target: 'pino-mongodb',
+        // TODO - REMOVE PID & HOSTNAME & ANY OTHER IRRELVAENT FIELDS
+        redact: {
 }) : pino({ //* 
     transport: {
         target: 'pino-pretty', // Correctly specify the target as a string

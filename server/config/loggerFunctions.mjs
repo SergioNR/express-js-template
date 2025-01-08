@@ -33,7 +33,7 @@ export const logUserLoggedInSuccessfully = (userId, loginMethod) => {
 
 export const logFailedLoginUserDoesNotExist = (errorMessage) => {
     
-    logger.info({
+    logger.warn({
         message: `Login attempt failed`,
         error: errorMessage, //* Logging the error message generated in passportJS
     });

@@ -93,6 +93,13 @@ export const passportLogout = (req, res, next) => {
             return next(err);
         }
 
+        req.session.destroy((err) => {
+            if (err) { 
+                return next(err); 
+            }
+        });
+
+
         res.redirect("/"); // Redirect to the homepage
         });
 };

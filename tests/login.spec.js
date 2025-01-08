@@ -111,4 +111,22 @@ test(`should fail login due to missing password`, async ({ page }) => {
     await expect(errorMessage).toBeVisible();
 });
 
+test(`should log out successfully`, async ({ page }) => {
+    
+    await page.goto(`/login`);
+    
+    await page.fill(`input[type="email"]`, `s.navarroredondo@gmail.com`)
+
+    await page.fill(`input[type="password"]`, `123456` );
+
+    await page.click(`button[type="submit"]`);
+
+    await expect(page).toHaveURL(`/user/`);
+
+    await page.click(`.logoutButton`);
+
+    await expect(page).toHaveURL(`/`);
+
+
+});
 

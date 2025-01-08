@@ -18,7 +18,7 @@ test(`should login successfully`, async ({ page }) => {
     
     await page.fill(`input[type="email"]`, `s.navarroredondo@gmail.com`)
 
-    await page.fill(`input[type="password"]`, `1234` );
+    await page.fill(`input[type="password"]`, `123456` );
 
     await page.click(`button[type="submit"]`);
 
@@ -31,7 +31,7 @@ test(`should login successfully WITH random caps in the username`, async ({ page
     
     await page.fill(`input[type="email"]`, `s.NavaRRoredOndo@gmail.com`)
 
-    await page.fill(`input[type="password"]`, `1234` );
+    await page.fill(`input[type="password"]`, `123456` );
 
     await page.click(`button[type="submit"]`);
 

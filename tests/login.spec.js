@@ -38,6 +38,27 @@ test(`should login successfully WITH random caps in the username`, async ({ page
     await expect(page).toHaveURL(`/user/`);
 });
 
+test(`should fail login due to user not existing`, async ({ page }) => {
+
+    await page.goto(`/login`);
+
+    const randomEmail = Math.random().toString(36).substring(7) + `@gmail.com`;
+
+    const randomPassword = Math.random().toString(36).substring(7);
+
+    await page.fill(`input[type="email"]`, randomEmail)
+    
+    await page.fill(`input[type="password"]`, randomPassword );
+
+    await page.click(`button[type="submit"]`);
+
+    const errorMessage = page.locator(`.errorMessage`)
+
+    await expect(errorMessage).toBeVisible();
+    
+});
+
+
 test(`should fail login due to wrong password`, async ({ page }) => {
 
     await page.goto(`/login`);

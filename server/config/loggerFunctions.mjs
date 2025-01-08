@@ -1,13 +1,7 @@
 import { logger } from "./logger.mjs";
-import { ObjectId } from "mongodb";
-
-
-// Log structure
 
 /*
-
-
-Log Structure:
+Example Log Structure:
 {
     timestamp: "YYYY-MM-DDTHH:mm:ss.sssZ",
     level: "info" | "warn" | "error" | "fatal",
@@ -61,7 +55,7 @@ export const logUserCreatedInDB = (userId, user) => {
 
 export const logUserLoggedOut = (userId) => {
     logger.info({
-        message: `User logged out`,
+        message: `User logged out successfully`,
         context: {
             userId: userId,
         }
@@ -72,7 +66,6 @@ export const logErrorInUserLogin = (error) => {
     logger.fatal({
         message: `Failed login attempt - Error logging in`,
         context: {
-            userId: userId, //! REVIEW
             error: error,
         }
     });

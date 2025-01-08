@@ -73,7 +73,7 @@ export const logErrorInUserLogin = (error) => {
 
 export const logMongoDbConnectionError = (error) => {
     logger.fatal({
-        message: `[DB CONNECTION] Cant connect to MongoDB - ${error.errmsg}`,
+        message: `[DB CONNECTION] Can't connect to MongoDB - ${error.errmsg}`,
         context: {
             error: error,
         }

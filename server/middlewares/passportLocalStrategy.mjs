@@ -1,12 +1,13 @@
 import passport from "passport";
 import LocalStrategy from "passport-local";
-import { getUserByEmail, getUserByUserId } from "../models/userModel.mjs";
+import { getUserByEmail, getUserByUserId, updateLastLoginDate } from "../models/userModel.mjs";
 import { posthogUserLoggedOut, posthogUserSuccessLoggedIn } from "../models/posthogModel.mjs";
 import bcrypt from "bcryptjs";
 import { logger } from "../config/logger.mjs";
 
 export const passportAuth = (req, res, next) => 
     passport.authenticate("local", (err, user, info) => {
+    
         if (err) {
             return next(err);
         }       
@@ -14,9 +15,9 @@ export const passportAuth = (req, res, next) =>
         if (!user) { //* User OR password do not exist or are incorrect
 
             logger.info({
-                message: `Login failed`,
+                message: `Login attempt failed`,
                 error: info.message, //* Logging the error message from passport
-                userEmail: req.body.username,
+                userEmail: req.body.userEmail,
             });
 
             return res.render("login", { message: `The combination of username and password is incorrect or does not exist` }); //* Show a security-oriented error message to the user
@@ -34,11 +35,14 @@ export const passportAuth = (req, res, next) =>
                 return next(err);
             }
 
-            posthogUserSuccessLoggedIn(user._id);
+            updateLastLoginDate(user._id);
+
+            posthogUserSuccessLoggedIn(user._id, `passportLocalStrategy`);
 
             logger.info({
                 message: `User logged in successfully`,
                 userId: user._id,
+                loginMethod: `passportLocalStrategy`,
             });
 
             return res.redirect("/user/");
@@ -50,9 +54,7 @@ passport.use(
         
         try {
 
-        const user = await getUserByEmail(userEmail.toLowerCase());
-
-        console.log(`user` , user);
+        const user = await getUserByEmail(userEmail);
 
         if (!user) { //* Triggers if username and password are filled but user DOES NOT exist
 

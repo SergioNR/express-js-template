@@ -134,22 +134,29 @@ body {
     <img class="mb-4" src="/docs/5.3/assets/brand/bootstrap-logo.svg" alt="" width="72" height="57">
     <h1 class="h3 mb-3 fw-normal">Please sign up</h1>
 
-    <% if (typeof message !== 'undefined') { %>
+    <% if (typeof message !== `undefined` && typeof message === `object`) { %>
       <div class="alert alert-danger d-flex align-items-center justify-content-center" role="alert">
-        <p class=" errorMessage m-0"><%= message %>
-            <% if (message === 'User already exists') { %>
-            - Please login <a href="/login">here</a>
-            <% } %>
-        </p>
+      <ul class="errorMessage m-0">
+        <% message.forEach(function(msg) { %>
+          <li><%= msg.msg %></li>
+        <% }) %>
+      
       </div>
+    <% } else { %>
+      <% if (typeof message !== `undefined` && message !== null) { %>
+        <div class="alert alert-danger d-flex align-items-center justify-content-center" role="alert">
+          <p class="errorMessage m-0"><%= message %></p>
+        </div>
+      <% } %>
     <% } %>
 
     <div class="form-floating">
-      <input type="email" class="form-control" id="floatingInput" placeholder="name@example.com" name="userEmail" required autocomplete="email">
+      <input type="email" class="form-control" id="floatingInput" placeholder="name@example.com" name="username" required autocomplete="email">
       <label for="floatingInput">Email address</label>
     </div>
+
     <div class="form-floating">
-      <input type="password" class="form-control" id="floatingPassword" placeholder="Password" name="userPassword" required autocomplete="new-password">
+      <input type="password" class="form-control" id="floatingPassword" placeholder="Password" name="password" required autocomplete="new-password">
       <label for="floatingPassword">Password</label>
     </div>
 

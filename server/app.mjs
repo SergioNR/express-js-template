@@ -9,6 +9,9 @@ import { helmetMiddleware } from "./middlewares/helmet.mjs";
 import { storeSessionsInMongoDb } from "./middlewares/mongoDbSessions.mjs";
 import { environmentChecker } from "./middlewares/enviromentChecker.mjs";
 import { indexRouter } from "./routers/indexRouter.mjs";
+import { passwordSanitizer } from "./utils/sanitizers/passwordSanitizer.mjs";
+import { emailSanitizer } from "./utils/sanitizers/emailSanitizer.mjs";
+import { sanitizerResult } from "./middlewares/sanitizerResult.mjs";
 
 export const app = express();
 
@@ -34,7 +37,8 @@ app.use(storeSessionsInMongoDb);
 app.use(passport.session());
 
 //* Route to authenticate the user with passport    
-app.post("/login", passportAuth); 
+app.post("/login", emailSanitizer, passwordSanitizer, sanitizerResult, passportAuth);
+
 app.get("/logout", passportLogout);
 
 //* Router selectors

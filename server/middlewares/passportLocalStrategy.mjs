@@ -3,7 +3,8 @@ import LocalStrategy from "passport-local";
 import { getUserByEmail, getUserByUserId, updateLastLoginDate } from "../models/userModel.mjs";
 import { posthogUserLoggedOut, posthogUserSuccessLoggedIn } from "../models/posthogModel.mjs";
 import bcrypt from "bcryptjs";
-import { logUserLoggedInSuccessfully, logFailedLoginUserDoesNotExist, logErrorInUserLogin } from "../config/loggerFunctions.mjs";
+import { logUserLoggedInSuccessfully, logFailedLoginUserDoesNotExist, logErrorInUserLogin, logUserLoggedOut } from "../config/loggerFunctions.mjs";
+
 
 export const passportAuth = (req, res, next) => 
     passport.authenticate("local", (err, user, info) => {
@@ -84,6 +85,8 @@ export const deserializeUser = passport.deserializeUser(async function(id, done)
 export const passportLogout = (req, res, next) => {   
 
     posthogUserLoggedOut(req.user._id);
+
+    logUserLoggedOut(req.user._id);
 
     req.logout(function (err) {
         if (err) {

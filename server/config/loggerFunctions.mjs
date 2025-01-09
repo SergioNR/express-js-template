@@ -15,6 +15,8 @@ Example Log Structure:
     }
 }
 
+Note: Events should be logged as close to the source as possible. For example, if a user logs in, the event should be logged in the login function. If a user is created, the event should be logged in the create user function.
+
 */
 
 
@@ -82,18 +84,24 @@ export const logMongoDbConnectionError = (error) => {
 
 export const logErrorCreatingUserInDB = (error) => {
     logger.error({
-        message: `Error creating user in DB`,
+        message: error.message,
         context: {
-            error: error,
+            name: error.name,
+            errorMessage: error.message,
+            errorStack: error.stack,
+            errorDetails: error, // I will log the entire error object for now just in case
         }
     });
 }
 
 export const logErrorInGetUserByEmail = (error) => {
     logger.error({
-        message: `Error finding user in DB`,
+        message: error.message,
         context: {
-            error: error,
+            name: error.name,
+            errorMessage: error.message,
+            errorStack: error.stack,
+            errorDetails: error, // I will log the entire error object for now just in case
         }
     });
 }

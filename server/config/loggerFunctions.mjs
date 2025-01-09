@@ -66,7 +66,7 @@ export const logUserLoggedOut = (userId) => {
 
 export const logErrorInUserLogin = (error) => {
     logger.fatal({
-        message: `Failed login attempt - Error logging in`,
+        message: `Error in user login`,
         context: {
             error: error,
         }

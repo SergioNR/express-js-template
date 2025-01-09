@@ -1,5 +1,6 @@
 import session from "express-session";
 import  connectMongoDBSession  from "connect-mongodb-session";
+import { logErrorMongoDBSessionStoreInitialization } from "../config/loggerFunctions.mjs";
 
 const MongoDBStore = connectMongoDBSession(session);
 
@@ -8,6 +9,17 @@ const mongoDBSessionStore = new MongoDBStore({
     uri: process.env.MONGODB_CONNECTIONSTRING,
     databaseName: "main",
     collection: "sessions"
+}, async function(error) {
+    
+    if (error) {
+        logErrorMongoDBSessionStoreInitialization(error);
+        }
+    }
+);
+
+
+mongoDBSessionStore.on('error', function(error) {
+ // TODO: Implement error handling
 });
 
 

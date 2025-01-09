@@ -105,3 +105,15 @@ export const logErrorInGetUserByEmail = (error) => {
         }
     });
 }
+
+export const logErrorMongoDBSessionStoreInitialization = (error) => {
+    logger.fatal({
+        message: 'MongoDB session store initialization failed',
+        context: {
+            name: error.name,
+            errorMessage: error.message,
+            errorStack: error.stack,
+            errorDetails: error, // I will log the entire error object for now just in case}
+        }       
+    });
+};

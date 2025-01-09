@@ -1,7 +1,7 @@
 import { connectToDatabase } from "../database/mongoDB.mjs";
 import { ObjectId } from "mongodb";
 import bcrypt from "bcryptjs";
-import { logUserCreatedInDB, logErrorInGetUserByEmail } from "../config/loggerFunctions.mjs";
+import { logUserCreatedInDB, logErrorInGetUserByEmail, logErrorCreatingUserInDB } from "../config/loggerFunctions.mjs";
 import { posthogUserSignedUp } from "./posthogModel.mjs";
 
 
@@ -15,11 +15,11 @@ export const createUserInDB = async (user) => {
 
     const usersCollection = db.collection("users");
 
-    await usersCollection.insertOne(user);
+    const createdUser = await usersCollection.insertOne(user);
 
     logUserCreatedInDB(user._id, user);
 
-    posthogUserSignedUp(createdUser);
+    posthogUserSignedUp(user._id, user);
     
     return user;
     

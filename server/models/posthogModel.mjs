@@ -1,12 +1,12 @@
 import { client } from "../config/posthog-node.mjs";
 
-export const posthogUserSignedUp = async (createdUser) => {
+export const posthogUserSignedUp = async (distinctId, user) => {
     try {
         client.capture({
-            distinctId: `${createdUser._id}`,
+            distinctId: distinctId,
             event: `userSignedUp`,
             properties: {
-                userEmail: `${createdUser.userDetails.email}`
+                userEmail: user.userDetails.email,
             }
         });
 
@@ -18,13 +18,13 @@ export const posthogUserSignedUp = async (createdUser) => {
     };
 };
 
-export const posthogUserSuccessLoggedIn = async (distinct_id, loginMethod) => {
+export const posthogUserSuccessLoggedIn = async (distinctId, loginMethod) => {
     try {
         client.capture({
-            distinctId: `${distinct_id}`,
+            distinctId: distinctId,
             event: `userLoggedIn`,
             properties: {
-                loginMethod: `${loginMethod}`
+                loginMethod: loginMethod
             }
         });
 
@@ -35,10 +35,10 @@ export const posthogUserSuccessLoggedIn = async (distinct_id, loginMethod) => {
     };
 };
 
-export const posthogUserLoggedOut = async (distinct_id) => {
+export const posthogUserLoggedOut = async (distinctId) => {
     try {
         client.capture({
-            distinctId: `${distinct_id}`,
+            distinctId: distinctId,
             event: `userLoggedOut`
         });        
 

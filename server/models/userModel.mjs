@@ -1,11 +1,13 @@
 import { connectToDatabase } from "../database/mongoDB.mjs";
 import { ObjectId } from "mongodb";
 import bcrypt from "bcryptjs";
-import { logUserCreatedInDB } from "../config/loggerFunctions.mjs";
+import { logUserCreatedInDB, logErrorInGetUserByEmail } from "../config/loggerFunctions.mjs";
+import { posthogUserSignedUp } from "./posthogModel.mjs";
 
 
 export const createUserInDB = async (user) => {
   try {
+
     const hashedPassword = await bcrypt.hash(user.userDetails.password, 10);
     user.userDetails.password = hashedPassword;
 
@@ -16,27 +18,21 @@ export const createUserInDB = async (user) => {
     await usersCollection.insertOne(user);
 
     logUserCreatedInDB(user._id, user);
+
+    posthogUserSignedUp(createdUser);
     
     return user;
     
   } catch (error) {
 
-    if (error.message === 'MongoNetworkError') {
-      return { 
-        success: false,
-        error: 'Database connection failed',
-        code: 'DB_CONNECTION_ERROR' };
-    } else {
-      return { 
-        success: false,
-        error: 'Internal server error',
-        code: 'INTERNAL_ERROR'
-      };
+    logErrorCreatingUserInDB(error);
+
+    return { 
+      success: false,
     }
 
   } 
 };
-
 
 export const getUserByEmail = async (userEmail) => {
   try {
@@ -55,18 +51,12 @@ export const getUserByEmail = async (userEmail) => {
 
   } catch (error) {
 
-    if (error.message === 'MongoNetworkError') {
-      return { 
-        success: false,
-        error: 'Database connection failed',
-        code: 'DB_CONNECTION_ERROR' };
-    } else {
-      return { 
-        success: false,
-        error: 'Internal server error',
-        code: 'INTERNAL_ERROR'
-      };
+    logErrorInGetUserByEmail(error);
+
+    return { 
+      success: false,
     }
+
   }
 };
 

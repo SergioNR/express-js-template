@@ -1,7 +1,5 @@
-import { posthogUserSignedUp } from "../models/posthogModel.mjs";
 import { User } from "../utils/classes/User.mjs";
 import { createUserInDB, getUserByEmail } from "../models/userModel.mjs";
-import { logErrorCreatingUserInDB, logErrorInGetUserByEmail, logUserCreatedInDB } from "../config/loggerFunctions.mjs";
 
 
 export const registerUser = async (req, res) => {
@@ -10,9 +8,7 @@ export const registerUser = async (req, res) => {
 
     const existingUser = await getUserByEmail(newUser.userDetails.email);
     
-    if (existingUser && existingUser.success === false) { // my issue is how to handle this if existingUser does not have a success property
-
-        logErrorInGetUserByEmail(existingUser);
+    if (existingUser && existingUser.success === false) {
 
         return res.render(`register.ejs`, { message: `An error occurred while creating the user - Please try again in a few minutes` });
 
@@ -30,10 +26,6 @@ export const registerUser = async (req, res) => {
             return res.render(`register.ejs`, { message: `An error occurred while creating the user - Please try again in a few minutes` });
 
         }
-        
-        logUserCreatedInDB(createdUser._id, createdUser);
-
-        await posthogUserSignedUp(createdUser);
     
         res.redirect("/login");
     }

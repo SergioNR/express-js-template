@@ -75,7 +75,25 @@ export const logMongoDbConnectionError = (error) => {
     logger.fatal({
         message: `[DB CONNECTION] Can't connect to MongoDB - ${error.errmsg}`,
         context: {
-            error: error,
+            error: error.message,
         }
     })
 };
+
+export const logErrorCreatingUserInDB = (error) => {
+    logger.error({
+        message: `Error creating user in DB`,
+        context: {
+            error: error,
+        }
+    });
+}
+
+export const logErrorInGetUserByEmail = (error) => {
+    logger.error({
+        message: `Error finding user in DB`,
+        context: {
+            error: error,
+        }
+    });
+}

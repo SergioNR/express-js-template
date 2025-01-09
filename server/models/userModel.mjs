@@ -20,7 +20,20 @@ export const createUserInDB = async (user) => {
     return user;
     
   } catch (error) {
-    throw error;
+
+    if (error.message === 'MongoNetworkError') {
+      return { 
+        success: false,
+        error: 'Database connection failed',
+        code: 'DB_CONNECTION_ERROR' };
+    } else {
+      return { 
+        success: false,
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR'
+      };
+    }
+
   } 
 };
 
@@ -41,7 +54,19 @@ export const getUserByEmail = async (userEmail) => {
     return user;
 
   } catch (error) {
-      throw error;
+
+    if (error.message === 'MongoNetworkError') {
+      return { 
+        success: false,
+        error: 'Database connection failed',
+        code: 'DB_CONNECTION_ERROR' };
+    } else {
+      return { 
+        success: false,
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR'
+      };
+    }
   }
 };
 

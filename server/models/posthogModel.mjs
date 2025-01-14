@@ -1,50 +1,64 @@
-import { client } from "../config/posthog-node.mjs";
+import { client } from '../config/posthog-node.mjs';
+import { logError } from '../config/loggerFunctions.mjs';
 
-export const posthogUserSignedUp = async (distinctId, user) => {
-    try {
-        client.capture({
-            distinctId: distinctId,
-            event: `userSignedUp`,
-            properties: {
-                userEmail: user.userDetails.email,
-            }
-        });
-
-    } catch (error) {
-        console.log(`error`, error)
-        throw error;
-    } finally {
-        await client.shutdown()
-    };
+export const posthogUserSignedUp = async (user) => {
+  try {
+    client.capture({
+      distinctId: user._id,
+      event: 'userSignedUp',
+      properties: {
+        $set: {
+        //   userEmail: user.userDetails.email,
+        //* Not needed for now and its safer in regards to GDPR
+          userRole: user.userDetails.role,
+        },
+      },
+    });
+  } catch (error) {
+    logError('error sending event to posthog', error, 'userSignedUp');
+  } finally {
+    await client.shutdown();
+  }
 };
 
 export const posthogUserSuccessLoggedIn = async (distinctId, loginMethod) => {
-    try {
-        client.capture({
-            distinctId: distinctId,
-            event: `userLoggedIn`,
-            properties: {
-                loginMethod: loginMethod
-            }
-        });
-
-    } catch (error) {
-        throw error;
-    } finally {
-        await client.shutdown()
-    };
+  try {
+    client.capture({
+      distinctId,
+      event: 'userLoggedIn',
+      properties: {
+        loginMethod,
+      },
+    });
+  } catch (error) {
+    logError('error sending event to posthog', error, 'userSuccessLogin');
+  } finally {
+    await client.shutdown();
+  }
 };
 
 export const posthogUserLoggedOut = async (distinctId) => {
-    try {
-        client.capture({
-            distinctId: distinctId,
-            event: `userLoggedOut`
-        });        
+  try {
+    client.capture({
+      distinctId,
+      event: 'userLoggedOut',
+    });
+  } catch (error) {
+    logError('error sending event to posthog', error, 'userLoggedOut');
+  } finally {
+    await client.shutdown();
+  }
+};
 
-    } catch (error) {
-        throw error;
-    } finally {
-        await client.shutdown()
-    };
+export const posthogUserPaymentCompleted = async (distinctId) => {
+  try {
+    client.capture({
+      distinctId: `${distinctId}`,
+      event: 'paymentCompleted',
+    });
+  } catch (error) {
+    logError('error sending event to posthog', error, 'paymentCompleted');
+  } finally {
+    client.shutdown();
+  }
 };

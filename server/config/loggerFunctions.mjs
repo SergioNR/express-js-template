@@ -106,7 +106,7 @@ export const logErrorInGetUserByEmail = (error) => {
   });
 };
 
-export const logError = (message, error) => {
+export const logError = (message, error, additionalInfo = 'N/A') => {
   logger.error({
     message: message,
     context: {
@@ -114,7 +114,7 @@ export const logError = (message, error) => {
       errorMessage: error.message,
       errorStack: error.stack,
       errorDetails: error, // I will log the entire error object for now just in case
-    },
+      additionalInfo: additionalInfo,
   });
 };
 

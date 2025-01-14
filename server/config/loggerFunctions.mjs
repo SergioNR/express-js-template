@@ -106,9 +106,9 @@ export const logErrorInGetUserByEmail = (error) => {
   });
 };
 
-export const logErrorInGetUserById = (error) => {
+export const logError = (message, error) => {
   logger.error({
-    message: error.message,
+    message: message,
     context: {
       name: error.name,
       errorMessage: error.message,

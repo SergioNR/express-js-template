@@ -1,6 +1,6 @@
 import session from 'express-session';
 import connectMongoDBSession from 'connect-mongodb-session';
-import { logErrorMongoDBSessionStoreInitialization } from '../config/loggerFunctions.mjs';
+import { logFatalMongoDBSessionInitError } from '../config/loggerFunctions.mjs';
 
 const MongoDBStore = connectMongoDBSession(session);
 
@@ -10,7 +10,7 @@ const mongoDBSessionStore = new MongoDBStore({
   collection: 'sessions',
 }, (async (error) => {
   if (error) {
-    logErrorMongoDBSessionStoreInitialization(error);
+    logFatalMongoDBSessionInitError(error);
   }
 }));
 

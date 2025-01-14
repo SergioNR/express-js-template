@@ -64,16 +64,7 @@ export const logUserLoggedOut = (userId) => {
   });
 };
 
-export const logErrorInUserLogin = (error) => {
-  logger.fatal({
-    message: 'Error in user login',
-    context: {
-      error,
-    },
-  });
-};
-
-export const logMongoDbConnectionError = (error) => {
+export const logFatalMongoDbConnectionError = (error) => {
   logger.fatal({
     message: `[DB CONNECTION] Can't connect to MongoDB - ${error.errmsg}`,
     context: {
@@ -82,26 +73,14 @@ export const logMongoDbConnectionError = (error) => {
   });
 };
 
-export const logErrorCreatingUserInDB = (error) => {
-  logger.error({
-    message: error.message,
+export const logFatalMongoDBSessionInitError = (error) => {
+  logger.fatal({
+    message: 'MongoDB session store initialization failed',
     context: {
       name: error.name,
       errorMessage: error.message,
       errorStack: error.stack,
-      errorDetails: error, // I will log the entire error object for now just in case
-    },
-  });
-};
-
-export const logErrorInGetUserByEmail = (error) => {
-  logger.error({
-    message: error.message,
-    context: {
-      name: error.name,
-      errorMessage: error.message,
-      errorStack: error.stack,
-      errorDetails: error, // I will log the entire error object for now just in case
+      errorDetails: error, // I will log the entire error object for now just in case}
     },
   });
 };
@@ -115,17 +94,6 @@ export const logError = (message, error, additionalInfo = 'N/A') => {
       errorStack: error.stack,
       errorDetails: error, // I will log the entire error object for now just in case
       additionalInfo: additionalInfo,
-  });
-};
-
-export const logErrorMongoDBSessionStoreInitialization = (error) => {
-  logger.fatal({
-    message: 'MongoDB session store initialization failed',
-    context: {
-      name: error.name,
-      errorMessage: error.message,
-      errorStack: error.stack,
-      errorDetails: error, // I will log the entire error object for now just in case}
     },
   });
 };

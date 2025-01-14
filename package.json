@@ -7,10 +7,12 @@
     "description": "Template for Expressjs projects",
     "main": "app.mjs",
     "scripts": {
-        "start": "NODE_ENV=production node ./server/app.mjs",
-        "local-dev": "node --watch --env-file=staging.env ./server/app.mjs",
-        "deploy-dev": "node ./server/app.mjs",
-        "test": "npx playwright test"
+        "deploy:prod": "NODE_ENV=production node ./server/app.mjs",
+        "deploy:dev": "node ./server/app.mjs",
+        "deploy:local": "node --watch --env-file=staging.env ./server/app.mjs",
+        "test:ui": "npx playwright test --ui",
+        "test:noui": "npx playwright test",
+        "lint:fix": "eslint --fix ./server/*.mjs"
     },
     "author": "SNR",
     "dependencies": {
@@ -35,6 +37,23 @@
     },
     "devDependencies": {
         "@playwright/test": "^1.49.1",
+        "eslint": "^8.57.1",
+        "eslint-config-airbnb-base": "^15.0.0",
+        "eslint-plugin-import": "^2.31.0",
         "playwright": "^1.49.1"
-    }
+    },
+    "directories": {
+        "test": "tests"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/SergioNR/express-js-template.git"
+    },
+    "keywords": [],
+    "license": "ISC",
+    "type": "module",
+    "bugs": {
+        "url": "https://github.com/SergioNR/express-js-template/issues"
+    },
+    "homepage": "https://github.com/SergioNR/express-js-template#readme"
 }

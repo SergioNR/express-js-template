@@ -24,6 +24,26 @@
         });
     </script> 
 
+    <script defer>
+
+        setTimeout(() => {
+            if (typeof posthog !== 'undefined') {
+                
+                if (posthog.isIdentified() === true ) {
+                    return;
+                }
+
+                return posthog.identify('<%= user._id %>');
+
+            } else {
+                console.error('PostHog not initialized');
+            }
+
+        }, 2000 )
+
+    </script>
+
+
 </head>
 <body>
 

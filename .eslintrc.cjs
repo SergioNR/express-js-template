@@ -25,5 +25,6 @@ module.exports = {
     'import/prefer-default-export': 'off',
     'no-underscore-dangle': 'off',
     'import/extensions': 'off',
+    'object-shorthand': 'off',
   },
 };

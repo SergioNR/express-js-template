@@ -16,13 +16,40 @@
     <%- include ('./components/stylesHead.ejs') %>
 
 
-    <script defer>
-        const logoutButton = document.querySelector('.logoutButton');
+    <script>
 
-        logoutButton.addEventListener(`click`, () => {
-            posthog.reset();
+        window.addEventListener('DOMContentLoaded', (event) => {
+            const logoutButton = document.querySelector('.logoutButton');
+
+            logoutButton.addEventListener(`click`, () => {
+                posthog.reset();
+            });
+
         });
+
+        
     </script> 
+
+    <script defer> 
+
+        setTimeout(() => {
+
+            if (typeof posthog !== 'undefined') {
+                
+                if (posthog._isIdentified() === true ) { // Will NOT run if user is behind an VPN
+
+                    return;
+                }
+
+                return posthog.identify('<%= user._id %>');
+
+            } else {
+                console.error('PostHog not initialized');
+            }
+
+        }, 2000 )
+
+    </script>
 
 </head>
 <body>

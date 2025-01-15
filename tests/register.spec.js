@@ -107,9 +107,27 @@ test('should fail registration because email address rules is not valid', async 
 
   for (const invalidEmail of invalidEmails) {
     await page.goto('/register', { waitUntil: 'networkidle' });
-    
+
     await page.fill('input[type="email"]', invalidEmail);
     await page.fill('input[type="password"]', '1234');
+    await page.click('button[type="submit"]');
+
+    const errorMessage = page.locator('.errorMessage');
+    await expect(errorMessage).toBeVisible();
+  }
+});
+
+test('should fail registration because email domain is blocked', async ({ page }) => {
+  const blockedDomains = [
+    'randomEmail@tempmail.com',
+    'randomEmail@throwaway.com',
+  ];
+
+  for (const blockedDomain of blockedDomains) {
+    await page.goto('/register');
+
+    await page.fill('input[type="email"]', blockedDomain);
+    await page.fill('input[type="password"]', '123456');
     await page.click('button[type="submit"]');
 
     const errorMessage = page.locator('.errorMessage');

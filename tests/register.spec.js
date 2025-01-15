@@ -105,16 +105,14 @@ test('should fail registration because email address rules is not valid', async 
 
   ];
 
-  invalidEmails.array.forEach(async (invalidEmail) => {
-    await page.goto('/register');
-
+  for (const invalidEmail of invalidEmails) {
+    await page.goto('/register', { waitUntil: 'networkidle' });
+    
     await page.fill('input[type="email"]', invalidEmail);
-
     await page.fill('input[type="password"]', '1234');
-
     await page.click('button[type="submit"]');
 
     const errorMessage = page.locator('.errorMessage');
     await expect(errorMessage).toBeVisible();
-  });
+  }
 });

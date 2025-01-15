@@ -30,7 +30,7 @@ export const postHogFormStepImpression = (formName, formStep) => {
   posthog.capture(
     'formStepImpression',
     {
-      formName: formStep,
+      formName: formName,
       formStep: formStep || 'formStep not defined',
     },
   );

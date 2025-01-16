@@ -9,22 +9,20 @@ import {
   logUserLoggedOut,
 } from '../config/loggerFunctions.mjs';
 
-export const passportAuth = (req, res, next) => passport.authenticate('local', (err, user, info) => {
+export const passportAuth = (req, res, next) => passport.authenticate('local', (err, user /* , info -- Commented because its not being used, would be used to show the error on the login but we are obscuring the error message */) => {
   if (err) {
     return next(err);
   }
 
-  if (!user) { //* Triggers when user does not exist
-    logError('login attempt failed', err, info);
-
+  if (!user) { //* Triggers when user does not exist -- No need to log this error
     return res.render('login', { message: 'The combination of username and password is incorrect or does not exist' }); //* Show a security-oriented error message to the user
   }
 
   return req.logIn(user, (error) => {
     if (error) {
-      logError('error in user login', err);
+      logError('error in user login', error);
 
-      return next(err);
+      return next(error);
     }
 
     updateLastLoginDate(user._id);

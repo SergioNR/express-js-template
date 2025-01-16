@@ -25,8 +25,8 @@ export const logUserLoggedInSuccessfully = (userId, loginMethod) => {
   logger.info({
     message: 'User logged in successfully',
     context: {
-      userId,
-      loginMethod,
+      userId: userId,
+      loginMethod: loginMethod,
       additionalInfo: 'n/a',
     },
   });
@@ -46,9 +46,7 @@ export const logUserCreatedInDB = (userId, user) => {
     message: 'User succesfully created in database',
     context: {
       userData: {
-        userId,
-        email: user.userDetails.email,
-        password: user.userDetails.password,
+        userId: userId,
         role: user.userDetails.role,
       },
     },
@@ -59,7 +57,7 @@ export const logUserLoggedOut = (userId) => {
   logger.info({
     message: 'User logged out successfully',
     context: {
-      userId,
+      userId: userId,
     },
   });
 };

@@ -113,3 +113,39 @@ test('should log out successfully', async ({ page }) => {
 
   await expect(page).toHaveURL('/');
 });
+
+test('should normalize Gmail address with dots', async ({ page }) => {
+  await page.goto('/login');
+
+  // This should work the same as s.navarroredondo@gmail.com due to gmail_remove_dots
+  await page.fill('input[type="email"]', 's.navarro.redondo@gmail.com');
+  await page.fill('input[type="password"]', '123456');
+
+  await page.click('button[type="submit"]');
+
+  await expect(page).toHaveURL('/user/');
+});
+
+test('should normalize Gmail address with plus alias', async ({ page }) => {
+  await page.goto('/login');
+
+  // This should work the same as s.navarroredondo@gmail.com due to gmail_remove_subaddress
+  await page.fill('input[type="email"]', 's.navarroredondo+alias@gmail.com');
+  await page.fill('input[type="password"]', '123456');
+
+  await page.click('button[type="submit"]');
+
+  await expect(page).toHaveURL('/user/');
+});
+
+test('should normalize googlemail.com to gmail.com', async ({ page }) => {
+  await page.goto('/login');
+
+  // This should work the same as s.navarroredondo@gmail.com due to gmail_convert_googlemaildotcom
+  await page.fill('input[type="email"]', 's.navarroredondo@googlemail.com');
+  await page.fill('input[type="password"]', '123456');
+
+  await page.click('button[type="submit"]');
+
+  await expect(page).toHaveURL('/user/');
+});

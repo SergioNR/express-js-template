@@ -5,7 +5,7 @@ import { checkSchema } from 'express-validator';
 import { userRouter } from './routers/userRouter.mjs';
 import { passportAuth, passportLogout } from './middlewares/passportLocalStrategy.mjs';
 import { helmetMiddleware } from './middlewares/helmet.mjs';
-// import { apiRouter } from "./API/apiRouter.mjs";
+import { apiRouter } from "./API/apiRouter.mjs";
 import { storeSessionsInMongoDb } from './middlewares/mongoDbSessions.mjs';
 import { environmentChecker } from './middlewares/enviromentChecker.mjs';
 import { indexRouter } from './routers/indexRouter.mjs';
@@ -41,6 +41,7 @@ app.get('/logout', passportLogout);
 //* Router selectors
 
 app.use('/user/', userRouter);
+app.use(`/api/`, apiRouter)
 app.use('/', indexRouter); //* Remember this should be in last position to avoid cannibalizing other routes
 // app.use(`/api/`, apiRouter)
 

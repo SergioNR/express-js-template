@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'node:path';
 import passport from 'passport';
+import { corsMiddleware } from './middlewares/cors.mjs';
 import { checkSchema } from 'express-validator';
 import { userRouter } from './routers/userRouter.mjs';
 import { passportAuth, passportLogout } from './middlewares/passportLocalStrategy.mjs';
@@ -16,6 +17,7 @@ const app = express();
 
 //* Middleware for ExpressJS securization
 app.use(helmetMiddleware);
+app.use(corsMiddleware);
 
 //* Set the views directory to the views folder & view engine to EJS
 app.set('views', path.join('.', '/server/views/'));
@@ -43,7 +45,6 @@ app.get('/logout', passportLogout);
 app.use('/user/', userRouter);
 app.use(`/api/`, apiRouter)
 app.use('/', indexRouter); //* Remember this should be in last position to avoid cannibalizing other routes
-// app.use(`/api/`, apiRouter)
 
 //* Middleware to catch & handle errors
 app.use((err, req, res, next) => {

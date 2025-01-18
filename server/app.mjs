@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'node:path';
 import passport from 'passport';
 import { checkSchema } from 'express-validator';
+import { cookieParserMiddleware } from './middlewares/cookieParser.mjs';
 import { corsMiddleware } from './middlewares/cors.mjs';
 import { userRouter } from './routers/userRouter.mjs';
 import { passportAuth, passportLogout } from './middlewares/passportLocalStrategy.mjs';
@@ -18,7 +19,7 @@ const app = express();
 //* Middleware for ExpressJS securization
 app.use(helmetMiddleware);
 app.use(corsMiddleware);
-
+app.use(cookieParserMiddleware);
 //* Set the views directory to the views folder & view engine to EJS
 app.set('views', path.join('.', '/server/views/'));
 app.set('view engine', 'ejs');

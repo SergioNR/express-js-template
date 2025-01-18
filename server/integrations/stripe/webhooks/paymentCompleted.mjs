@@ -1,7 +1,7 @@
 // https://docs.stripe.com/webhooks
 
 
-export const stripeWebhook = async (req, res) => { // * Should probably add a more specific name but cant think of any since all the stripe events are handled in this function
+export const paymentCompletedWebhook = async (req, res) => { // * Should probably add a more specific name but cant think of any since all the stripe events are handled in this function
     const event = req.body;
      // Handle each type of event
     switch (event.type) {

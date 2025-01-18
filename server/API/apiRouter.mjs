@@ -1,14 +1,15 @@
 import { Router } from 'express';
-import { stripeWebhook } from './v1/webhooks/stripeWebhooks.mjs';
 import { userApi } from './v1/userApiController.mjs';
+import { paymentCompletedWebhook } from '../integrations/stripe/webhooks/paymentCompleted.mjs';
 
 export const apiRouter = Router();
 
 
-apiRouter.post(`/v1/test/webhooks/stripeWebhooks`, stripeWebhook);
 apiRouter.use(`/v1/user`, userApi);
 
+apiRouter.post(`/v1/webhooks/stripeWebhooks`, paymentCompletedWebhook); //? Maybe should be changed to apiRouter.use(...) ?
 
-apiRouter.use(`*`, (req, res) => {
+
+apiRouter.use('/*fallback', (req, res) => {
     res.status(404).send(`Route not found in apiRouter`);
 });

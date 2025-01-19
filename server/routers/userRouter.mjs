@@ -7,7 +7,13 @@ import { createUserValidationSchema } from '../utils/validators/createUserSchema
 
 export const userRouter = Router();
 
-userRouter.post('/register/', checkSchema(createUserValidationSchema), sanitizerResult, registerUser);
+userRouter.post('/register/', checkSchema(createUserValidationSchema), sanitizerResult, (req, res) => {
+  if (req.sanitizedErrors) {
+    return res.render('register.ejs', { message: req.sanitizedErrors });
+  }
+
+  return registerUser(req, res);
+});
 
 userRouter.get('/', authenticationChecker, (req, res) => {
   res.set('Cache-Control', 'no-store');

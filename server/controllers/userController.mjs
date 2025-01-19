@@ -1,22 +1,14 @@
-import { User } from '../utils/classes/User.mjs';
-import { createUserInDB, getUserByEmail } from '../models/userModel.mjs';
+import { createUser } from '../services/userService.mjs';
 
 export const registerUser = async (req, res) => {
-  const newUser = new User(req);
+  const userCreation = await createUser(req, res);
 
-  const existingUser = await getUserByEmail(newUser.userDetails.email);
-
-  if (existingUser && existingUser.success === false) {
-    return res.render('register.ejs', { message: 'An error occurred while creating the user - Please try again in a few minutes' });
+  if (userCreation.success === false && userCreation.ERR_CODE === 'USER_CREATION_ERROR') {
+    return res.status(500).render('register.ejs', { message: userCreation.message });
   }
 
-  if (existingUser !== null) { // Check if user exists in DB
-    return res.render('register.ejs', { message: 'A user with that email address already exists' });
-  }
-  const createdUser = await createUserInDB(newUser);
-
-  if (createdUser.success === false) {
-    return res.render('register.ejs', { message: 'An error occurred while creating the user - Please try again in a few minutes' });
+  if (userCreation.success === false && userCreation.ERR_CODE === 'USER_ALREADY_EXISTS') {
+    return res.status(400).render('register.ejs', { message: userCreation.message });
   }
 
   return res.redirect('/login');

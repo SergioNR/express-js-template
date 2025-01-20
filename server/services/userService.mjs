@@ -1,10 +1,11 @@
+import bcrypt from 'bcryptjs';
 import { User } from '../utils/classes/User.mjs';
 import { createUserInDB, getUserByEmail } from '../models/userModel.mjs';
 
 export const createUser = async (req) => {
   const userData = {
     username: req.body.username,
-    password: req.body.password,
+    password: await bcrypt.hash(req.body.password, 10),
   };
 
   const existingUser = await getUserByEmail(userData.username);

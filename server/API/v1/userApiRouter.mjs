@@ -1,8 +1,12 @@
 import { Router } from 'express';
 import { checkSchema } from 'express-validator';
-import { createUser } from '../../services/userService.mjs';
+import {
+  createUser,
+  updateUserPassword,
+} from '../../services/userService.mjs';
 import { createUserValidationSchema } from '../../utils/validators/createUserSchema.mjs';
 import { sanitizerResult } from '../../middlewares/sanitizerResult.mjs';
+import { updatePasswordSchema } from '../../utils/validators/updatePasswordSchema.mjs';
 
 export const userApi = Router();
 
@@ -24,6 +28,36 @@ userApi.post('/createUser', checkSchema(createUserValidationSchema), sanitizerRe
   const userCreation = await createUser(req);
 
   return res.status(200).json(userCreation);
+});
+
+userApi.patch('/updateUserPassword', checkSchema(updatePasswordSchema), sanitizerResult, async (req, res) => {
+  if (req.sanitizedErrors) {
+    return res.status(400).json({
+      success: false,
+      message: req.sanitizedErrors,
+    });
+  }
+
+  const passwordUpdate = await updateUserPassword(req);
+
+  if (passwordUpdate.success === false && passwordUpdate.ERR_CODE === 'INCORRECT_PASSWORD') {
+    return res.status(401).json({
+      success: false,
+      message: passwordUpdate.message,
+    });
+  }
+
+  if (passwordUpdate.success === false) {
+    return res.status(400).json({
+      success: false,
+      message: passwordUpdate.message,
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: 'Password updated',
+  });
 });
 
 userApi.use('/*fallback', (req, res) => {

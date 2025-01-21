@@ -3,6 +3,7 @@ import { connectToDatabase } from '../database/mongoDB.mjs';
 import {
   logUserCreatedInDB,
   logError,
+  logPasswordUpdated,
 } from '../config/loggerFunctions.mjs';
 import { posthogUserSignedUp } from './posthogModel.mjs';
 
@@ -91,5 +92,35 @@ export const getUserByUserId = async (userId) => {
     logError('Error getting user by user ID', error);
 
     throw error;
+  }
+};
+
+export const updateUserPasswordInDB = async (userId, newPassword) => {
+  try {
+    const db = await connectToDatabase();
+
+    const usersCollection = db.collection('users');
+
+    const filter = {
+      _id: ObjectId.createFromHexString(`${userId}`),
+    };
+
+    await usersCollection.updateOne(filter, {
+      $set: {
+        'userDetails.password': newPassword,
+      },
+    });
+
+    logPasswordUpdated(userId);
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    logError('Error updating user password', error, { userId: userId });
+
+    return {
+      success: false,
+    };
   }
 };

@@ -83,6 +83,15 @@ export const logFatalMongoDBSessionInitError = (error) => {
   });
 };
 
+export const logPasswordUpdated = (userId) => {
+  logger.info({
+    message: 'Password updated successfully',
+    context: {
+      userId: userId,
+    },
+  });
+};
+
 export const logError = (message, error, additionalInfo = 'N/A') => {
   logger.error({
     message: message,

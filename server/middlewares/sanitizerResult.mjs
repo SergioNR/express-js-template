@@ -2,7 +2,14 @@ import { validationResult } from 'express-validator';
 
 const sanitizeValidationError = (error) => {
   // List of fields to hide
-  const sensitiveFields = ['password', 'confirmPassword', 'token', 'email', 'username'];
+  const sensitiveFields = ['password',
+    'confirmPassword',
+    'token',
+    'email',
+    'username',
+    'newPassword',
+    'currentPassword',
+  ];
 
   // Create a copy of the error object
   const sanitizedError = { ...error };

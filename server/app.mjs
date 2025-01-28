@@ -4,7 +4,6 @@ import passport from 'passport';
 import { checkSchema } from 'express-validator';
 import { cookieParserMiddleware } from './middlewares/cookieParser.mjs';
 import { corsMiddleware } from './middlewares/cors.mjs';
-import { userRouter } from './routers/userRouter.mjs';
 import { passportAuth, passportLogout } from './middlewares/passportLocalStrategy.mjs';
 import { helmetMiddleware } from './middlewares/helmet.mjs';
 import { apiRouter } from './API/apiRouter.mjs';
@@ -12,6 +11,7 @@ import { storeSessionsInMongoDb } from './middlewares/mongoDbSessions.mjs';
 import { environmentChecker } from './middlewares/enviromentChecker.mjs';
 import { sanitizerResult } from './middlewares/sanitizerResult.mjs';
 import { userLoginValidationSchema } from './utils/validators/userLoginValidationSchema.mjs';
+import { authRouter } from './routers/authRouter.mjs';
 
 const app = express();
 
@@ -35,14 +35,9 @@ app.use(storeSessionsInMongoDb);
 
 app.use(passport.session());
 
-//* Route to authenticate the user with passport
-app.post('/login', checkSchema(userLoginValidationSchema), sanitizerResult, passportAuth);
-
-app.get('/logout', passportLogout);
-
 //* Router selectors
 
-app.use('/user/', userRouter);
+app.use('/auth/', authRouter);
 app.use('/api/', apiRouter);
 
 //* Middleware to catch & handle errors

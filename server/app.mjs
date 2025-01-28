@@ -1,16 +1,11 @@
 import express from 'express';
-import path from 'node:path';
 import passport from 'passport';
-import { checkSchema } from 'express-validator';
 import { cookieParserMiddleware } from './middlewares/cookieParser.mjs';
 import { corsMiddleware } from './middlewares/cors.mjs';
-import { passportAuth, passportLogout } from './middlewares/passportLocalStrategy.mjs';
 import { helmetMiddleware } from './middlewares/helmet.mjs';
 import { apiRouter } from './API/apiRouter.mjs';
 import { storeSessionsInMongoDb } from './middlewares/mongoDbSessions.mjs';
 import { environmentChecker } from './middlewares/enviromentChecker.mjs';
-import { sanitizerResult } from './middlewares/sanitizerResult.mjs';
-import { userLoginValidationSchema } from './utils/validators/userLoginValidationSchema.mjs';
 import { authRouter } from './routers/authRouter.mjs';
 
 const app = express();
@@ -19,12 +14,6 @@ const app = express();
 app.use(helmetMiddleware);
 app.use(corsMiddleware);
 app.use(cookieParserMiddleware);
-//* Set the views directory to the views folder & view engine to EJS
-app.set('views', path.join('.', '/server/views/'));
-app.set('view engine', 'ejs');
-
-// * Middleware to serve static files
-app.use(express.static('./public', { extensions: ['html'] })); // add .html if they dont include it in the request
 
 //* Middleware to create parse request (read req.body from form data & JSON) & parse query
 app.use(express.urlencoded());

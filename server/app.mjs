@@ -10,7 +10,6 @@ import { helmetMiddleware } from './middlewares/helmet.mjs';
 import { apiRouter } from './API/apiRouter.mjs';
 import { storeSessionsInMongoDb } from './middlewares/mongoDbSessions.mjs';
 import { environmentChecker } from './middlewares/enviromentChecker.mjs';
-import { indexRouter } from './routers/indexRouter.mjs';
 import { sanitizerResult } from './middlewares/sanitizerResult.mjs';
 import { userLoginValidationSchema } from './utils/validators/userLoginValidationSchema.mjs';
 
@@ -45,7 +44,6 @@ app.get('/logout', passportLogout);
 
 app.use('/user/', userRouter);
 app.use('/api/', apiRouter);
-app.use('/', indexRouter); //* Remember this should be in last position to avoid cannibalizing other routes
 
 //* Middleware to catch & handle errors
 app.use((err, req, res, next) => {
@@ -59,5 +57,3 @@ app.listen(process.env.PORT, process.env.HOSTNAME, () => {
 // eslint-disable-next-line no-console
   console.log(`Server running at http://localhost:${process.env.PORT}/`);
 });
-
-export default app;

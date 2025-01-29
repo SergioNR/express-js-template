@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import { paymentCompletedWebhook } from '../integrations/stripe/webhooks/paymentCompleted.mjs';
-import { userApi } from './v1/routes/userApiRouter.mjs';
+import { userApi } from './v1/routes/userRoute.mjs';
 
 export const apiRouter = Router();
 

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { checkSchema } from 'express-validator';
 import {
-  getUsersByFilter,
+  getAllUsers,
   getOneUserById,
 } from '../../../services/userService.mjs';
 import { sanitizerResult } from '../../../middlewares/sanitizerResult.mjs';
@@ -10,7 +10,7 @@ import { userIdInputValidator } from '../../../utils/validators/userIdInputValid
 export const userApi = Router();
 
 userApi.get('/', async (req, res) => {
-  const users = await getUsersByFilter(req);
+  const users = await getAllUsers(req);
 
   if (!users || users.success === false) {
     return res.status(404).json({

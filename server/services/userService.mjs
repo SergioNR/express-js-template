@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { User } from '../utils/classes/User.mjs';
 import {
   createUserInDB,
+  findUsersInDb,
   getUserByEmail,
   getUserByUserId,
   updateUserPasswordInDB,
@@ -100,4 +101,30 @@ export const updateUserPassword = async (req) => {
       message: 'Error updating password',
     };
   }
+};
+
+export const getAllUsers = async () => {
+  const users = await findUsersInDb();
+
+  if (!users || users.success === false) {
+    return {
+      success: false,
+      message: 'Users not found',
+    };
+  }
+
+  return users;
+};
+
+export const getOneUserById = async (req) => {
+  const user = getUserByUserId(req.params.userId);
+
+  if (!user) {
+    return {
+      success: false,
+      message: 'User not found',
+    };
+  }
+
+  return user;
 };

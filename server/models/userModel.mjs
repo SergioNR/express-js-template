@@ -124,3 +124,19 @@ export const updateUserPasswordInDB = async (userId, newPassword) => {
     };
   }
 };
+
+export const findUsersInDb = async () => {
+  try {
+    const db = await connectToDatabase();
+
+    const usersCollection = db.collection('users');
+
+    const users = await usersCollection.find().toArray();
+
+    return users;
+  } catch (error) {
+    logError('Error getting user by user ID', error);
+
+    throw error; // will be handled in userService
+  }
+};

@@ -16,7 +16,6 @@ userApi.get('/:userId', checkSchema(userIdInputValidator), sanitizerResult, getO
 
 userApi.delete('/:userId', checkSchema(userIdInputValidator), sanitizerResult, deleteOneUserById);
 
-
 // userApi.patch('/:userId', async (req, res) => {
 //   const user = await getUserById(req.params.userId);
 //   if (!user) {

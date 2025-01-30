@@ -75,7 +75,7 @@ export const updateLastLoginDate = async (userId) => {
   }
 };
 
-export const getUserByUserId = async (userId) => {
+export const getUserById = async (userId) => {
   try {
     const db = await connectToDatabase();
 
@@ -153,13 +153,21 @@ export const deleteUserInDb = async (userId) => {
       _id: ObjectId.createFromHexString(`${userId}`),
     };
 
-    await usersCollection.deleteOne(filter);
+    const userDeleted = await usersCollection.deleteOne(filter);
 
-    return {
-      success: true,
-    };
+    if (userDeleted.deletedCount >= 1) {
+      return {
+        success: true,
+        message: 'user deleted',
+      };
+    }
+    throw Error('user was not deleted');
   } catch (error) {
     logError('error deleting User', error);
-    throw error;
+
+    return {
+      success: false,
+      message: 'failed to delete user',
+    };
   }
 };

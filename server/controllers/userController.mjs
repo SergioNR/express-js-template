@@ -2,9 +2,10 @@ import bcrypt from 'bcryptjs';
 import { User } from '../utils/classes/User.mjs';
 import {
   createUserInDB,
+  deleteUserInDb,
   findUsersInDb,
   getUserByEmail,
-  getUserByUserId,
+  getUserById,
   updateUserPasswordInDB,
 } from '../models/userModel.mjs';
 
@@ -29,7 +30,7 @@ export const getOneUserById = async (req, res) => {
 
   const { userId } = req.params;
 
-  const user = await getUserByUserId(userId);
+  const user = await getUserById(userId);
 
   if (user && user.success === false) { // This means there has been an error
     return res.status(502).json({
@@ -51,9 +52,48 @@ export const getOneUserById = async (req, res) => {
   });
 };
 
-// export const deleteUser = async (req, res) => {
-//   const deletedUser = deleteOneUserById(req);
-// };
+export const deleteOneUserById = async (req, res) => {
+  if (req.sanitizedErrors) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid userId',
+      errors: req.sanitizedErrors,
+    });
+  }
+
+  // TODO - Add authorization middleware
+
+  const { userId } = req.params;
+
+  const user = await getUserById(userId);
+
+  if (user && user.success === false) { // This means there has been an error
+    return res.status(502).json({
+      success: false,
+      errorMessage: user.message,
+    });
+  }
+
+  if (user === null) {
+    return res.json({
+      success: false,
+      message: 'user not found',
+    });
+  }
+
+  const deletedUser = await deleteUserInDb(userId);
+
+  if (deletedUser && deletedUser.success === false) {
+    return res.status(502).json({
+      success: false,
+      message: deletedUser.message,
+    });
+  }
+
+  return res.json({
+    message: 'user successfully deleted',
+  });
+};
 
 export const createUser = async (req) => {
   const userData = {
@@ -102,7 +142,7 @@ export const updateUserPassword = async (req) => {
     newPassword,
   } = req.body;
 
-  const user = await getUserByUserId(userId);
+  const user = await getUserById(userId);
 
   if (!user || user.success === false) {
     return {
@@ -148,12 +188,4 @@ export const updateUserPassword = async (req) => {
       message: 'Error updating password',
     };
   }
-};
-
-export const deleteOneUserById = async (req) => {
-  const { userId } = req.body;
-
-  const deletedUser = deleteOneUserById(userId);
-
-  return deletedUser;
 };

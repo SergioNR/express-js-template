@@ -5,7 +5,7 @@ import { corsMiddleware } from './middlewares/cors.mjs';
 import { helmetMiddleware } from './middlewares/helmet.mjs';
 import { apiRouter } from './API/apiRouter.mjs';
 import { storeSessionsInMongoDb } from './middlewares/mongoDbSessions.mjs';
-import { environmentChecker } from './middlewares/enviromentChecker.mjs';
+
 import { authRouter } from './routers/authRouter.mjs';
 
 const app = express();
@@ -18,7 +18,7 @@ app.use(cookieParserMiddleware);
 //* Middleware to create parse request (read req.body from form data & JSON) & parse query
 app.use(express.urlencoded());
 app.use(express.json());
-app.use(environmentChecker); // https://app.clickup.com/t/86976mxym
+
 //* Middleware to store sessions in MongoDB
 app.use(storeSessionsInMongoDb);
 

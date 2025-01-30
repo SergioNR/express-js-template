@@ -75,7 +75,7 @@ export const updateLastLoginDate = async (userId) => {
   }
 };
 
-export const getUserByUserId = async (userId) => {
+export const getUserById = async (userId) => {
   try {
     const db = await connectToDatabase();
 
@@ -86,12 +86,14 @@ export const getUserByUserId = async (userId) => {
     };
 
     const user = await usersCollection.findOne(filter);
-
     return user;
   } catch (error) {
     logError('Error getting user by user ID', error);
 
-    throw error;
+    return {
+      success: false,
+      message: 'Database operation failed',
+    };
   }
 };
 
@@ -121,6 +123,51 @@ export const updateUserPasswordInDB = async (userId, newPassword) => {
 
     return {
       success: false,
+    };
+  }
+};
+
+export const findUsersInDb = async () => {
+  try {
+    const db = await connectToDatabase();
+
+    const usersCollection = db.collection('users');
+
+    const users = await usersCollection.find().toArray();
+
+    return users;
+  } catch (error) {
+    logError('Error getting user by user ID', error);
+
+    throw error; // will be handled in userService
+  }
+};
+
+export const deleteUserInDb = async (userId) => {
+  try {
+    const db = await connectToDatabase();
+
+    const usersCollection = db.collection('users');
+
+    const filter = {
+      _id: ObjectId.createFromHexString(`${userId}`),
+    };
+
+    const userDeleted = await usersCollection.deleteOne(filter);
+
+    if (userDeleted.deletedCount >= 1) {
+      return {
+        success: true,
+        message: 'user deleted',
+      };
+    }
+    throw Error('user was not deleted');
+  } catch (error) {
+    logError('error deleting User', error);
+
+    return {
+      success: false,
+      message: 'failed to delete user',
     };
   }
 };

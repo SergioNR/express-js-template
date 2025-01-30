@@ -1,83 +1,62 @@
 import { Router } from 'express';
 import { checkSchema } from 'express-validator';
 import { createUser } from '../controllers/userController.mjs';
-import { authenticationChecker } from '../middlewares/isAuthenticated.mjs';
 import { sanitizerResult } from '../middlewares/sanitizerResult.mjs';
 import { createUserValidationSchema } from '../utils/validators/createUserSchema.mjs';
-import { updatePasswordSchema } from '../utils/validators/updatePasswordSchema.mjs';
+// import { updatePasswordSchema } from '../utils/validators/updatePasswordSchema.mjs';
 
 export const authRouter = Router();
 
-authRouter.post('/register/', checkSchema(createUserValidationSchema), sanitizerResult, async (req, res) => {
-  if (req.sanitizedErrors) {
-    return res.status(400).json({
-      success: false,
-      errors: req.sanitizedErrors,
-    });
-  }
+authRouter.post('/register/', checkSchema(createUserValidationSchema), sanitizerResult, createUser);
 
-  // const userCreation = await createUser(req);
+// authRouter.patch('/updateUserPassword', checkSchema(updatePasswordSchema), sanitizerResult,
+// async (req, res) => {
+//   if (req.sanitizedErrors) {
+//     return res.status(400).json({
+//       success: false,
+//       message: req.sanitizedErrors,
+//     });
+//   }
 
-  // return res.status(200).json(userCreation);
+//   const passwordUpdate = await updateUserPassword(req);
 
-  return res.status(200).json({
-    success: true,
-    message: 'This route is a WIP',
-  });
-});
+//   if (passwordUpdate.success === false && passwordUpdate.ERR_CODE === 'INCORRECT_PASSWORD') {
+//     return res.status(401).json({
+//       success: false,
+//       message: passwordUpdate.message,
+//     });
+//   }
 
-authRouter.patch('/updateUserPassword', checkSchema(updatePasswordSchema), sanitizerResult, async (req, res) => {
-  if (req.sanitizedErrors) {
-    return res.status(400).json({
-      success: false,
-      message: req.sanitizedErrors,
-    });
-  }
+//   if (passwordUpdate.success === false) {
+//     return res.status(400).json({
+//       success: false,
+//       message: passwordUpdate.message,
+//     });
+//   }
 
-  const passwordUpdate = await updateUserPassword(req);
+//   return res.status(200).json({
+//     success: true,
+//     message: 'Password updated',
+//   });
+// });
 
-  if (passwordUpdate.success === false && passwordUpdate.ERR_CODE === 'INCORRECT_PASSWORD') {
-    return res.status(401).json({
-      success: false,
-      message: passwordUpdate.message,
-    });
-  }
+// authRouter.post('/forgot-password', async (req, res) => {
+//   //
 
-  if (passwordUpdate.success === false) {
-    return res.status(400).json({
-      success: false,
-      message: passwordUpdate.message,
-    });
-  }
+//   res.status(200).json({
+//     success: true,
+//     message: 'This route is a WIP',
+//   });
+// });
 
-  return res.status(200).json({
-    success: true,
-    message: 'Password updated',
-  });
-});
+// authRouter.post('/reset-password', async (req, res) => {
+//   //
 
-authRouter.post('/forgot-password', async (req, res) => {
-  //
-
-  res.status(200).json({
-    success: true,
-    message: 'This route is a WIP',
-  });
-});
-
-authRouter.post('/reset-password', async (req, res) => {
-  //
-
-  res.status(200).json({
-    success: true,
-    message: 'This route is a WIP',
-  });
-});
-
-authRouter.get('/', authenticationChecker, (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  res.render('userDashboard.ejs', { user: req.user, title: 'User Dashboard', description: 'User Dashboard' });
-});
+//   res.status(200).json({
+//     success: true,
+//     message: 'This route is a WIP',
+//   });
+// });
 
 authRouter.get('/*fallback', (req, res) => {
   res.status(404).send('requested API Route does not exist in the userRouter');

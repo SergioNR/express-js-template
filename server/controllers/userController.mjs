@@ -95,7 +95,14 @@ export const deleteOneUserById = async (req, res) => {
   });
 };
 
-export const createUser = async (req) => {
+export const createUser = async (req, res) => {
+  if (req.sanitizedErrors) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid userId',
+      errors: req.sanitizedErrors,
+    });
+  }
   const userData = {
     username: req.body.username,
     password: await bcrypt.hash(req.body.password, 10),
@@ -104,19 +111,19 @@ export const createUser = async (req) => {
   const existingUser = await getUserByEmail(userData.username);
 
   if (existingUser && existingUser.success === false) {
-    return {
+    return res.status(500).json({
       success: false,
       ERR_CODE: 'USER_CREATION_ERROR',
       message: 'An error occurred while creating the user - Please try again in a few minutes', //* Error generated on getUserByEmail() error
-    };
+    });
   }
 
   if (existingUser !== null) {
-    return {
+    return res.status(300).json({
       success: false,
       ERR_CODE: 'USER_ALREADY_EXISTS',
       message: 'A user with that email address already exists',
-    };
+    });
   }
 
   const createdUser = await createUserInDB(new User(userData));
@@ -129,10 +136,10 @@ export const createUser = async (req) => {
     };
   }
 
-  return {
+  return res.status(200).json({
     success: true,
     message: 'User created successfully',
-  };
+  });
 };
 
 export const updateUserPassword = async (req) => {

@@ -140,3 +140,24 @@ export const findUsersInDb = async () => {
     throw error; // will be handled in userService
   }
 };
+
+export const deleteUserInDb = async (userId) => {
+  try {
+    const db = await connectToDatabase();
+
+    const usersCollection = db.collection('users');
+
+    const filter = {
+      _id: ObjectId.createFromHexString(`${userId}`),
+    };
+
+    await usersCollection.deleteOne(filter);
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    logError('error deleting User', error);
+    throw error;
+  }
+};

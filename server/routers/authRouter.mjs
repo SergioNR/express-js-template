@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { checkSchema } from 'express-validator';
-import { registerUser } from '../controllers/userController.mjs';
+import { createUser } from '../controllers/userController.mjs';
 import { authenticationChecker } from '../middlewares/isAuthenticated.mjs';
 import { sanitizerResult } from '../middlewares/sanitizerResult.mjs';
 import { createUserValidationSchema } from '../utils/validators/createUserSchema.mjs';

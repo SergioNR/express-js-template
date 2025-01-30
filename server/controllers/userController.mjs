@@ -13,6 +13,7 @@ export const getAllUsers = async (req, res) => {
 
   res.status(200).json({
     success: true,
+    userCount: usersInDb.length,
     users: usersInDb,
   });
 };

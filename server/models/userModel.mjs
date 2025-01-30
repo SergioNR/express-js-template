@@ -86,12 +86,14 @@ export const getUserByUserId = async (userId) => {
     };
 
     const user = await usersCollection.findOne(filter);
-
     return user;
   } catch (error) {
     logError('Error getting user by user ID', error);
 
-    throw error;
+    return {
+      success: false,
+      message: 'Database operation failed',
+    };
   }
 };
 

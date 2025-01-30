@@ -17,6 +17,39 @@ export const getAllUsers = async (req, res) => {
   });
 };
 
+export const getOneUserById = async (req, res) => {
+  if (req.sanitizedErrors) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid userId',
+      errors: req.sanitizedErrors,
+    });
+  }
+
+  const { userId } = req.params;
+
+  const user = await getUserByUserId(userId);
+
+  if (user && user.success === false) { // This means there has been an error
+    return res.status(502).json({
+      success: false,
+      errorMessage: user.message,
+    });
+  }
+
+  if (user === null) {
+    return res.status(400).json({
+      success: false,
+      message: 'User not found',
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    user: user,
+  });
+};
+
 // export const deleteUser = async (req, res) => {
 //   const deletedUser = deleteOneUserById(req);
 // };
@@ -114,19 +147,6 @@ export const updateUserPassword = async (req) => {
       message: 'Error updating password',
     };
   }
-};
-
-export const getOneUserById = async (req) => {
-  const user = getUserByUserId(req.params.userId);
-
-  if (!user) {
-    return {
-      success: false,
-      message: 'User not found',
-    };
-  }
-
-  return user;
 };
 
 export const deleteOneUserById = async (req) => {

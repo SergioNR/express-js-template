@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { checkSchema } from 'express-validator';
-import { getAllUsers } from '../../../controllers/userController.mjs';
+import {
+  getAllUsers,
+  getOneUserById,
+} from '../../../controllers/userController.mjs';
 import { sanitizerResult } from '../../../middlewares/sanitizerResult.mjs';
 import { userIdInputValidator } from '../../../utils/validators/userIdInputValidator.mjs';
 
@@ -8,28 +11,7 @@ export const userApi = Router();
 
 userApi.get('/', getAllUsers);
 
-// userApi.get('/:userId', checkSchema(userIdInputValidator), sanitizerResult, async (req, res) => {
-//   if (req.sanitizedErrors) {
-//     return res.status(400).json({
-//       success: false,
-//       message: 'Invalid userId',
-//       errors: req.sanitizedErrors,
-//     });
-//   }
-
-//   const user = await getOneUserById(req);
-
-//   if (!user || user.success === false) {
-//     return res.status(404).json({
-//       success: false,
-//       message: 'User not found',
-//     });
-//   }
-//   return res.status(200).json({
-//     success: true,
-//     data: user,
-//   });
-// });
+userApi.get('/:userId', checkSchema(userIdInputValidator), sanitizerResult, getOneUserById);
 
 // userApi.get('/:userId', checkSchema(userIdInputValidator), sanitizerResult, getAllUsers); //! FIX CONTROLLER
 

@@ -22,13 +22,6 @@ export const getAllUsers = async (req, res) => {
 };
 
 export const getOneUserById = async (req, res) => {
-  if (req.sanitizedErrors) {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid userId',
-      errors: req.sanitizedErrors,
-    });
-  }
 
   const { userId } = req.params;
 
@@ -55,13 +48,6 @@ export const getOneUserById = async (req, res) => {
 };
 
 export const deleteOneUserById = async (req, res) => {
-  if (req.sanitizedErrors) {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid userId',
-      errors: req.sanitizedErrors,
-    });
-  }
 
   // TODO - Add authorization middleware
 

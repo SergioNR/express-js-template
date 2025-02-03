@@ -120,7 +120,7 @@ export const createUser = async (req, res) => {
     });
   }
 
-  if (existingUser !== null) {
+  if (existingUser.rowCount !== 0) {
     return res.status(300).json({
       success: false,
       ERR_CODE: 'USER_ALREADY_EXISTS',

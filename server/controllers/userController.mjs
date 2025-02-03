@@ -24,16 +24,18 @@ export const getAllUsers = async (req, res) => {
 export const getOneUserById = async (req, res) => {
   const { userId } = req.params;
 
-  const user = await getUserById(userId);
+  const queryResult = await getUserById(userId);
 
-  if (user && user.success === false) { // This means there has been an error
+  const user = queryResult.rows;
+
+  if (queryResult && user.success === false) { // This means there has been an error
     return res.status(502).json({
       success: false,
-      errorMessage: user.message,
+      errorMessage: queryResult.message,
     });
   }
 
-  if (user === null) {
+  if (queryResult.rowCount === 0) {
     return res.status(400).json({
       success: false,
       message: 'User not found',

@@ -6,6 +6,7 @@ import {
   logPasswordUpdated,
 } from '../config/loggerFunctions.mjs';
 import { posthogUserSignedUp } from './posthogModel.mjs';
+import { pool } from '../database/postgresql.mjs';
 
 export const createUserInDB = async (user) => {
   try {
@@ -129,13 +130,9 @@ export const updateUserPasswordInDB = async (userId, newPassword) => {
 
 export const findUsersInDb = async () => {
   try {
-    const db = await connectToDatabase();
+    const queryResult = await pool.query('SELECT * FROM users;');
 
-    const usersCollection = db.collection('users');
-
-    const users = await usersCollection.find().toArray();
-
-    return users;
+    return queryResult;
   } catch (error) {
     logError('Error getting user by user ID', error);
 

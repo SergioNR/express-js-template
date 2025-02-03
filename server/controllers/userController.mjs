@@ -10,12 +10,14 @@ import {
 } from '../models/userModel.mjs';
 
 export const getAllUsers = async (req, res) => {
-  const usersInDb = await findUsersInDb();
+  const query = await findUsersInDb();
+
+  const users = query.rows;
 
   res.status(200).json({
     success: true,
-    userCount: usersInDb.length,
-    users: usersInDb,
+    userCount: query.rows.length,
+    users: users,
   });
 };
 

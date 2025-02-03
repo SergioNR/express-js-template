@@ -22,7 +22,6 @@ export const getAllUsers = async (req, res) => {
 };
 
 export const getOneUserById = async (req, res) => {
-
   const { userId } = req.params;
 
   const user = await getUserById(userId);
@@ -48,7 +47,6 @@ export const getOneUserById = async (req, res) => {
 };
 
 export const deleteOneUserById = async (req, res) => {
-
   // TODO - Add authorization middleware
 
   const { userId } = req.params;
@@ -62,7 +60,7 @@ export const deleteOneUserById = async (req, res) => {
     });
   }
 
-  if (user === null) {
+  if (user.rowCount === 0) {
     return res.json({
       success: false,
       message: 'user not found',

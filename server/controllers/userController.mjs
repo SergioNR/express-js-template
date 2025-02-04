@@ -130,35 +130,43 @@ export const createUser = async (req, res) => {
   });
 };
 
-export const updateUserPassword = async (req) => {
+export const updateUserPassword = async (req, res) => {
+  if (req.sanitizedErrors) {
+    return res.status(400).json({
+      success: false,
+      message: req.sanitizedErrors,
+    });
+  }
+  
+  
   const {
     userId,
-    currentPassword,
+    // currentPassword,
     newPassword,
   } = req.body;
 
-  const user = await getUserById(userId);
+  // const user = await getUserById(userId);
 
-  if (!user || user.success === false) {
-    return {
-      success: false,
-      message: 'User not found',
-    };
-  }
+  // if (!user || user.success === false) {
+  //   return {
+  //     success: false,
+  //     message: 'User not found',
+  //   };
+  // }
 
   try {
-    const storedPasswordHash = user.userDetails?.password;
+  //   const storedPasswordHash = user.userDetails?.password;
 
-    // Compare current password with stored hash
-    const isMatch = await bcrypt.compare(currentPassword, storedPasswordHash);
+  //   // Compare current password with stored hash
+  //   const isMatch = await bcrypt.compare(currentPassword, storedPasswordHash);
 
-    if (!isMatch) {
-      return {
-        success: false,
-        ERR_CODE: 'INCORRECT_PASSWORD',
-        message: 'Current password is incorrect',
-      };
-    }
+  //   if (!isMatch) {
+  //     return {
+  //       success: false,
+  //       ERR_CODE: 'INCORRECT_PASSWORD',
+  //       message: 'Current password is incorrect',
+  //     };
+  //   }
 
     // Hash the new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -167,16 +175,16 @@ export const updateUserPassword = async (req) => {
     const updatedUser = await updateUserPasswordInDB(userId, hashedPassword);
 
     if (updatedUser.success === false) {
-      return {
+      return res.status(200).json({
         success: false,
         message: 'Error updating password',
-      };
+      });
     }
 
-    return {
+    return res.status(200).json({
       success: true,
       message: 'Password updated successfully',
-    };
+    });
   } catch (error) {
     return {
       success: false,

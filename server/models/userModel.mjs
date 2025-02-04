@@ -91,19 +91,11 @@ export const getUserById = async (userId) => {
 
 export const updateUserPasswordInDB = async (userId, newPassword) => {
   try {
-    const db = await connectToDatabase();
-
-    const usersCollection = db.collection('users');
-
-    const filter = {
-      _id: ObjectId.createFromHexString(`${userId}`),
-    };
-
-    await usersCollection.updateOne(filter, {
-      $set: {
-        'userDetails.password': newPassword,
-      },
-    });
+    const queryResult = await pool.query(`UPDATE users
+      SET 
+      password = $2,
+      last_updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $1  `, [userId, newPassword]);
 
     logPasswordUpdated(userId);
 

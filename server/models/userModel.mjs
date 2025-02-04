@@ -6,20 +6,27 @@ import {
   logPasswordUpdated,
 } from '../config/loggerFunctions.mjs';
 import { posthogUserSignedUp } from './posthogModel.mjs';
+import { pool } from '../database/postgresql.mjs';
 
 export const createUserInDB = async (user) => {
   try {
-    const db = await connectToDatabase();
-
-    const usersCollection = db.collection('users');
-
-    await usersCollection.insertOne(user);
+    const insertQuery = await pool.query(`
+      INSERT INTO users (id, username, password, role, created_at, last_updated_at)
+      VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6
+      )
+    `, [user.id, user.userDetails.email, user.userDetails.password, user.userDetails.role, new Date(), new Date()]);
 
     logUserCreatedInDB(user._id, user);
 
     posthogUserSignedUp(user);
 
-    return user;
+    return insertQuery;
   } catch (error) {
     logError('Error creating user in DB', error);
 
@@ -31,17 +38,9 @@ export const createUserInDB = async (user) => {
 
 export const getUserByEmail = async (userEmail) => {
   try {
-    const db = await connectToDatabase();
+    const queryResult = await pool.query('SELECT * FROM users WHERE username = $1', [userEmail]);
 
-    const usersCollection = db.collection('users');
-
-    const filter = {
-      'userDetails.email': userEmail,
-    };
-
-    const user = await usersCollection.findOne(filter);
-
-    return user;
+    return queryResult;
   } catch (error) {
     logError('Error getting user by email', error);
 
@@ -77,16 +76,9 @@ export const updateLastLoginDate = async (userId) => {
 
 export const getUserById = async (userId) => {
   try {
-    const db = await connectToDatabase();
+    const queryResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
 
-    const usersCollection = db.collection('users');
-
-    const filter = {
-      _id: ObjectId.createFromHexString(`${userId}`),
-    };
-
-    const user = await usersCollection.findOne(filter);
-    return user;
+    return queryResult;
   } catch (error) {
     logError('Error getting user by user ID', error);
 
@@ -99,19 +91,11 @@ export const getUserById = async (userId) => {
 
 export const updateUserPasswordInDB = async (userId, newPassword) => {
   try {
-    const db = await connectToDatabase();
-
-    const usersCollection = db.collection('users');
-
-    const filter = {
-      _id: ObjectId.createFromHexString(`${userId}`),
-    };
-
-    await usersCollection.updateOne(filter, {
-      $set: {
-        'userDetails.password': newPassword,
-      },
-    });
+    const queryResult = await pool.query(`UPDATE users
+      SET 
+      password = $2,
+      last_updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $1  `, [userId, newPassword]);
 
     logPasswordUpdated(userId);
 
@@ -129,13 +113,9 @@ export const updateUserPasswordInDB = async (userId, newPassword) => {
 
 export const findUsersInDb = async () => {
   try {
-    const db = await connectToDatabase();
+    const queryResult = await pool.query('SELECT * FROM users;');
 
-    const usersCollection = db.collection('users');
-
-    const users = await usersCollection.find().toArray();
-
-    return users;
+    return queryResult;
   } catch (error) {
     logError('Error getting user by user ID', error);
 
@@ -145,22 +125,15 @@ export const findUsersInDb = async () => {
 
 export const deleteUserInDb = async (userId) => {
   try {
-    const db = await connectToDatabase();
+    const deletedUser = await pool.query('DELETE FROM users WHERE id = $1', [userId]);
 
-    const usersCollection = db.collection('users');
-
-    const filter = {
-      _id: ObjectId.createFromHexString(`${userId}`),
-    };
-
-    const userDeleted = await usersCollection.deleteOne(filter);
-
-    if (userDeleted.deletedCount >= 1) {
+    if (deletedUser.rowCount > 0) {
       return {
         success: true,
-        message: 'user deleted',
+        message: 'User deleted',
       };
     }
+
     throw Error('user was not deleted');
   } catch (error) {
     logError('error deleting User', error);

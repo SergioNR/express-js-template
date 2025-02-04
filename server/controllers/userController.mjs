@@ -10,36 +10,32 @@ import {
 } from '../models/userModel.mjs';
 
 export const getAllUsers = async (req, res) => {
-  const usersInDb = await findUsersInDb();
+  const query = await findUsersInDb();
+
+  const users = query.rows;
 
   res.status(200).json({
     success: true,
-    userCount: usersInDb.length,
-    users: usersInDb,
+    userCount: query.rows.length,
+    users: users,
   });
 };
 
 export const getOneUserById = async (req, res) => {
-  if (req.sanitizedErrors) {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid userId',
-      errors: req.sanitizedErrors,
-    });
-  }
-
   const { userId } = req.params;
 
-  const user = await getUserById(userId);
+  const queryResult = await getUserById(userId);
 
-  if (user && user.success === false) { // This means there has been an error
+  const user = queryResult.rows;
+
+  if (queryResult && user.success === false) { // This means there has been an error
     return res.status(502).json({
       success: false,
-      errorMessage: user.message,
+      errorMessage: queryResult.message,
     });
   }
 
-  if (user === null) {
+  if (queryResult.rowCount === 0) {
     return res.status(400).json({
       success: false,
       message: 'User not found',
@@ -53,14 +49,6 @@ export const getOneUserById = async (req, res) => {
 };
 
 export const deleteOneUserById = async (req, res) => {
-  if (req.sanitizedErrors) {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid userId',
-      errors: req.sanitizedErrors,
-    });
-  }
-
   // TODO - Add authorization middleware
 
   const { userId } = req.params;
@@ -74,7 +62,7 @@ export const deleteOneUserById = async (req, res) => {
     });
   }
 
-  if (user === null) {
+  if (user.rowCount === 0) {
     return res.json({
       success: false,
       message: 'user not found',
@@ -118,7 +106,7 @@ export const createUser = async (req, res) => {
     });
   }
 
-  if (existingUser !== null) {
+  if (existingUser.rowCount !== 0) {
     return res.status(300).json({
       success: false,
       ERR_CODE: 'USER_ALREADY_EXISTS',
@@ -142,35 +130,43 @@ export const createUser = async (req, res) => {
   });
 };
 
-export const updateUserPassword = async (req) => {
+export const updateUserPassword = async (req, res) => {
+  if (req.sanitizedErrors) {
+    return res.status(400).json({
+      success: false,
+      message: req.sanitizedErrors,
+    });
+  }
+  
+  
   const {
     userId,
-    currentPassword,
+    // currentPassword,
     newPassword,
   } = req.body;
 
-  const user = await getUserById(userId);
+  // const user = await getUserById(userId);
 
-  if (!user || user.success === false) {
-    return {
-      success: false,
-      message: 'User not found',
-    };
-  }
+  // if (!user || user.success === false) {
+  //   return {
+  //     success: false,
+  //     message: 'User not found',
+  //   };
+  // }
 
   try {
-    const storedPasswordHash = user.userDetails?.password;
+  //   const storedPasswordHash = user.userDetails?.password;
 
-    // Compare current password with stored hash
-    const isMatch = await bcrypt.compare(currentPassword, storedPasswordHash);
+  //   // Compare current password with stored hash
+  //   const isMatch = await bcrypt.compare(currentPassword, storedPasswordHash);
 
-    if (!isMatch) {
-      return {
-        success: false,
-        ERR_CODE: 'INCORRECT_PASSWORD',
-        message: 'Current password is incorrect',
-      };
-    }
+  //   if (!isMatch) {
+  //     return {
+  //       success: false,
+  //       ERR_CODE: 'INCORRECT_PASSWORD',
+  //       message: 'Current password is incorrect',
+  //     };
+  //   }
 
     // Hash the new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -179,16 +175,16 @@ export const updateUserPassword = async (req) => {
     const updatedUser = await updateUserPasswordInDB(userId, hashedPassword);
 
     if (updatedUser.success === false) {
-      return {
+      return res.status(200).json({
         success: false,
         message: 'Error updating password',
-      };
+      });
     }
 
-    return {
+    return res.status(200).json({
       success: true,
       message: 'Password updated successfully',
-    };
+    });
   } catch (error) {
     return {
       success: false,

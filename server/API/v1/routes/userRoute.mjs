@@ -1,20 +1,17 @@
 import { Router } from 'express';
-import { checkSchema } from 'express-validator';
 import {
   deleteOneUserById,
   getAllUsers,
   getOneUserById,
 } from '../../../controllers/userController.mjs';
-import { sanitizerResult } from '../../../middlewares/sanitizerResult.mjs';
-import { userIdInputValidator } from '../../../utils/validators/userIdInputValidator.mjs';
 
 export const userApi = Router();
 
 userApi.get('/', getAllUsers);
 
-userApi.get('/:userId', checkSchema(userIdInputValidator), sanitizerResult, getOneUserById);
+userApi.get('/:userId', getOneUserById);
 
-userApi.delete('/:userId', checkSchema(userIdInputValidator), sanitizerResult, deleteOneUserById);
+userApi.delete('/:userId', deleteOneUserById);
 
 // userApi.patch('/:userId', async (req, res) => {
 //   const user = await getUserById(req.params.userId);

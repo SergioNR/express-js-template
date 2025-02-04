@@ -1,22 +1,15 @@
 import { Router } from 'express';
 import { checkSchema } from 'express-validator';
-import { createUser } from '../controllers/userController.mjs';
+import { createUser, updateUserPassword } from '../controllers/userController.mjs';
 import { sanitizerResult } from '../middlewares/sanitizerResult.mjs';
 import { createUserValidationSchema } from '../utils/validators/createUserSchema.mjs';
-// import { updatePasswordSchema } from '../utils/validators/updatePasswordSchema.mjs';
+import { updatePasswordSchema } from '../utils/validators/updatePasswordSchema.mjs';
 
 export const authRouter = Router();
 
 authRouter.post('/register/', checkSchema(createUserValidationSchema), sanitizerResult, createUser);
 
-// authRouter.patch('/updateUserPassword', checkSchema(updatePasswordSchema), sanitizerResult,
-// async (req, res) => {
-//   if (req.sanitizedErrors) {
-//     return res.status(400).json({
-//       success: false,
-//       message: req.sanitizedErrors,
-//     });
-//   }
+authRouter.patch('/updateUserPassword', checkSchema(updatePasswordSchema), sanitizerResult, updateUserPassword);
 
 //   const passwordUpdate = await updateUserPassword(req);
 

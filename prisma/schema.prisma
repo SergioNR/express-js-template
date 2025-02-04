@@ -15,3 +15,11 @@ datasource db {
 
 }
 
+model User {
+  id String @id @default(uuid())
+  email String @unique
+  password String
+  created_at DateTime @default(now())
+  last_updated_at DateTime  @updatedAt
+  last_login_at DateTime? 
+}

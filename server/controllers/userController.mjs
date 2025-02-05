@@ -12,12 +12,10 @@ import {
 export const getAllUsers = async (req, res) => {
   const query = await findUsersInDb();
 
-  const users = query.rows;
-
   res.status(200).json({
     success: true,
-    userCount: query.rows.length,
-    users: users,
+    userCount: query.length,
+    users: query,
   });
 };
 
@@ -26,16 +24,14 @@ export const getOneUserById = async (req, res) => {
 
   const queryResult = await getUserById(userId);
 
-  const user = queryResult.rows;
-
-  if (queryResult && user.success === false) { // This means there has been an error
+  if (queryResult && queryResult?.success === false) { // This means there has been an error
     return res.status(502).json({
       success: false,
       errorMessage: queryResult.message,
     });
   }
 
-  if (queryResult.rowCount === 0) {
+  if (queryResult === null) {
     return res.status(400).json({
       success: false,
       message: 'User not found',
@@ -44,7 +40,7 @@ export const getOneUserById = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    user: user,
+    user: queryResult,
   });
 };
 
@@ -53,21 +49,7 @@ export const deleteOneUserById = async (req, res) => {
 
   const { userId } = req.params;
 
-  const user = await getUserById(userId);
-
-  if (user && user.success === false) { // This means there has been an error
-    return res.status(502).json({
-      success: false,
-      errorMessage: user.message,
-    });
-  }
-
-  if (user.rowCount === 0) {
-    return res.json({
-      success: false,
-      message: 'user not found',
-    });
-  }
+  // No point in worrying if the user exists, since it will autofail it no user is deleted
 
   const deletedUser = await deleteUserInDb(userId);
 
@@ -78,8 +60,10 @@ export const deleteOneUserById = async (req, res) => {
     });
   }
 
-  return res.json({
+  return res.status(200).json({
+    success: true,
     message: 'user successfully deleted',
+    userId: deletedUser.user.id,
   });
 };
 
@@ -106,8 +90,8 @@ export const createUser = async (req, res) => {
     });
   }
 
-  if (existingUser.rowCount !== 0) {
-    return res.status(300).json({
+  if (existingUser !== null) {
+    return res.status(400).json({
       success: false,
       ERR_CODE: 'USER_ALREADY_EXISTS',
       message: 'A user with that email address already exists',
@@ -117,16 +101,17 @@ export const createUser = async (req, res) => {
   const createdUser = await createUserInDB(new User(userData));
 
   if (createdUser.success === false) {
-    return {
+    return res.status(300).json({
       success: false,
       ERR_CODE: 'USER_CREATION_ERROR',
       message: 'An error occurred while creating the user - Please try again in a few minutes', //* Error generated on createUserInDB() error
-    };
+    });
   }
 
-  return res.status(200).json({
+  return res.status(201).json({
     success: true,
     message: 'User created successfully',
+    userId: createdUser.id,
   });
 };
 
@@ -137,45 +122,43 @@ export const updateUserPassword = async (req, res) => {
       message: req.sanitizedErrors,
     });
   }
-  
-  
   const {
     userId,
-    // currentPassword,
+    currentPassword,
     newPassword,
   } = req.body;
 
-  // const user = await getUserById(userId);
+  const user = await getUserById(userId);
 
-  // if (!user || user.success === false) {
-  //   return {
-  //     success: false,
-  //     message: 'User not found',
-  //   };
-  // }
+  if (user === null) {
+    return res.status(401).json({
+      success: false,
+      message: 'User not found',
+    });
+  }
 
   try {
-  //   const storedPasswordHash = user.userDetails?.password;
-
-  //   // Compare current password with stored hash
-  //   const isMatch = await bcrypt.compare(currentPassword, storedPasswordHash);
-
-  //   if (!isMatch) {
-  //     return {
-  //       success: false,
-  //       ERR_CODE: 'INCORRECT_PASSWORD',
-  //       message: 'Current password is incorrect',
-  //     };
-  //   }
+    const storedPasswordHash = user.password;
 
     // Hash the new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Compare current password with stored hash
+    const isMatch = await bcrypt.compare(currentPassword, storedPasswordHash);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        ERR_CODE: 'INCORRECT_PASSWORD',
+        message: 'Current password is incorrect',
+      });
+    }
 
     // Update password in database
     const updatedUser = await updateUserPasswordInDB(userId, hashedPassword);
 
     if (updatedUser.success === false) {
-      return res.status(200).json({
+      return res.status(500).json({
         success: false,
         message: 'Error updating password',
       });
@@ -184,6 +167,7 @@ export const updateUserPassword = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Password updated successfully',
+      userId: updatedUser.id,
     });
   } catch (error) {
     return {

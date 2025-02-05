@@ -1,8 +1,5 @@
-import crypto from 'crypto';
-
 export class User {
   constructor(reqBody) {
-    this.id = crypto.randomUUID();
     this.userDetails = {
       email: reqBody.username,
       password: reqBody.password,

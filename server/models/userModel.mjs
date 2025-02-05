@@ -5,7 +5,6 @@ import {
   logPasswordUpdated,
 } from '../config/loggerFunctions.mjs';
 import { posthogUserSignedUp } from './posthogModel.mjs';
-import { pool } from '../database/postgresql.mjs';
 
 const prisma = new PrismaClient();
 

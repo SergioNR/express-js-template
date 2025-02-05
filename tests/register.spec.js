@@ -91,16 +91,15 @@ test('should fail registration because password is empty', async ({ page }) => {
 test('should fail registration because email address rules is not valid', async ({ page }) => {
   const invalidEmails = [
     'username@com',
-    //* invalid email addresses Below are already being checked by the browser with <input="email">
-    // "plainaddress",
-    // "@missingusername.com",
-    // "username@.com",
-    // "username@domain..com",
-    // "username@domain,com",
-    // "username@domain@domain.com",
-    // "username@domain.com (Joe Smith)",
-    // "username@domain..com",
-    // "username@domain.com."
+    "plainaddress",
+    "@missingusername.com",
+    "username@.com",
+    "username@domain..com",
+    "username@domain,com",
+    "username@domain@domain.com",
+    "username@domain.com (Joe Smith)",
+    "username@domain..com",
+    "username@domain.com."
   ];
 
   for (const invalidEmail of invalidEmails) {

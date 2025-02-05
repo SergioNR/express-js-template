@@ -16,6 +16,13 @@ module.exports = {
         sourceType: 'script',
       },
     },
+    {
+      files: ['*.spec.js'],
+      rules: {
+        'no-await-in-loop': 'off', // Disable the rule for await inside loops in spec files
+        'no-restricted-syntax': 'off',
+      },
+    },
   ],
   parserOptions: {
     ecmaVersion: 'latest',

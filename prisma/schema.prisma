@@ -12,14 +12,54 @@ datasource db {
   provider = "postgresql"
   url      = "postgres://sergionavarroredondo:@localhost/prismasql"
   // url      = env("DATABASE_URL")
-
 }
 
 model User {
-  id String @id @default(uuid())
-  email String @unique
-  password String
-  created_at DateTime @default(now())
+  id              String    @id @default(uuid())
+  email           String    @unique
+  password        String
+  role            Roles     @default(customer)
+  created_at      DateTime  @default(now())
   last_updated_at DateTime  @updatedAt
-  last_login_at DateTime? 
+  last_login_at   DateTime?
+}
+
+model Airlines {
+  id              Int      @id @default(autoincrement())
+  iata_code       String   @unique
+  icao_code       String   @unique
+  name            String
+  created_at      DateTime @default(now())
+  last_updated_at DateTime @updatedAt
+}
+
+model Airports {
+  id                 Int       @id @default(autoincrement())
+  airport_code       String    @unique
+  name               String
+  city_code          String
+  country            String
+  departure_airports Flights[] @relation("departureAirports")
+  arrival_airports   Flights[] @relation("arrivalAirports")
+}
+
+model Flights {
+  id                      Int      @id @default(autoincrement())
+  flight_number           String // eg: IBE 1234
+  trip_duration           String
+  number_of_days          String
+  departure_date          DateTime
+  return_date             DateTime
+  departure_airport       Airports @relation(name: "departureAirports", fields: [departure_airport_code], references: [airport_code])
+  arrival_airport         Airports @relation(name: "arrivalAirports", fields: [arrival_airport_code], references: [airport_code])
+  departure_airport_code  String
+  arrival_airport_code    String
+  relative_price_feedback String
+  final_price             Int
+  // TODO - add destination city & origin
+}
+
+enum Roles {
+  customer
+  admin
 }

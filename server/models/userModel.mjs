@@ -1,28 +1,23 @@
-import { ObjectId } from 'mongodb';
-import { connectToDatabase } from '../database/mongoDB.mjs';
+import { PrismaClient } from '@prisma/client';
 import {
   logUserCreatedInDB,
   logError,
   logPasswordUpdated,
 } from '../config/loggerFunctions.mjs';
 import { posthogUserSignedUp } from './posthogModel.mjs';
-import { pool } from '../database/postgresql.mjs';
+
+const prisma = new PrismaClient();
 
 export const createUserInDB = async (user) => {
   try {
-    const insertQuery = await pool.query(`
-      INSERT INTO users (id, username, password, role, created_at, last_updated_at)
-      VALUES (
-        $1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6
-      )
-    `, [user.id, user.userDetails.email, user.userDetails.password, user.userDetails.role, new Date(), new Date()]);
+    const insertQuery = await prisma.user.create({
+      data: {
+        email: user.userDetails.email,
+        password: user.userDetails.password,
+      },
+    });
 
-    logUserCreatedInDB(user._id, user);
+    logUserCreatedInDB(insertQuery.id, user);
 
     posthogUserSignedUp(user);
 
@@ -38,7 +33,9 @@ export const createUserInDB = async (user) => {
 
 export const getUserByEmail = async (userEmail) => {
   try {
-    const queryResult = await pool.query('SELECT * FROM users WHERE username = $1', [userEmail]);
+    const queryResult = await prisma.user.findUnique({
+      where: { email: userEmail },
+    });
 
     return queryResult;
   } catch (error) {
@@ -52,19 +49,14 @@ export const getUserByEmail = async (userEmail) => {
 
 export const updateLastLoginDate = async (userId) => {
   try {
-    const db = await connectToDatabase();
-
-    const usersCollection = db.collection('users');
-
-    const filter = {
-      _id: ObjectId.createFromHexString(`${userId}`),
-    };
-
-    return await usersCollection.updateOne(filter, {
-      $set: {
-        lastLoginDate: new Date(),
+    const queryResult = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        last_login_at: new Date(),
       },
     });
+
+    return queryResult;
   } catch (error) {
     logError('Error updating last login date', error);
 
@@ -76,7 +68,9 @@ export const updateLastLoginDate = async (userId) => {
 
 export const getUserById = async (userId) => {
   try {
-    const queryResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+    const queryResult = await prisma.user.findUnique({
+      where: { id: userId },
+    });
 
     return queryResult;
   } catch (error) {
@@ -91,16 +85,20 @@ export const getUserById = async (userId) => {
 
 export const updateUserPasswordInDB = async (userId, newPassword) => {
   try {
-    const queryResult = await pool.query(`UPDATE users
-      SET 
-      password = $2,
-      last_updated_at = CURRENT_TIMESTAMP 
-      WHERE id = $1  `, [userId, newPassword]);
+    const queryResult = await prisma.user.update({
+
+      where: { id: userId },
+      data: {
+        password: newPassword,
+      },
+    });
 
     logPasswordUpdated(userId);
 
     return {
       success: true,
+      userId: userId,
+      query: queryResult,
     };
   } catch (error) {
     logError('Error updating user password', error, { userId: userId });
@@ -113,7 +111,7 @@ export const updateUserPasswordInDB = async (userId, newPassword) => {
 
 export const findUsersInDb = async () => {
   try {
-    const queryResult = await pool.query('SELECT * FROM users;');
+    const queryResult = await prisma.user.findMany();
 
     return queryResult;
   } catch (error) {
@@ -125,12 +123,17 @@ export const findUsersInDb = async () => {
 
 export const deleteUserInDb = async (userId) => {
   try {
-    const deletedUser = await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+    const queryResult = await prisma.user.delete({
+      where: {
+        id: userId,
+      },
+    });
 
-    if (deletedUser.rowCount > 0) {
+    if (queryResult !== null) {
       return {
         success: true,
         message: 'User deleted',
+        user: queryResult,
       };
     }
 

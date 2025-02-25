@@ -1,11 +1,8 @@
 import { PostHog } from 'posthog-node';
 
-export const client = process.env.NODE_ENV === 'production' ? new PostHog(
-  process.env.POSTHOG_API_KEY_PROD,
-  { host: process.env.POSTHOG_HOST_PROD },
-) : new PostHog(
-  process.env.POSTHOG_API_KEY_DEV,
-  { host: process.env.POSTHOG_HOST_DEV },
+export const client = new PostHog(
+  process.env.POSTHOG_API_KEY,
+  { host: 'https://eu.i.posthog.com' },
 );
 
 /*

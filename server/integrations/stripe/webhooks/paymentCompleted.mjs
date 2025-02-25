@@ -1,6 +1,10 @@
 // https://docs.stripe.com/webhooks
 
-export const paymentCompletedWebhook = async (req, res) => { // * Should probably add a more specific name but cant think of any since all the stripe events are handled in this function
+import { logError } from '../../../config/loggerFunctions.mjs';
+
+export const paymentCompletedWebhook = async (req, res) => { // * Should probably add a
+// * more specific name but cant think of any since all the stripe
+// * events are handled in this function
   const event = req.body;
   // Handle each type of event
   switch (event.type) {
@@ -12,7 +16,7 @@ export const paymentCompletedWebhook = async (req, res) => { // * Should probabl
       break;
       // ... handle other event types
     default:
-      console.log(`Unhandled event type ${event.type}`);
+      logError('Unhandled event type in Stripe webhook paymentCompleted.', event.type);
   }
 
   res.status(200).send();

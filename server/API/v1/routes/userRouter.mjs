@@ -4,8 +4,11 @@ import {
   getAllUsers,
   getOneUserById,
 } from '../../../controllers/userController.mjs';
+import { authenticationChecker } from '../../../middlewares/authenticationChecker.mjs';
 
 export const userApi = Router();
+
+userApi.use(authenticationChecker);
 
 userApi.get('/', getAllUsers);
 

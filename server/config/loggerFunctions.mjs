@@ -32,15 +32,6 @@ export const logUserLoggedInSuccessfully = (userId, loginMethod) => {
   });
 };
 
-// ? Do we need to log this? It provides no actionable information? only "user does not exist?"
-
-export const logFailedLoginUserDoesNotExist = (errorMessage) => {
-  logger.warn({
-    message: 'Login attempt failed',
-    error: errorMessage, //* Logging the error message generated in passportJS
-  });
-};
-
 export const logUserCreatedInDB = (userId, user) => {
   logger.info({
     message: 'User succesfully created in database',
@@ -103,4 +94,23 @@ export const logError = (message, error, additionalInfo = 'N/A') => {
       additionalInfo: additionalInfo,
     },
   });
+};
+
+export const logWarn = async (message, error, additionalInfo = 'N/A') => {
+  const warnData = {
+    message: message,
+    context: {
+      name: error.name || 'no error name',
+      errorMessage: error.message || 'no error message',
+      errorStack: error.stack || 'no error stack',
+      errorDetails: error, // I will log the entire error object for now just in case
+      additionalInfo: additionalInfo,
+    },
+  };
+
+  logger.warn(warnData);
+
+  return {
+    success: false,
+  };
 };

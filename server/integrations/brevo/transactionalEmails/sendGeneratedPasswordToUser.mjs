@@ -3,15 +3,12 @@ import { logError } from '../../../config/loggerFunctions.mjs';
 
 const apiInstance = new TransactionalEmailsApi();
 
-const { apiKey } = apiInstance.authentications;
-apiKey.apiKey = process.env.BREVO_API_KEY;
-
-export const sendPaymentCompletedTransactionalEmail = async (email, param) => {
+export const sendGeneratedPasswordToUser = async (email, password) => {
   try {
     const sendSmtpEmail = new brevo.SendSmtpEmail();
 
     sendSmtpEmail.sender = {
-      // name: "Sergio de AnalizaTuApp", //* Managed in the template
+      // name: "XXX", //* Managed in the template
       email: 's.navarroredondo@gmail.com',
     };
 
@@ -20,7 +17,7 @@ export const sendPaymentCompletedTransactionalEmail = async (email, param) => {
     }];
 
     // sendSmtpEmail.bcc = [{ //* Cant be managed in the template
-    //   email: 'PENDING',
+    //   email: 'xxx',
     // }];
 
     sendSmtpEmail.templateId = 2; //* Direct link to the template --> https://my.brevo.com/camp/template/2/setup
@@ -35,12 +32,12 @@ export const sendPaymentCompletedTransactionalEmail = async (email, param) => {
       accept: 'application/json',
     };
     sendSmtpEmail.params = {
-      param1: param,
+      password: password,
 
     };
 
     await apiInstance.sendTransacEmail(sendSmtpEmail);
   } catch (error) {
-    logError('error sending sendPaymentCompletedTransactionalEmail', error);
+    logError('error sending sendGeneratedPasswordToUser', error);
   }
 };

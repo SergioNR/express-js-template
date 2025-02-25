@@ -19,15 +19,15 @@ mongoDBSessionStore.on('error', (error) => {
   // TODO: Implement error handling
 });
 
-export const storeSessionsInMongoDb = session({
+export const storeSessions = session({
   secret: process.env.SESSION_SECRET,
   resave: false, // https://www.npmjs.com/package/express-session#resave - Set to false because `touch` is implemented
   saveUninitialized: false, // https://www.npmjs.com/package/express-session#saveuninitialized - Set to false because we'll only save sessions with req.session data (eg: logins, storing relevant info that we want to keep)
   cookie: {
-    maxAge: 7200000, // 2 hours
+    maxAge: 86400000, // 24 hours
     secure: process.env.NODE_ENV === 'production', // Secure in production
     httpOnly: true,
-    sameSite: 'strict',
+    SameSite: 'None',
   },
   store: mongoDBSessionStore,
 });

@@ -4,9 +4,10 @@ import { cookieParserMiddleware } from './middlewares/cookieParser.mjs';
 import { corsMiddleware } from './middlewares/cors.mjs';
 import { helmetMiddleware } from './middlewares/helmet.mjs';
 import { apiRouter } from './API/apiRouter.mjs';
-import { storeSessionsInMongoDb } from './middlewares/mongoDbSessions.mjs';
+import { storeSessions } from './middlewares/storeExpressSessions.mjs';
 
 import { authRouter } from './routers/authRouter.mjs';
+import { indexRouter } from './routers/indexRouter.mjs';
 
 const app = express();
 
@@ -20,7 +21,7 @@ app.use(express.urlencoded());
 app.use(express.json());
 
 //* Middleware to store sessions in MongoDB
-app.use(storeSessionsInMongoDb);
+app.use(storeSessions);
 
 app.use(passport.session());
 
@@ -28,6 +29,7 @@ app.use(passport.session());
 
 app.use('/auth/', authRouter);
 app.use('/api/', apiRouter);
+app.use('/', indexRouter);
 
 //* Middleware to catch & handle errors
 app.use((err, req, res, next) => {

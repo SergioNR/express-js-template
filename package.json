@@ -9,10 +9,9 @@
     "scripts": {
         "deploy:prod": "NODE_ENV=production node ./server/app.mjs",
         "deploy:dev": "node ./server/app.mjs",
-        "deploy:local": "node --watch --env-file=staging.env ./server/app.mjs",
-        "test:ui": "npx playwright test --ui",
-        "test:noui": "npx playwright test",
-        "lint:fix": "eslint --fix ./server/*.mjs"
+        "deploy:local": "node --watch --env-file=.env ./server/app.mjs",
+        "test:ui": "env $(cat .env | xargs) npx playwright test --ui",
+        "test:noui": "env $(cat .env | xargs) npx playwright test"
     },
     "author": "SNR",
     "dependencies": {

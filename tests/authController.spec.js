@@ -30,7 +30,7 @@ test('useCreation failed due to user already existing', async ({ request }) => {
     password: '123456',
   };
 
-  const response = await request.post('/auth/register/', {
+  await request.post('/auth/register/', {
     data: requestData,
     headers: {
       'Content-Type': 'application/json',

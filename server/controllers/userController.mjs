@@ -197,8 +197,8 @@ export const forgotPassword = async (req, res) => {
 
     await updateUserPasswordInDB(user.id, hashedPassword);
 
-    // return await sendGeneratedPasswordToUser(email, randomPassword); // TODO - Implement email sending
-    
+    // TODO - Implement email sending
+    // return await sendGeneratedPasswordToUser(email, randomPassword);
     return res.status(200).json({
       success: true,
       message: 'If the user exists, it will receive an email with instructions on how to reset the password',

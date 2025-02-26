@@ -26,7 +26,7 @@ test('authRouter.post("/register") successfully registers an user', async ({ req
 
 test('useCreation failed due to user already existing', async ({ request }) => {
   const requestData = {
-    username: 'existinguser@gmail.com',
+    username: `${Math.random()}@gmail.com`,
     password: '123456',
   };
 
@@ -37,8 +37,16 @@ test('useCreation failed due to user already existing', async ({ request }) => {
     },
   });
 
-  expect(response.status()).toBe(400);
-  const responseBody = await response.json();
+  const duplicateResponse = await request.post('/auth/register/', {
+    data: requestData,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  expect(duplicateResponse.status()).toBe(400);
+
+  const responseBody = await duplicateResponse.json();
   expect(responseBody).toHaveProperty('success', false);
   expect(responseBody).toHaveProperty('ERR_CODE');
   expect(responseBody).toHaveProperty('message', 'A user with that email address already exists');

@@ -102,7 +102,7 @@ export const createUser = async (req, res) => {
   const createdUser = await createUserInDB(new User(userData));
 
   if (createdUser.success === false) {
-    return res.status(300).json({
+    return res.status(500).json({
       success: false,
       ERR_CODE: 'USER_CREATION_ERROR',
       message: 'An error occurred while creating the user - Please try again in a few minutes', //* Error generated on createUserInDB() error

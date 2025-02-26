@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const telegramBotToken = process.env.FLIGHTSNATCH_TELEGRAM_BOT_API_KEY;
+const telegramBotToken = process.env.TELEGRAM_BOT_API_KEY;
 
 export const sendTelegramErrorLogsToGroup = async (errorData) => {
   const chatId = process.env.TELEGRAM_BOT_LOGS_CHAT_ID; // Flightsnatch error logs group
@@ -8,7 +8,7 @@ export const sendTelegramErrorLogsToGroup = async (errorData) => {
   const message = `
   🚨 <b>New error logged at ${new Date()}</b> 🚨
   \n<b>Error name</b>: ${errorData.message}
-  \n<b>Error name</b>: ${errorData.context.name}
+  \n<b>Error context</b>: ${errorData.context.name}
   \n<b>Error Message</b>: ${errorData.context.errorMessage}
   \n<b>Additional Info</b>: ${errorData.context.additionalInfo}
   

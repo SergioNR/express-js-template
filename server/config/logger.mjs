@@ -22,13 +22,13 @@ const transport = pino.transport({
         },
       },
     },
-    {
-      target: '@logtail/pino',
-      options: {
-        sourceToken: process.env.PINOJS_SOURCE_TOKEN,
-        options: { endpoint: 'https://s1198477.eu-nbg-2.betterstackdata.com' },
-      },
-    },
+    // {
+    //   target: '@logtail/pino',
+    //   options: {
+    //     sourceToken: process.env.PINOJS_SOURCE_TOKEN,
+    //     options: { endpoint: 'https://s1198477.eu-nbg-2.betterstackdata.com' },
+    //   },
+    // },
   ],
 });
 

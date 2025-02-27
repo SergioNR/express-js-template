@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { checkSchema } from 'express-validator';
-import { createUser, updateUserPassword } from '../controllers/userController.mjs';
-import { sanitizerResult } from '../middlewares/sanitizerResult.mjs';
-import { createUserValidationSchema } from '../utils/validators/createUserSchema.mjs';
-import { updatePasswordSchema } from '../utils/validators/updatePasswordSchema.mjs';
+import { createUser, updateUserPassword } from '../../../controllers/adminController.mjs';
+import { sanitizerResult } from '../../../middlewares/sanitizerResult.mjs';
+import { createUserValidationSchema } from '../../../utils/validators/createUserSchema.mjs';
+import { updatePasswordSchema } from '../../../utils/validators/updatePasswordSchema.mjs';
 
 export const authRouter = Router();
 

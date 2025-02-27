@@ -5,8 +5,6 @@ import { corsMiddleware } from './middlewares/cors.mjs';
 import { helmetMiddleware } from './middlewares/helmet.mjs';
 import { apiRouter } from './API/apiRouter.mjs';
 import { storeSessions } from './middlewares/storeExpressSessions.mjs';
-
-import { authRouter } from './routers/authRouter.mjs';
 import { indexRouter } from './routers/indexRouter.mjs';
 
 const app = express();
@@ -27,7 +25,6 @@ app.use(passport.session());
 
 //* Router selectors
 
-app.use('/auth/', authRouter);
 app.use('/api/', apiRouter);
 app.use('/', indexRouter);
 

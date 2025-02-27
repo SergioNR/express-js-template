@@ -10,8 +10,7 @@ export const apiRouter = Router();
 
 apiRouter.use('/v1/user', userRouter);
 apiRouter.use('/v1/admin', adminRouter);
-
-apiRouter.use('/auth/', authRouter);
+apiRouter.use('/v1/auth', authRouter);
 
 apiRouter.post('/v1/webhooks/stripeWebhooks', paymentCompletedWebhook); // ? Maybe should be changed to apiRouter.use(...) ?
 

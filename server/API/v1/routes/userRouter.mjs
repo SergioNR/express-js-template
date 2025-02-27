@@ -1,16 +1,12 @@
 import { Router } from 'express';
-import {
-  deleteOneUserById,
-  getAllUsers,
-  getOneUserById,
-} from '../../../controllers/adminController.mjs';
 import { authenticationChecker } from '../../../middlewares/authenticationChecker.mjs';
+import { getProfile } from '../../../controllers/userController.mjs';
 
 export const userRouter = Router();
 
-userRouter.use(authenticationChecker);
+// userRouter.use(authenticationChecker);
 
-userRouter.get('/profile', getAllUsers);
+userRouter.get('/profile', getProfile);
 
 // userRouter.get('/:userId', getOneUserById);
 

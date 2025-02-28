@@ -9,12 +9,11 @@ export const userRouter = Router();
 
 userRouter.post('/register/local', checkSchema(createUserValidationSchema), sanitizerResult, createUser);
 
+userRouter.use(authenticationChecker);
 
 userRouter.get('/profile', getProfile);
 
 userRouter.delete('/delete', deleteUser);
-
-// userRouter.delete('/:userId', deleteOneUserById);
 
 // userRouter.patch('/:userId', async (req, res) => {
 //   const user = await getUserById(req.params.userId);

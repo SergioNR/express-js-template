@@ -63,38 +63,7 @@ authRouter.post('/register/', checkSchema(createUserValidationSchema), sanitizer
 
 authRouter.patch('/updateUserPassword', checkSchema(updatePasswordSchema), sanitizerResult, updateUserPassword);
 
-//   const passwordUpdate = await updateUserPassword(req);
-
-//   if (passwordUpdate.success === false && passwordUpdate.ERR_CODE === 'INCORRECT_PASSWORD') {
-//     return res.status(401).json({
-//       success: false,
-//       message: passwordUpdate.message,
-//     });
-//   }
-
-//   if (passwordUpdate.success === false) {
-//     return res.status(400).json({
-//       success: false,
-//       message: passwordUpdate.message,
-//     });
-//   }
-
-//   return res.status(200).json({
-//     success: true,
-//     message: 'Password updated',
-//   });
-// });
-
 // authRouter.post('/forgot-password', async (req, res) => {
-//   //
-
-//   res.status(200).json({
-//     success: true,
-//     message: 'This route is a WIP',
-//   });
-// });
-
-// authRouter.post('/reset-password', async (req, res) => {
 //   //
 
 //   res.status(200).json({

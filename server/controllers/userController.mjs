@@ -1,6 +1,12 @@
 import bcrypt from 'bcryptjs';
 import { User } from '../utils/classes/User.mjs';
-import { createUserInDB, getUserByEmail, deleteUserInDb } from '../models/userModel.mjs';
+import {
+  createUserInDB,
+  getUserByEmail,
+  getUserById,
+  deleteUserInDb,
+  updateUserPasswordInDB,
+} from '../models/userModel.mjs';
 
 export const getProfile = async (req, res) => {
   res.status(200).json({
@@ -32,90 +38,88 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-// export const updateUserPassword = async (req, res) => {
-//   if (req.sanitizedErrors) {
-//     return res.status(400).json({
-//       success: false,
-//       message: req.sanitizedErrors,
-//     });
-//   }
-//   const {
-//     currentPassword,
-//     newPassword,
-//   } = req.body;
+export const updateUserPassword = async (req, res) => {
+  if (req.sanitizedErrors) {
+    return res.status(400).json({
+      success: false,
+      message: req.sanitizedErrors,
+    });
+  }
+  const {
+    currentPassword,
+    newPassword,
+  } = req.body;
 
-//   const userId = req.user.id;
-//   const user = await getUserById(userId);
+  console.log(req.user)
 
-//   if (user === null) {
-//     return res.status(401).json({
-//       success: false,
-//       message: 'User not found',
-//     });
-//   }
+  const userId = req.user.id;
+  const user = await getUserById(userId);
 
-//   try {
-//     const storedPasswordHash = user.password;
+  if (user === null) {
+    return res.status(401).json({
+      success: false,
+      message: 'User not found',
+    });
+  }
 
-//     // Hash the new password
-//     const hashedPassword = await bcrypt.hash(newPassword, 10);
+  try {
+    const storedPasswordHash = user.password;
 
-//     // Compare current password with stored hash
-//     const isMatch = await bcrypt.compare(currentPassword, storedPasswordHash);
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-//     if (!isMatch) {
-//       return res.status(400).json({
-//         success: false,
-//         ERR_CODE: 'INCORRECT_PASSWORD',
-//         message: 'Current password is incorrect',
-//       });
-//     }
+    // Compare current password with stored hash
+    const isMatch = await bcrypt.compare(currentPassword, storedPasswordHash);
 
-//     // Update password in database
-//     const updatedUser = await updateUserPasswordInDB(userId, hashedPassword);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        ERR_CODE: 'INCORRECT_PASSWORD',
+        message: 'Current password is incorrect',
+      });
+    }
 
-//     if (updatedUser.success === false) {
-//       return res.status(500).json({
-//         success: false,
-//         message: 'Error updating password',
-//       });
-//     }
+    // Update password in database
+    const updatedUser = await updateUserPasswordInDB(userId, hashedPassword);
 
-//     return res.status(200).json({
-//       success: true,
-//       message: 'Password updated successfully',
-//       userId: updatedUser.id,
-//     });
-//   } catch (error) {
-//     return {
-//       success: false,
-//       message: 'Error updating password',
-//     };
-//   }
-// };
+    if (updatedUser.success === false) {
+      return res.status(500).json({
+        success: false,
+        message: 'Error updating password',
+      });
+    }
 
-// export const deleteAccount = async (req, res) => {
-//   // TODO - Add authorization middleware
+    return res.status(200).json({
+      success: true,
+      message: 'Password updated successfully',
+      userId: updatedUser.id,
+    });
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Error updating password',
+    };
+  }
+};
 
-//   const { userId } = req.params;
+export const deleteAccount = async (req, res) => {
+  const { userId } = req.params;
 
-//   // No point in worrying if the user exists, since it will autofail it no user is deleted
+  const deletedUser = await deleteUserInDb(userId);
 
-//   const deletedUser = await deleteUserInDb(userId);
+  if (deletedUser && deletedUser.success === false) {
+    return res.status(502).json({
+      success: false,
+      message: deletedUser.message,
+    });
+  }
 
-//   if (deletedUser && deletedUser.success === false) {
-//     return res.status(502).json({
-//       success: false,
-//       message: deletedUser.message,
-//     });
-//   }
-
-//   return res.status(200).json({
-//     success: true,
-//     message: 'user successfully deleted',
-//     userId: deletedUser.user.id,
-//   });
-// };
+  return res.status(200).json({
+    success: true,
+    message: 'user successfully deleted',
+    userId: deletedUser.user.id,
+  });
+};
 
 export const createUser = async (req, res) => {
   if (req.sanitizedErrors) {
@@ -163,8 +167,4 @@ export const createUser = async (req, res) => {
     message: 'User created successfully',
     userId: createdUser.id,
   });
-};
-
-export const updateUserPassword = async (req, res) => {
-  
 };

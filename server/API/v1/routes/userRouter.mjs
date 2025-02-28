@@ -12,7 +12,7 @@ userRouter.post('/register/local', checkSchema(createUserValidationSchema), sani
 
 userRouter.get('/profile', getProfile);
 
-// userRouter.get('/:userId', getOneUserById);
+userRouter.delete('/delete', deleteUser);
 
 // userRouter.delete('/:userId', deleteOneUserById);
 

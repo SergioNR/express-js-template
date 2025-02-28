@@ -9,25 +9,28 @@ export const getProfile = async (req, res) => {
   });
 };
 
-//   if (queryResult && queryResult?.success === false) { // This means there has been an error
-//     return res.status(502).json({
-//       success: false,
-//       errorMessage: queryResult.message,
-//     });
+export const deleteUser = async (req, res) => {
+  try {
+    const deletionRequest = await deleteUserInDb(req.user.id);
+
+    if (deletionRequest && deletionRequest.success === false) {
+      return res.status(500).json({
+        success: false,
+        message: deletionRequest.message,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'User deleted successfully',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Error deleting user',
+    });
+  }
 };
-
-//   if (queryResult === null) {
-//     return res.status(400).json({
-//       success: false,
-//       message: 'User not found',
-//     });
-//   }
-
-//   return res.status(200).json({
-//     success: true,
-//     user: queryResult,
-//   });
-// };
 
 // export const updateUserPassword = async (req, res) => {
 //   if (req.sanitizedErrors) {
@@ -114,7 +117,6 @@ export const getProfile = async (req, res) => {
 //   });
 // };
 
-
 export const createUser = async (req, res) => {
   if (req.sanitizedErrors) {
     return res.status(400).json({
@@ -164,4 +166,5 @@ export const createUser = async (req, res) => {
 };
 
 export const updateUserPassword = async (req, res) => {
+  
 };

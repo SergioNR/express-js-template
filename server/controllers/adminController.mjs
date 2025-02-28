@@ -69,38 +69,11 @@ export const deleteOneUserById = async (req, res) => {
 //     });
 //   }
 //   const {
-//     currentPassword,
-//     newPassword,
+//     property1,
+//     property2,
+//     property3,
 //   } = req.body;
 
-//   const userId = req.user.id;
-//   const user = await getUserById(userId);
-
-//   if (user === null) {
-//     return res.status(401).json({
-//       success: false,
-//       message: 'User not found',
-//     });
-//   }
-
-//   try {
-//     const storedPasswordHash = user.password;
-
-//     // Hash the new password
-//     const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-//     // Compare current password with stored hash
-//     const isMatch = await bcrypt.compare(currentPassword, storedPasswordHash);
-
-//     if (!isMatch) {
-//       return res.status(400).json({
-//         success: false,
-//         ERR_CODE: 'INCORRECT_PASSWORD',
-//         message: 'Current password is incorrect',
-//       });
-//     }
-
-//     // Update password in database
 //     const updatedUser = await updateUserPasswordInDB(userId, hashedPassword);
 
 //     if (updatedUser.success === false) {

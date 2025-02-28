@@ -1,9 +1,13 @@
+import bcrypt from 'bcryptjs';
+import { User } from '../utils/classes/User.mjs';
+import { createUserInDB, getUserByEmail, deleteUserInDb } from '../models/userModel.mjs';
+
 export const getProfile = async (req, res) => {
-  console.log('req.user', req.user);
-
-  // const { userId } = req.params;
-
-  //   const queryResult = await getUserById(reqUser.id);
+  res.status(200).json({
+    success: true,
+    user: req.user,
+  });
+};
 
 //   if (queryResult && queryResult?.success === false) { // This means there has been an error
 //     return res.status(502).json({
@@ -112,6 +116,51 @@ export const getProfile = async (req, res) => {
 
 
 export const createUser = async (req, res) => {
+  if (req.sanitizedErrors) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid userId',
+      errors: req.sanitizedErrors,
+    });
+  }
+  const userData = {
+    username: req.body.username,
+    password: await bcrypt.hash(req.body.password, 10),
+  };
+
+  const existingUser = await getUserByEmail(userData.username);
+
+  if (existingUser && existingUser.success === false) {
+    return res.status(500).json({
+      success: false,
+      ERR_CODE: 'USER_CREATION_ERROR',
+      message: 'An error occurred while creating the user - Please try again in a few minutes', //* Error generated on getUserByEmail() error
+    });
+  }
+
+  if (existingUser !== null) {
+    return res.status(400).json({
+      success: false,
+      ERR_CODE: 'USER_ALREADY_EXISTS',
+      message: 'A user with that email address already exists',
+    });
+  }
+
+  const createdUser = await createUserInDB(new User(userData));
+
+  if (createdUser.success === false) {
+    return res.status(300).json({
+      success: false,
+      ERR_CODE: 'USER_CREATION_ERROR',
+      message: 'An error occurred while creating the user - Please try again in a few minutes', //* Error generated on createUserInDB() error
+    });
+  }
+
+  return res.status(201).json({
+    success: true,
+    message: 'User created successfully',
+    userId: createdUser.id,
+  });
 };
 
 export const updateUserPassword = async (req, res) => {

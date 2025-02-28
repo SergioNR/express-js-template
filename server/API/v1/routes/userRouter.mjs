@@ -1,10 +1,14 @@
 import { Router } from 'express';
+import { checkSchema } from 'express-validator';
 import { authenticationChecker } from '../../../middlewares/authenticationChecker.mjs';
-import { getProfile } from '../../../controllers/userController.mjs';
+import { getProfile, deleteUser, createUser } from '../../../controllers/userController.mjs';
+import { createUserValidationSchema } from '../../../utils/validators/createUserSchema.mjs';
+import { sanitizerResult } from '../../../middlewares/sanitizerResult.mjs';
 
 export const userRouter = Router();
 
-// userRouter.use(authenticationChecker);
+userRouter.post('/register/local', checkSchema(createUserValidationSchema), sanitizerResult, createUser);
+
 
 userRouter.get('/profile', getProfile);
 

@@ -63,14 +63,13 @@ authRouter.post('/register/', checkSchema(createUserValidationSchema), sanitizer
 
 authRouter.patch('/updateUserPassword', checkSchema(updatePasswordSchema), sanitizerResult, updateUserPassword);
 
-// authRouter.post('/forgot-password', async (req, res) => {
-//   //
+authRouter.post('/recoverPassword', async (req, res) => {
 
-//   res.status(200).json({
-//     success: true,
-//     message: 'This route is a WIP',
-//   });
-// });
+  res.status(200).json({
+    success: true,
+    message: 'This route is a WIP',
+  });
+});
 
 authRouter.get('/*fallback', (req, res) => {
   res.status(404).send('requested API Route does not exist in the userRouter');

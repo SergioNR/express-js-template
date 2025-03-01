@@ -6,6 +6,7 @@ import { createUserValidationSchema } from '../../../utils/validators/createUser
 import { updatePasswordSchema } from '../../../utils/validators/updatePasswordSchema.mjs';
 import passport from '../../../auth/passportjs.mjs';
 import { logError } from '../../../config/loggerFunctions.mjs';
+import { forgotPasswordRequest } from '../../../controllers/authController.mjs';
 
 export const authRouter = Router();
 
@@ -63,13 +64,7 @@ authRouter.post('/register/', checkSchema(createUserValidationSchema), sanitizer
 
 authRouter.patch('/updateUserPassword', checkSchema(updatePasswordSchema), sanitizerResult, updateUserPassword);
 
-authRouter.post('/recoverPassword', async (req, res) => {
-
-  res.status(200).json({
-    success: true,
-    message: 'This route is a WIP',
-  });
-});
+authRouter.post('/recoverPassword', forgotPasswordRequest);
 
 authRouter.get('/*fallback', (req, res) => {
   res.status(404).send('requested API Route does not exist in the userRouter');

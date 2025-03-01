@@ -24,6 +24,14 @@ model User {
   last_login_at   DateTime?
 }
 
+model Password_reset_tokens {
+  id              Int    @id @default(autoincrement())
+  user_id         String
+  token           String
+  token_expires   DateTime
+  created_at      DateTime  @default(now())
+}
+
 
 enum userRoles {
   customer

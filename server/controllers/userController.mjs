@@ -50,8 +50,6 @@ export const updateUserPassword = async (req, res) => {
     newPassword,
   } = req.body;
 
-  console.log(req.user)
-
   const userId = req.user.id;
   const user = await getUserById(userId);
 

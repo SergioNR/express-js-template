@@ -1,33 +1,27 @@
-export const forgotPassword = async (req, res) => {
+import { logError } from '../config/loggerFunctions.mjs';
+import { getUserByEmail } from '../models/userModel.mjs';
+import { createPasswordResetToken } from '../models/passwordResetTokensModel.mjs';
+
+export const forgotPasswordRequest = async (req, res) => {
   try {
     const { email } = req.body;
 
     const user = await getUserByEmail(email);
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'If the user exists, it will receive an email with instructions on how to reset the password',
-      });
+    if (user) {
+      await createPasswordResetToken(user.id);
     }
 
-    const randomPassword = Math.random().toString(36).slice(-8);
-
-    const hashedPassword = await bcrypt.hash(randomPassword, 10);
-
-    await updateUserPasswordInDB(user.id, hashedPassword);
-
-    // TODO - Implement email sending
-    // return await sendGeneratedPasswordToUser(email, randomPassword);
     return res.status(200).json({
       success: true,
-      message: 'If the user exists, it will receive an email with instructions on how to reset the password',
+      message: 'If this email exists, a reset link will been sent',
     });
   } catch (error) {
-    logError('Error generating new password', error);
+    logError('Error in forgotPasswordRequest function', error);
     return res.status(500).json({
       success: false,
-      message: 'An error occurred while generating a new password',
+      message: 'An error occurred, please try again later',
+      error: error,
     });
   }
 };

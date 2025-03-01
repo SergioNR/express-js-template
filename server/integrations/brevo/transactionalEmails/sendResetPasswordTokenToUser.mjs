@@ -3,13 +3,16 @@ import { logError } from '../../../config/loggerFunctions.mjs';
 
 const apiInstance = new TransactionalEmailsApi();
 
-export const sendGeneratedPasswordToUser = async (email, password) => {
+const { apiKey } = apiInstance.authentications;
+apiKey.apiKey = process.env.BREVO_API_KEY;
+
+export const sendResetPasswordTokenToUser = async (email, token) => {
   try {
     const sendSmtpEmail = new brevo.SendSmtpEmail();
 
     sendSmtpEmail.sender = {
       // name: "XXX", //* Managed in the template
-      email: 's.navarroredondo@gmail.com',
+      email: 'no-reply@yourdomain.com',
     };
 
     sendSmtpEmail.to = [{
@@ -32,12 +35,12 @@ export const sendGeneratedPasswordToUser = async (email, password) => {
       accept: 'application/json',
     };
     sendSmtpEmail.params = {
-      password: password,
+      token: token,
 
     };
 
     await apiInstance.sendTransacEmail(sendSmtpEmail);
   } catch (error) {
-    logError('error sending sendGeneratedPasswordToUser', error);
+    logError('error sending sendResetPasswordTokenToUser', error);
   }
 };

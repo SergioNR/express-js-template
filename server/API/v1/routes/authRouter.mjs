@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { checkSchema } from 'express-validator';
-import { createUser, updateUserPassword } from '../../../controllers/userController.mjs';
+import { createUser, updateRecoveredUserPassword, updateUserPassword } from '../../../controllers/userController.mjs';
 import { sanitizerResult } from '../../../middlewares/sanitizerResult.mjs';
 import { createUserValidationSchema } from '../../../utils/validators/createUserSchema.mjs';
 import { updatePasswordSchema } from '../../../utils/validators/updatePasswordSchema.mjs';
@@ -65,6 +65,8 @@ authRouter.post('/register/', checkSchema(createUserValidationSchema), sanitizer
 authRouter.patch('/updateUserPassword', checkSchema(updatePasswordSchema), sanitizerResult, updateUserPassword);
 
 authRouter.post('/recoverPassword', forgotPasswordRequest);
+
+authRouter.patch('/createNewPassword', checkSchema(updatePasswordSchema), sanitizerResult, updateRecoveredUserPassword);
 
 authRouter.get('/*fallback', (req, res) => {
   res.status(404).send('requested API Route does not exist in the userRouter');

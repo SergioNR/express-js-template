@@ -1,6 +1,7 @@
 import { logError } from '../config/loggerFunctions.mjs';
 import { getUserByEmail } from '../models/userModel.mjs';
 import { createPasswordResetToken } from '../models/passwordResetTokensModel.mjs';
+import { sendResetPasswordTokenToUser } from '../integrations/brevo/transactionalEmails/sendResetPasswordTokenToUser.mjs';
 
 export const forgotPasswordRequest = async (req, res) => {
   try {
@@ -9,7 +10,9 @@ export const forgotPasswordRequest = async (req, res) => {
     const user = await getUserByEmail(email);
 
     if (user) {
-      await createPasswordResetToken(user.id);
+      const tokenCreation = await createPasswordResetToken(user.id);
+
+      await sendResetPasswordTokenToUser(email, tokenCreation.tokenId);
     }
 
     return res.status(200).json({

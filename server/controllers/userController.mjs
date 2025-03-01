@@ -7,6 +7,8 @@ import {
   deleteUserInDb,
   updateUserPasswordInDB,
 } from '../models/userModel.mjs';
+import { deletePasswordResetTokens, getTokenDataByToken } from '../models/passwordResetTokensModel.mjs';
+import { logError } from '../config/loggerFunctions.mjs';
 
 export const getProfile = async (req, res) => {
   res.status(200).json({
@@ -165,4 +167,74 @@ export const createUser = async (req, res) => {
     message: 'User created successfully',
     userId: createdUser.id,
   });
+};
+
+export const updateRecoveredUserPassword = async (req, res) => {
+  if (req.sanitizedErrors) {
+    return res.status(400).json({
+      success: false,
+      message: req.sanitizedErrors,
+    });
+  }
+
+  try {
+    const {
+      newPassword,
+      confirmNewPassword,
+      token,
+    } = req.body;
+
+    const tokenData = await getTokenDataByToken(token);
+
+    const {
+      userId,
+      tokenExpires,
+    } = tokenData;
+
+    if (tokenData.success === false) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid token',
+      });
+    }
+
+    if (new Date(tokenExpires) < new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token expired',
+      });
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Passwords do not match',
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    const updatedUser = await updateUserPasswordInDB(userId, hashedPassword);
+
+    if (updatedUser.success === false) {
+      return res.status(500).json({
+        success: false,
+        message: 'Error updating password in create new password',
+      });
+    }
+
+    await deletePasswordResetTokens(userId);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password updated successfully',
+      userId: updatedUser,
+    });
+  } catch (error) {
+    logError('Error updating user password', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred, please try again later',
+    });
+  }
 };

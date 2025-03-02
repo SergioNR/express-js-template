@@ -95,10 +95,10 @@ export const updateUserPassword = async (req, res) => {
       userId: updatedUser.id,
     });
   } catch (error) {
-    return {
+    return res.status(500).json({
       success: false,
       message: 'Error updating password',
-    };
+    });
   }
 };
 

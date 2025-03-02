@@ -17,7 +17,7 @@ export const forgotPasswordRequest = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'If this email exists, a reset link will been sent',
+      message: 'If this email exists, a reset link will be sent',
     });
   } catch (error) {
     logError('Error in forgotPasswordRequest function', error);

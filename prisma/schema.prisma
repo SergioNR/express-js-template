@@ -22,7 +22,18 @@ model User {
   created_at      DateTime  @default(now())
   last_updated_at DateTime  @updatedAt
   last_login_at   DateTime?
+
+  @@index([id, email])
+
 }
+
+model Password_reset_tokens {
+  id              String    @id @unique @default(uuid())
+  user_id         String
+  token_expires   DateTime
+  created_at      DateTime  @default(now())
+}
+
 
 
 enum userRoles {

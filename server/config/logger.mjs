@@ -9,6 +9,13 @@ const transport = pino.transport({
   redact: redactOptions,
   targets: [
     {
+      target: 'pino-pretty',
+      options: {
+        destination: 1,
+        colorize: true,
+      },
+    },
+    {
       target: 'pino-mongodb',
       options: {
         uri: process.env.MONGODB_CONNECTIONSTRING,

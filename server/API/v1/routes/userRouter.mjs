@@ -1,22 +1,21 @@
 import { Router } from 'express';
-import {
-  deleteOneUserById,
-  getAllUsers,
-  getOneUserById,
-} from '../../../controllers/userController.mjs';
+import { checkSchema } from 'express-validator';
 import { authenticationChecker } from '../../../middlewares/authenticationChecker.mjs';
+import { getProfile, deleteUser, createUser } from '../../../controllers/userController.mjs';
+import { createUserValidationSchema } from '../../../utils/validators/createUserSchema.mjs';
+import { sanitizerResult } from '../../../middlewares/sanitizerResult.mjs';
 
-export const userApi = Router();
+export const userRouter = Router();
 
-userApi.use(authenticationChecker);
+userRouter.post('/register/local', checkSchema(createUserValidationSchema), sanitizerResult, createUser);
 
-userApi.get('/', getAllUsers);
+userRouter.use(authenticationChecker);
 
-userApi.get('/:userId', getOneUserById);
+userRouter.get('/profile', getProfile);
 
-userApi.delete('/:userId', deleteOneUserById);
+userRouter.delete('/delete', deleteUser);
 
-// userApi.patch('/:userId', async (req, res) => {
+// userRouter.patch('/:userId', async (req, res) => {
 //   const user = await getUserById(req.params.userId);
 //   if (!user) {
 //     return res.status(404).json({ success: false, message: 'User not found' });
@@ -31,6 +30,6 @@ userApi.delete('/:userId', deleteOneUserById);
 // return res.status(200).json({ success: true, data: user });
 // });
 
-userApi.use('/*fallback', (req, res) => {
-  res.send('requested route does not exist in /user/');
+userRouter.use('/*fallback', (req, res) => {
+  res.status(404).send('requested route does not exist in /user/');
 });

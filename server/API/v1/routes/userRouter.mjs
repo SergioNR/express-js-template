@@ -31,5 +31,5 @@ userRouter.delete('/delete', deleteUser);
 // });
 
 userRouter.use('/*fallback', (req, res) => {
-  res.send('requested route does not exist in /user/');
+  res.status(404).send('requested route does not exist in /user/');
 });

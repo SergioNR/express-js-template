@@ -186,17 +186,17 @@ export const updateRecoveredUserPassword = async (req, res) => {
 
     const tokenData = await getTokenDataByToken(token);
 
-    const {
-      userId,
-      tokenExpires,
-    } = tokenData;
-
     if (tokenData.success === false) {
       return res.status(400).json({
         success: false,
         message: 'Invalid token',
       });
     }
+
+    const {
+      userId,
+      tokenExpires,
+    } = tokenData;
 
     if (new Date(tokenExpires) < new Date()) {
       return res.status(400).json({

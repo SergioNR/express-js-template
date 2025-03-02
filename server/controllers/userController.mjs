@@ -228,7 +228,7 @@ export const updateRecoveredUserPassword = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Password updated successfully',
-      userId: updatedUser,
+      userId: updatedUser.id,
     });
   } catch (error) {
     logError('Error updating user password', error);

@@ -34,7 +34,12 @@ model Password_reset_tokens {
   created_at      DateTime  @default(now())
 }
 
-
+model Session {
+  id        String   @id
+  sid       String   @unique
+  data      String 
+  expiresAt   DateTime
+}
 
 enum userRoles {
   customer

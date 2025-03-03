@@ -1,22 +1,14 @@
 import session from 'express-session';
-import connectMongoDBSession from 'connect-mongodb-session';
-import { logFatalMongoDBSessionInitError } from '../config/loggerFunctions.mjs';
+import { PrismaSessionStore } from '@quixo3/prisma-session-store';
+import { PrismaClient } from '@prisma/client';
 
-const MongoDBStore = connectMongoDBSession(session);
+const prisma = new PrismaClient();
 
-const mongoDBSessionStore = new MongoDBStore({
-  uri: process.env.MONGODB_CONNECTIONSTRING,
-  databaseName: 'main',
-  collection: 'sessions',
-}, (async (error) => {
-  if (error) {
-    logFatalMongoDBSessionInitError(error);
-  }
-}));
+const prismaSessionStore = new PrismaSessionStore(prisma, {
+  checkPeriod: 2 * 60 * 1000, // ms
+  dbRecordIdIsSessionId: true,
+  dbRecordIdFunction: undefined,
 
-mongoDBSessionStore.on('error', (error) => {
-  throw error;
-  // TODO: Implement error handling
 });
 
 export const storeSessions = session({
@@ -29,5 +21,5 @@ export const storeSessions = session({
     httpOnly: true,
     SameSite: 'None',
   },
-  store: mongoDBSessionStore,
+  store: prismaSessionStore,
 });

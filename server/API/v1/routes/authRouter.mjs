@@ -6,7 +6,7 @@ import { createUserValidationSchema } from '../../../utils/validators/createUser
 import { updatePasswordSchema } from '../../../utils/validators/updatePasswordSchema.mjs';
 import passport from '../../../auth/passportjs.mjs';
 import { logError } from '../../../config/loggerFunctions.mjs';
-import { forgotPasswordRequest } from '../../../controllers/authController.mjs';
+import { checkSession, forgotPasswordRequest } from '../../../controllers/authController.mjs';
 
 export const authRouter = Router();
 
@@ -67,6 +67,8 @@ authRouter.patch('/updateUserPassword', checkSchema(updatePasswordSchema), sanit
 authRouter.post('/recoverPassword', forgotPasswordRequest);
 
 authRouter.patch('/createNewPassword', checkSchema(updatePasswordSchema), sanitizerResult, updateRecoveredUserPassword);
+
+authRouter.get('/check-session', checkSession);
 
 authRouter.get('/*fallback', (req, res) => {
   res.status(404).send('requested API Route does not exist in the userRouter');

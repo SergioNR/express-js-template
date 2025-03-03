@@ -10,7 +10,7 @@ This template uses .ejs for the front end
 
 - Analytics (Posthog)
 - User Authentication (PassportJS)
-- Database (MongoDB & PostgresQL)
+- Database (MongoDB & PostgreSQL)
 - Payments (Stripe)
 - Logging (Pinojs)
 

@@ -18,7 +18,7 @@ app.use(cookieParserMiddleware);
 app.use(express.urlencoded());
 app.use(express.json());
 
-//* Middleware to store sessions in MongoDB
+//* Middleware to store sessions in DB
 app.use(storeSessions);
 
 app.use(passport.session());

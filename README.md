@@ -10,7 +10,7 @@ This template uses .ejs for the front end
 
 - Analytics (Posthog)
 - User Authentication (PassportJS)
-- Database (MongoDB)
+- Database (MongoDB & PostgreSQL)
 - Payments (Stripe)
 - Logging (Pinojs)
 
@@ -57,4 +57,4 @@ Bear in mind that we are using the pinojs logger in 3 scenarios:
 
 # Database
 
-Create a mongoDB database and add the username & password & connection string to the .env file
+PostgresQL

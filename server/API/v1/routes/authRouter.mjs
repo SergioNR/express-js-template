@@ -20,7 +20,7 @@ authRouter.post('/login/local', (req, res, next) => {
     }
 
     if (!user) { //* Will trigger if user does not exist
-      return res.status(200).json({
+      return res.status(401).json({
         success: false,
         message: 'The combination of email and password is incorrect',
       });

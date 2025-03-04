@@ -28,3 +28,21 @@ export const forgotPasswordRequest = async (req, res) => {
     });
   }
 };
+
+export const checkSession = async (req, res) => {
+  if (req.user) {
+    return res.status(200).json({
+      success: true,
+      message: 'Session is valid',
+      user: {
+        id: req.user.id,
+        role: req.user.role,
+      },
+    });
+  }
+
+  return res.status(401).json({
+    success: false,
+    message: 'Session is invalid',
+  });
+};

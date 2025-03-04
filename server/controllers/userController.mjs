@@ -11,6 +11,8 @@ import { deletePasswordResetTokens, getTokenDataByToken } from '../models/passwo
 import { logError } from '../config/loggerFunctions.mjs';
 
 export const getProfile = async (req, res) => {
+  req.user.password = undefined;
+
   res.status(200).json({
     success: true,
     user: req.user,

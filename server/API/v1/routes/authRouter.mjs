@@ -20,7 +20,7 @@ authRouter.post('/login/local', (req, res, next) => {
     }
 
     if (!user) { //* Will trigger if user does not exist
-      return res.status(401).json({
+      return res.status(200).json({
         success: false,
         message: 'The combination of email and password is incorrect',
       });
@@ -29,7 +29,7 @@ authRouter.post('/login/local', (req, res, next) => {
     // Log the user in and establish a session
     req.login(user, (loginErr) => {
       if (loginErr) { //* Will trigger if password is incorrect
-        return res.status(401).json({
+        return res.status(200).json({
           success: false,
           message: 'The combination of email and password is incorrect',
         });

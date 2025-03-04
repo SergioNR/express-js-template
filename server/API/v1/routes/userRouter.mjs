@@ -4,12 +4,15 @@ import { authenticationChecker } from '../../../middlewares/authenticationChecke
 import { getProfile, deleteUser, createUser } from '../../../controllers/userController.mjs';
 import { createUserValidationSchema } from '../../../utils/validators/createUserSchema.mjs';
 import { sanitizerResult } from '../../../middlewares/sanitizerResult.mjs';
+import { checkPermissionByRole } from '../../../middlewares/permissionByRoleChecker.mjs';
 
 export const userRouter = Router();
 
 userRouter.post('/register/local', checkSchema(createUserValidationSchema), sanitizerResult, createUser);
 
 userRouter.use(authenticationChecker);
+
+userRouter.use(checkPermissionByRole('customer'));
 
 userRouter.get('/profile', getProfile);
 

@@ -36,6 +36,7 @@ export const checkSession = async (req, res) => {
       message: 'Session is valid',
       user: {
         id: req.user.id,
+        role: req.user.role,
       },
     });
   }

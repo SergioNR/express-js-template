@@ -5,11 +5,14 @@ import {
   getOneUserById,
 } from '../../../controllers/adminController.mjs';
 import { authenticationChecker } from '../../../middlewares/authenticationChecker.mjs';
+import { checkPermissionByRole } from '../../../middlewares/permissionByRoleChecker.mjs';
 
 export const adminRouter = Router();
 
 // TODO - fix authentication in tests
-// adminRouter.use(authenticationChecker);
+adminRouter.use(authenticationChecker);
+
+adminRouter.use(checkPermissionByRole('admin'));
 
 adminRouter.get('/', getAllUsers);
 

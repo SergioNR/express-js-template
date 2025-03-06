@@ -41,6 +41,7 @@ authRouter.post('/login/local', (req, res, next) => {
         message: 'Login successful',
         user: {
           id: user.id,
+          role: req.user.role,
         },
       });
     });

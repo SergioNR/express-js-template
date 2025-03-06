@@ -1,14 +1,16 @@
 import { Router } from 'express';
 import { checkSchema } from 'express-validator';
 import { authenticationChecker } from '../../../middlewares/authenticationChecker.mjs';
-import { getProfile, deleteUser, createUser } from '../../../controllers/userController.mjs';
-import { createUserValidationSchema } from '../../../utils/validators/createUserSchema.mjs';
-import { sanitizerResult } from '../../../middlewares/sanitizerResult.mjs';
+import { getProfile, deleteUser } from '../../../controllers/userController.mjs';
 import { checkPermissionByRole } from '../../../middlewares/permissionByRoleChecker.mjs';
 
 export const userRouter = Router();
 
-userRouter.post('/register/local', checkSchema(createUserValidationSchema), sanitizerResult, createUser);
+userRouter.get('/', (req, res) => {
+  res.status(200).json({
+    message: 'Route does not exist in /user/',
+  });
+});
 
 userRouter.use(authenticationChecker);
 

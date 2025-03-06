@@ -111,7 +111,16 @@ export const updateUserPasswordInDB = async (userId, newPassword) => {
 
 export const findUsersInDb = async () => {
   try {
-    const queryResult = await prisma.user.findMany();
+    const queryResult = await prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        created_at: true,
+        last_updated_at: true,
+        last_login_at: true,
+      },
+    });
 
     return queryResult;
   } catch (error) {

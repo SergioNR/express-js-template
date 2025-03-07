@@ -19,8 +19,6 @@ services:
       PINOJS_SOURCE_TOKEN: ${PINOJS_SOURCE_TOKEN}
       PRISMA_POSTGRES_CONNECTION_STRING: postgresql://postgres:prismaORM124!@db:5432/public
       PRISMA_POSTGRES_CONNECTION_DIRECT_URL: postgresql://postgres:prismaORM124!@db:5432/public
-      # PRISMA_POSTGRES_CONNECTION_STRING: postgresql://prisma.uyowasnundxrxojgotne:Ya9Tgn7383o9@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true
-      # PRISMA_POSTGRES_CONNECTION_DIRECT_URL: postgresql://prisma.uyowasnundxrxojgotne:Ya9Tgn7383o9@aws-0-eu-central-1.pooler.supabase.com:5432/postgres
       MONGODB_USERNAME: ${MONGODB_USERNAME}
       MONGODB_PASSWORD: ${MONGODB_PASSWORD}
       MONGODB_URI: ${MONGODB_URI}
@@ -63,6 +61,4 @@ services:
 
 volumes:
   db-data:
-# Environment variables are automatically loaded from .env file
-# No additional configuration needed here
 

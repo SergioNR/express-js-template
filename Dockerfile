@@ -17,30 +17,10 @@ ENV NODE_ENV=production
 # Declare env variables
 ENV PORT=3000
 
-ENV POSTHOG_API_KEY=phx_ShnvcRWX1166VeKHh5yD942PFT2txqH7VTCNvd2lwBIufkh
+# Install PostgreSQL client for pg_isready
+RUN apk add --no-cache postgresql-client
 
-ENV SESSION_SECRET=TBD
-
-ENV BREVO_API_KEY=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
-
-ENV PINOJS_SOURCE_TOKEN=TBD
-
-ENV NODE_ENV=localhost
-
-ENV PRISMA_POSTGRES_CONNECTION_STRING=postgresql://prisma.uyowasnundxrxojgotne:Ya9Tgn7383o9@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true
-
-ENV PRISMA_POSTGRES_CONNECTION_DIRECT_URL=postgresql://prisma.uyowasnundxrxojgotne:Ya9Tgn7383o9@aws-0-eu-central-1.pooler.supabase.com:5432/postgres
-
-ENV MONGODB_USERNAME=mongodblogs
-ENV MONGODB_PASSWORD=kXgAXOmauqFX2nRy
-ENV MONGODB_URI=localhost-cluster.rve78.mongodb.net
-ENV MONGODB_CONNECTIONSTRING=mongodb+srv://mongodblogs:kXgAXOmauqFX2nRy@localhost-cluster.rve78.mongodb.net/?retryWrites=true&w=majority&appName=localhost-cluster
-
-ENV TELEGRAM_BOT_API_KEY=7753554626:AAHlrI6FVVBGS_57as7gluPvkeq28AR1eME
-ENV TELEGRAM_BOT_FLIGHTDEALS_CHAT_ID=-1002421875839
-ENV TELEGRAM_BOT_LOGS_CHAT_ID=-4614017830
-
-
+# Create a directory for the app and set it as the working directory.
 WORKDIR /usr/src/app
 
 # Download dependencies as a separate step to take advantage of Docker's caching.
@@ -56,17 +36,22 @@ RUN --mount=type=bind,source=package.json,target=package.json \
 # Copy Prisma schema files
 COPY prisma ./prisma/
 
-# Run Prisma generate
+# Run Prisma generate to ready the Prisma client
 RUN npx prisma generate
-
-# Run the application as a non-root user.
-USER node
 
 # Copy the rest of the source files into the image.
 COPY . .
+
+# Create a startup script
+COPY start.sh .
+RUN chmod +x start.sh
+
+# # Run the application as a non-root user.
+USER node
 
 # Expose the port that the application listens on.
 EXPOSE 3000
 
 # Run the application.
-CMD ["npm", "run", "deploy:prod"]
+
+CMD ["./start.sh"]

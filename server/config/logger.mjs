@@ -1,42 +1,42 @@
 import pino from 'pino';
-import pretty from 'pino-pretty';
 
+const redactOptions = {
+  paths: ['context.userData.email', 'context.userData.password'],
+  censor: '[REDACTED]',
+};
 
-export const logger = process.env.NODE_ENV === 'production' ? pino({
-    transport: {
-        target: 'pino-pretty', // Correctly specify the target as a string
-        options: {
-            colorize: true, // Optional: colorize the output for better readability
-            ignore: 'pid,hostname', // Optional: ignore the pid and hostname fields
-        },
+const transport = pino.transport({
+  redact: redactOptions,
+  targets: [
+    {
+      target: 'pino-pretty',
+      options: {
+        destination: 1,
+        colorize: true,
+      },
     },
-    transport: {
-        target: `@logtail/pino`,
-        options: {
-            sourceToken: process.env.PINOJS_PROD,
-        }
-    }
-}) : process.env.HOSTNAME === `localhost` ? pino({
-    transport: {
-        target: 'pino-pretty', // Correctly specify the target as a string
-        options: {
-            colorize: true, // Optional: colorize the output for better readability
-            ignore: 'pid,hostname', // Optional: ignore the pid and hostname fields
+    {
+      target: 'pino-mongodb',
+      options: {
+        uri: process.env.MONGODB_CONNECTIONSTRING,
+        database: 'logs',
+        collection: 'log-collection',
+        mongoOptions: {
+          auth: {
+            username: process.env.MONGODB_USERNAME,
+            password: process.env.MONGODB_PASSWORD,
+          },
         },
+      },
     },
-    
-}) : pino({ //* 
-    transport: {
-        target: 'pino-pretty', // Correctly specify the target as a string
-        options: {
-            colorize: true, // Optional: colorize the output for better readability
-            ignore: 'pid,hostname', // Optional: ignore the pid and hostname fields
-        },
-    },
-    transport: {
-        target: `@logtail/pino`,
-        options: {
-            sourceToken: process.env.PINOJS_DEV,
-        }
-    }
+    // {
+    //   target: '@logtail/pino',
+    //   options: {
+    //     sourceToken: process.env.PINOJS_SOURCE_TOKEN,
+    //     options: { endpoint: 'https://s1198477.eu-nbg-2.betterstackdata.com' },
+    //   },
+    // },
+  ],
 });
+
+export const logger = pino(transport);

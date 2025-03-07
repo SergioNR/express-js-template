@@ -1,5 +1,5 @@
-import { MongoClient, ServerApiVersion } from "mongodb";
-import { logger } from "../config/logger.mjs";
+import { MongoClient, ServerApiVersion } from 'mongodb';
+import { logFatalMongoDbConnectionError } from '../config/loggerFunctions.mjs';
 
 const uri = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_URI}/?retryWrites=true`;
 
@@ -16,26 +16,18 @@ let dbConnection;
 
 export const connectToDatabase = async () => {
   if (dbConnection) {
-    
     return dbConnection;
+  }
 
-  } else {
+  try {
+    await client.connect();
 
-      try {
-        await client.connect();
+    dbConnection = client.db('main');
 
-        dbConnection = client.db("main");
-        
-        return dbConnection;
+    return dbConnection;
+  } catch (error) {
+    logFatalMongoDbConnectionError(error);
 
-      } catch (error) {
-
-        logger.fatal({
-          message: `[DB CONNECTION] Cant connect to MongoDB - ${error.errmsg}`,
-          error: error,
-        })
-        
-        return error;
-      }
-    }
+    return error;
+  }
 };

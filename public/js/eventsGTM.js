@@ -1,1 +1,0 @@
-// TODO write up all the events from GTM -- Can copy them from posthog

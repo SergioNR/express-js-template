@@ -1,0 +1,47 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("PRISMA_POSTGRES_CONNECTION_STRING")
+  directUrl = env("PRISMA_POSTGRES_CONNECTION_DIRECT_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  password        String
+  role            userRoles     @default(customer)
+  created_at      DateTime  @default(now())
+  last_updated_at DateTime  @updatedAt
+  last_login_at   DateTime?
+
+  @@index([id, email])
+
+}
+
+model Password_reset_tokens {
+  id              String    @id @unique @default(uuid())
+  user_id         String
+  token_expires   DateTime
+  created_at      DateTime  @default(now())
+}
+
+model Session {
+  id        String   @id
+  sid       String   @unique
+  data      String 
+  expiresAt   DateTime
+}
+
+enum userRoles {
+  customer
+  admin
+}

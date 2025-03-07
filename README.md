@@ -57,4 +57,4 @@ Bear in mind that we are using the pinojs logger in 3 scenarios:
 
 # Database
 
-PostgresQL
+PostgreSQL

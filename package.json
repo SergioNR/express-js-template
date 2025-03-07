@@ -7,9 +7,8 @@
     "description": "Template for Expressjs projects",
     "main": "app.mjs",
     "scripts": {
-        "deploy:prod": "NODE_ENV=production node ./server/app.mjs",
-        "deploy:dev": "node ./server/app.mjs",
-        "deploy:local": "node --watch --env-file=.env ./server/app.mjs",
+        "start": "node ./server/app.mjs",
+        "start:local": "node --watch --env-file=.env ./server/app.mjs",
         "test:ui": "env $(cat .env | xargs) npx playwright test --ui",
         "test:noui": "env $(cat .env | xargs) npx playwright test"
     },

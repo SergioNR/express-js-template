@@ -36,7 +36,7 @@ app.use((err, req, res, next) => {
 });
 
 //* Start the server
-app.listen(process.env.PORT, process.env.HOSTNAME, () => {
+app.listen(process.env.PORT, () => {
 // eslint-disable-next-line no-console
   console.log(`Server running at http://localhost:${process.env.PORT}/`);
 });

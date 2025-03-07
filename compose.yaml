@@ -1,0 +1,64 @@
+# Comments are provided throughout this file to help you get started.
+# If you need more help, visit the Docker Compose reference guide at
+# https://docs.docker.com/go/compose-spec-reference/
+
+# Here the instructions define your application as a service called "server".
+# This service is built from the Dockerfile in the current directory.
+# You can add other services your application may depend on here, such as a
+# database or a cache. For examples, see the Awesome Compose repository:
+# https://github.com/docker/awesome-compose
+services:
+  expressjs-server:
+    build:
+      context: .
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      POSTHOG_API_KEY: ${POSTHOG_API_KEY}
+      SESSION_SECRET: ${SESSION_SECRET}
+      BREVO_API_KEY: ${BREVO_API_KEY}
+      PINOJS_SOURCE_TOKEN: ${PINOJS_SOURCE_TOKEN}
+      PRISMA_POSTGRES_CONNECTION_STRING: postgresql://postgres:prismaORM124!@db:5432/public
+      PRISMA_POSTGRES_CONNECTION_DIRECT_URL: postgresql://postgres:prismaORM124!@db:5432/public
+      MONGODB_USERNAME: ${MONGODB_USERNAME}
+      MONGODB_PASSWORD: ${MONGODB_PASSWORD}
+      MONGODB_URI: ${MONGODB_URI}
+      MONGODB_CONNECTIONSTRING: ${MONGODB_CONNECTIONSTRING}
+      TELEGRAM_BOT_API_KEY: ${TELEGRAM_BOT_API_KEY}
+      TELEGRAM_BOT_FLIGHTDEALS_CHAT_ID: ${TELEGRAM_BOT_FLIGHTDEALS_CHAT_ID}
+      TELEGRAM_BOT_LOGS_CHAT_ID: ${TELEGRAM_BOT_LOGS_CHAT_ID}
+    ports:
+      - 3000:3000
+    develop:
+      watch:
+        - path: .
+          action: sync+restart #* Synchronize code changes and restart the server
+          target: /usr/src/app/
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16.8
+    restart: always
+    # profiles: ["development"]
+    user: 
+      postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=public
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=prismaORM124!
+      # - POSTGRES_HOST_AUTH_METHOD=trust
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s # Added a start_period to give the database time to initialize before health checks start
+
+volumes:
+  db-data:
+

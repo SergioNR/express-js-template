@@ -61,7 +61,7 @@ authRouter.post('/logout', (req, res, next) => {
   });
 });
 
-authRouter.post('/register/', checkSchema(createUserValidationSchema), sanitizerResult, createUser);
+authRouter.post('/register/local', checkSchema(createUserValidationSchema), sanitizerResult, createUser);
 
 authRouter.patch('/updateUserPassword', checkSchema(updatePasswordSchema), sanitizerResult, updateUserPassword);
 

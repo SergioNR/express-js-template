@@ -15,20 +15,20 @@ const transport = pino.transport({
         colorize: true,
       },
     },
-    {
-      target: 'pino-mongodb',
-      options: {
-        uri: process.env.MONGODB_CONNECTIONSTRING,
-        database: 'logs',
-        collection: 'log-collection',
-        mongoOptions: {
-          auth: {
-            username: process.env.MONGODB_USERNAME,
-            password: process.env.MONGODB_PASSWORD,
-          },
-        },
-      },
-    },
+    // {
+    //   target: 'pino-mongodb',
+    //   options: {
+    //     uri: process.env.MONGODB_CONNECTIONSTRING,
+    //     database: 'logs',
+    //     collection: 'log-collection',
+    //     mongoOptions: {
+    //       auth: {
+    //         username: process.env.MONGODB_USERNAME,
+    //         password: process.env.MONGODB_PASSWORD,
+    //       },
+    //     },
+    //   },
+    // },
     // {
     //   target: '@logtail/pino',
     //   options: {

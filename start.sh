@@ -12,4 +12,4 @@ echo "Database is up - running migrations"
 npx prisma migrate deploy
 
 echo "Starting application"
-exec npm run deploy:prod
+exec npm run start

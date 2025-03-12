@@ -1,26 +1,5 @@
 import { logger } from './logger.mjs';
 
-/*
-Example Log Structure:
-{
-    timestamp: "YYYY-MM-DDTHH:mm:ss.sssZ",
-    level: "info" | "warn" | "error" | "fatal",
-    message: "Descriptive message",
-    context: {
-        userId: "Optional user ID",
-        loginMethod: "Optional login method",
-        error: "Optional error object",
-        userData: "Optional user data",
-        additionalInfo: "Any other relevant information"
-    }
-}
-
-Note: Events should be logged as close to the source as possible.
-ie: if a user logs in, the event should be logged in the login function.
-ie2: If a user is created, the event should be logged in the create user function.
-
-*/
-
 export const logUserLoggedInSuccessfully = (userId, loginMethod) => {
   logger.info({
     message: 'User logged in successfully',

@@ -11,8 +11,8 @@
         "start:local": "node --watch --env-file=.env ./server/app.mjs",
         "test:ui": "env $(cat .env | xargs) npx playwright test --ui",
         "test:noui": "env $(cat .env | xargs) npx playwright test",
-        "docker:koyeb": "docker build --platform=linux/amd64 -t sergion14/expressjs-template:amd64latest .",
-        "docker:dev": "docker build -t sergion14/expressjs-template:amd64latest ."
+        "docker:koyeb": "docker build --platform=linux/amd64 -t sergion14/templates:expressjsAMD64-latest .",
+        "docker:dev": "docker build -t sergion14/templates:expressjs-latest ."
 
     },
     "author": "SNR",

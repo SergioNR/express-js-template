@@ -125,7 +125,7 @@ export const deleteAccount = async (req, res) => {
 
 export const createUser = async (req, res) => {
   if (req.sanitizedErrors) {
-    return res.status(400).json({
+    return res.status(422).json({
       success: false,
       message: 'Invalid userId',
       errors: req.sanitizedErrors,
@@ -147,7 +147,7 @@ export const createUser = async (req, res) => {
   }
 
   if (existingUser !== null) {
-    return res.status(400).json({
+    return res.status(409).json({
       success: false,
       ERR_CODE: 'USER_ALREADY_EXISTS',
       message: 'A user with that email address already exists',

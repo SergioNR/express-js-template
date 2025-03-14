@@ -1,24 +1,9 @@
 # syntax=docker/dockerfile:1
 
-# Comments are provided throughout this file to help you get started.
-# If you need more help, visit the Dockerfile reference guide at
-# https://docs.docker.com/go/dockerfile-reference/
-
-# Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
-
+# Set the base image to use for subsequent instructions.
 ARG NODE_VERSION=22.14.0
 
 FROM node:${NODE_VERSION}-alpine
-
-
-# Use production node environment by default.
-ENV NODE_ENV=production
-
-# Declare env variables
-ENV PORT=3000
-
-# Install PostgreSQL client for pg_isready
-RUN apk add --no-cache postgresql-client
 
 # Create a directory for the app and set it as the working directory.
 WORKDIR /usr/src/app
@@ -52,6 +37,6 @@ USER node
 # Expose the port that the application listens on.
 EXPOSE 3000
 
-# Run the application.
+# Run the application. - Running from the start.sh instead of CMD ["npm run start"] script since we need to run "npx prisma deploy" before starting the server to sync the database schema.
 
 CMD ["./start.sh"]

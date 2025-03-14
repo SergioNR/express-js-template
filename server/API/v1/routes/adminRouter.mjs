@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import {
   deleteOneUserById,
-  getAllUsers,
+  getAllCustomers,
   getOneUserById,
 } from '../../../controllers/adminController.mjs';
 import { authenticationChecker } from '../../../middlewares/authenticationChecker.mjs';
@@ -14,7 +14,7 @@ adminRouter.use(authenticationChecker);
 
 adminRouter.use(checkPermissionByRole('admin'));
 
-adminRouter.get('/', getAllUsers);
+adminRouter.get('/', getAllCustomers);
 
 adminRouter.get('/:userId', getOneUserById);
 

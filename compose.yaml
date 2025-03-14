@@ -26,6 +26,8 @@ services:
       TELEGRAM_BOT_API_KEY: ${TELEGRAM_BOT_API_KEY}
       TELEGRAM_BOT_FLIGHTDEALS_CHAT_ID: ${TELEGRAM_BOT_FLIGHTDEALS_CHAT_ID}
       TELEGRAM_BOT_LOGS_CHAT_ID: ${TELEGRAM_BOT_LOGS_CHAT_ID}
+      FRONT_WEB_APP_ORIGIN_URL: ${FRONT_WEB_APP_ORIGIN_URL}
+      PORT: ${PORT}
     ports:
       - 3000:3000
     develop:
@@ -35,8 +37,13 @@ services:
           target: /usr/src/app/
     depends_on:
       db:
-        condition: service_healthy
+        condition: service_started
 
+  # front-end:
+  #   image: reactjs-template
+  #   ports:
+  #     - 80:80
+  #   restart: always # Added restart policy for front-end service
   db:
     image: postgres:16.8
     restart: always
@@ -52,12 +59,7 @@ services:
       # - POSTGRES_HOST_AUTH_METHOD=trust
     ports:
       - 5432:5432
-    healthcheck:
-      test: [ "CMD", "pg_isready" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s # Added a start_period to give the database time to initialize before health checks start
+    
 
 volumes:
   db-data:

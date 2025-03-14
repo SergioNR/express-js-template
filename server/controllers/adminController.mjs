@@ -1,11 +1,11 @@
 import {
   deleteUserInDb,
-  findUsersInDb,
+  findCustomersInDb,
   getUserById,
 } from '../models/userModel.mjs';
 
-export const getAllUsers = async (req, res) => {
-  const query = await findUsersInDb();
+export const getAllCustomers = async (req, res) => {
+  const query = await findCustomersInDb();
 
   res.status(200).json({
     success: true,

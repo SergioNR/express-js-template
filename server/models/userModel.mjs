@@ -109,9 +109,10 @@ export const updateUserPasswordInDB = async (userId, newPassword) => {
   }
 };
 
-export const findUsersInDb = async () => {
+export const findCustomersInDb = async () => {
   try {
     const queryResult = await prisma.user.findMany({
+      where: { role: 'customer' },
       select: {
         id: true,
         email: true,

@@ -10,7 +10,10 @@
         "start": "node ./server/app.mjs",
         "start:local": "node --watch --env-file=.env ./server/app.mjs",
         "test:ui": "env $(cat .env | xargs) npx playwright test --ui",
-        "test:noui": "env $(cat .env | xargs) npx playwright test"
+        "test:noui": "env $(cat .env | xargs) npx playwright test",
+        "docker:koyeb": "docker build --platform=linux/amd64 -t sergion14/templates:expressjsAMD64-latest .",
+        "docker:dev": "docker build -t sergion14/templates:expressjs-latest ."
+
     },
     "author": "SNR",
     "dependencies": {

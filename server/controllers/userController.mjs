@@ -7,7 +7,7 @@ import {
   deleteUserInDb,
   updateUserPasswordInDB,
 } from '../models/userModel.mjs';
-import { deletePasswordResetTokens, getTokenDataByToken } from '../models/passwordResetTokensModel.mjs';
+import { deletePasswordResetTokens, getPasswordResetTokenData } from '../models/passwordResetTokensModel.mjs';
 import { logError } from '../config/loggerFunctions.mjs';
 
 export const getProfile = async (req, res) => {
@@ -21,14 +21,7 @@ export const getProfile = async (req, res) => {
 
 export const deleteUser = async (req, res) => {
   try {
-    const deletionRequest = await deleteUserInDb(req.user.id);
-
-    if (deletionRequest && deletionRequest.success === false) {
-      return res.status(500).json({
-        success: false,
-        message: deletionRequest.message,
-      });
-    }
+    await deleteUserInDb(req.user.id);
 
     return res.status(200).json({
       success: true,
@@ -54,17 +47,16 @@ export const updateUserPassword = async (req, res) => {
     newPassword,
   } = req.body;
 
-  const userId = req.user.id;
-  const user = await getUserById(userId);
-
-  if (user === null) {
-    return res.status(401).json({
-      success: false,
-      message: 'User not found',
-    });
-  }
-
   try {
+    const userId = req.user.id;
+    const user = await getUserById(userId);
+
+    if (user === null) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
     const storedPasswordHash = user.password;
 
     // Hash the new password
@@ -84,19 +76,13 @@ export const updateUserPassword = async (req, res) => {
     // Update password in database
     const updatedUser = await updateUserPasswordInDB(userId, hashedPassword);
 
-    if (updatedUser.success === false) {
-      return res.status(500).json({
-        success: false,
-        message: 'Error updating password',
-      });
-    }
-
     return res.status(200).json({
       success: true,
       message: 'Password updated successfully',
-      userId: updatedUser.id,
+      result: updatedUser,
     });
   } catch (error) {
+    logError('Error updating user password', error);
     return res.status(500).json({
       success: false,
       message: 'Error updating password',
@@ -105,70 +91,63 @@ export const updateUserPassword = async (req, res) => {
 };
 
 export const deleteAccount = async (req, res) => {
-  const { userId } = req.params;
+  try {
+    const { userId } = req.params;
 
-  const deletedUser = await deleteUserInDb(userId);
+    const deletedUser = await deleteUserInDb(userId);
 
-  if (deletedUser && deletedUser.success === false) {
+    return res.status(200).json({
+      success: true,
+      message: 'user successfully deleted',
+      userId: deletedUser.user.id,
+    });
+  } catch (error) {
     return res.status(502).json({
       success: false,
-      message: deletedUser.message,
+      message: 'Error deleting user',
     });
   }
-
-  return res.status(200).json({
-    success: true,
-    message: 'user successfully deleted',
-    userId: deletedUser.user.id,
-  });
 };
 
 export const createUser = async (req, res) => {
   if (req.sanitizedErrors) {
     return res.status(422).json({
       success: false,
-      message: 'Invalid userId',
+      message: 'User could not be created due to validation errors',
       errors: req.sanitizedErrors,
     });
   }
-  const userData = {
-    username: req.body.username,
-    password: await bcrypt.hash(req.body.password, 10),
-  };
 
-  const existingUser = await getUserByEmail(userData.username);
+  try {
+    const userData = {
+      username: req.body.username,
+      password: await bcrypt.hash(req.body.password, 10),
+    };
 
-  if (existingUser && existingUser.success === false) {
+    const existingUser = await getUserByEmail(userData.username);
+
+    if (existingUser !== null) {
+      return res.status(409).json({
+        success: false,
+        ERR_CODE: 'USER_ALREADY_EXISTS',
+        message: 'A user with that email address already exists',
+      });
+    }
+
+    const createdUser = await createUserInDB(new User(userData));
+
+    return res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      userId: createdUser.id,
+    });
+  } catch (error) {
     return res.status(500).json({
       success: false,
       ERR_CODE: 'USER_CREATION_ERROR',
-      message: 'An error occurred while creating the user - Please try again in a few minutes', //* Error generated on getUserByEmail() error
+      message: 'An error occurred while creating the user - Please try again in a few minutes',
     });
   }
-
-  if (existingUser !== null) {
-    return res.status(409).json({
-      success: false,
-      ERR_CODE: 'USER_ALREADY_EXISTS',
-      message: 'A user with that email address already exists',
-    });
-  }
-
-  const createdUser = await createUserInDB(new User(userData));
-
-  if (createdUser.success === false) {
-    return res.status(500).json({
-      success: false,
-      ERR_CODE: 'USER_CREATION_ERROR',
-      message: 'An error occurred while creating the user - Please try again in a few minutes', //* Error generated on createUserInDB() error
-    });
-  }
-
-  return res.status(201).json({
-    success: true,
-    message: 'User created successfully',
-    userId: createdUser.id,
-  });
 };
 
 export const updateRecoveredUserPassword = async (req, res) => {
@@ -186,9 +165,9 @@ export const updateRecoveredUserPassword = async (req, res) => {
       token,
     } = req.body;
 
-    const tokenData = await getTokenDataByToken(token);
+    const passwordResetTokenData = await getPasswordResetTokenData(token);
 
-    if (tokenData.success === false) {
+    if (!passwordResetTokenData) {
       return res.status(400).json({
         success: false,
         message: 'Invalid token',
@@ -198,12 +177,12 @@ export const updateRecoveredUserPassword = async (req, res) => {
     const {
       userId,
       tokenExpires,
-    } = tokenData;
+    } = passwordResetTokenData;
 
     if (new Date(tokenExpires) < new Date()) {
       return res.status(400).json({
         success: false,
-        message: 'Token expired',
+        message: 'Token expired - Please request a new password link',
       });
     }
 
@@ -216,21 +195,13 @@ export const updateRecoveredUserPassword = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    const updatedUser = await updateUserPasswordInDB(userId, hashedPassword);
-
-    if (updatedUser.success === false) {
-      return res.status(500).json({
-        success: false,
-        message: 'Error updating password in create new password',
-      });
-    }
+    await updateUserPasswordInDB(userId, hashedPassword);
 
     await deletePasswordResetTokens(userId);
 
     return res.status(200).json({
       success: true,
       message: 'Password updated successfully',
-      userId: updatedUser.id,
     });
   } catch (error) {
     logError('Error updating user password', error);

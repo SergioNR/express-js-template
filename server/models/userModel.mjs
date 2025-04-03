@@ -19,7 +19,7 @@ export const createUserInDB = async (user) => {
 
     logUserCreatedInDB(createUserInDbQuery.id, user);
 
-    posthogUserSignedUp(user);
+    posthogUserSignedUp(createUserInDbQuery);
 
     return createUserInDbQuery;
   } catch (error) {

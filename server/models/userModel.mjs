@@ -64,6 +64,9 @@ export const getUserById = async (userId) => {
   try {
     const getUserByIdQuery = await prisma.user.findUnique({
       where: { id: userId },
+      omit: {
+        password: true,
+      },
     });
 
     return getUserByIdQuery;
@@ -97,6 +100,12 @@ export const getAllCustomersInDb = async () => {
   try {
     const getAllCustomersQuery = await prisma.user.findMany({
       where: { role: 'customer' },
+      omit: {
+        password: true,
+      },
+      orderBy: {
+        created_at: 'desc',
+      },
     });
 
     return getAllCustomersQuery;

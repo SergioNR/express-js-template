@@ -15,5 +15,5 @@ apiRouter.use('/v1/auth', authRouter);
 apiRouter.post('/v1/webhooks/stripeWebhooks', paymentCompletedWebhook); // ? Maybe should be changed to apiRouter.use(...) ?
 
 apiRouter.use('/*fallback', (req, res) => {
-  res.status(404).send('Route not found in apiRouter');
+  res.status(404).send('The requested route is not available or does not exist');
 });

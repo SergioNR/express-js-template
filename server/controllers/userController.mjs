@@ -10,13 +10,23 @@ import {
 import { deletePasswordResetTokens, getPasswordResetTokenData } from '../models/passwordResetTokensModel.mjs';
 import { logError } from '../config/loggerFunctions.mjs';
 
-export const getProfile = async (req, res) => {
-  req.user.password = undefined;
+export const getUserProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
 
-  res.status(200).json({
-    success: true,
-    user: req.user,
-  });
+    const user = await getUserById(userId);
+
+    res.status(200).json({
+      success: true,
+      user: user,
+    });
+  } catch (error) {
+    logError('Error getting user profile', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting user profile',
+    });
+  }
 };
 
 export const deleteUser = async (req, res) => {
@@ -28,6 +38,7 @@ export const deleteUser = async (req, res) => {
       message: 'User deleted successfully',
     });
   } catch (error) {
+    logError('Error deleting user', error);
     return res.status(500).json({
       success: false,
       message: 'Error deleting user',
@@ -86,25 +97,6 @@ export const updateUserPassword = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Error updating password',
-    });
-  }
-};
-
-export const deleteAccount = async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    const deletedUser = await deleteUserInDb(userId);
-
-    return res.status(200).json({
-      success: true,
-      message: 'user successfully deleted',
-      userId: deletedUser.user.id,
-    });
-  } catch (error) {
-    return res.status(502).json({
-      success: false,
-      message: 'Error deleting user',
     });
   }
 };

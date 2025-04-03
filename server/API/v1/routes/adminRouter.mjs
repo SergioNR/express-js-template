@@ -21,5 +21,5 @@ adminRouter.get('/:userId', getOneUserById);
 adminRouter.delete('/:userId', deleteOneUserById);
 
 adminRouter.use('/*fallback', (req, res) => {
-  res.send('requested route does not exist in /admin/');
+  res.send('The requested route is not available or does not exist');
 });

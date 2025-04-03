@@ -4,13 +4,13 @@ import { logError } from '../config/loggerFunctions.mjs';
 export const posthogUserSignedUp = async (user) => {
   try {
     client.capture({
-      distinctId: user._id,
+      distinctId: user.id,
       event: 'userSignedUp',
       properties: {
         $set: {
         //   userEmail: user.userDetails.email,
         //* Not needed for now and its safer in regards to GDPR
-          userRole: user.userDetails.role,
+          userRole: user.role,
         },
       },
     });

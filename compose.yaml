@@ -65,7 +65,6 @@ services:
   db:
     image: postgres:16.8
     restart: always
-    # profiles: ["development"]
     user: 
       postgres
     volumes:
@@ -74,7 +73,6 @@ services:
       - POSTGRES_DB=public
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=prismaORM124!
-      # - POSTGRES_HOST_AUTH_METHOD=trust
     ports:
       - 5432:5432
     

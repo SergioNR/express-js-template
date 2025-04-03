@@ -65,9 +65,10 @@ export const deleteOneUserById = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'User successfully deleted',
-      userId: deleteUserQuery.user.id,
+      userId: deleteUserQuery.id,
     });
   } catch (error) {
+    logError('Error deleting user', error);
     return res.status(502).json({
       success: false,
       message: 'Error deleting user',

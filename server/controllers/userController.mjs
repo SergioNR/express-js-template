@@ -46,61 +46,6 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-export const updateUserPassword = async (req, res) => {
-  if (req.sanitizedErrors) {
-    return res.status(400).json({
-      success: false,
-      message: req.sanitizedErrors,
-    });
-  }
-  const {
-    currentPassword,
-    newPassword,
-  } = req.body;
-
-  try {
-    const userId = req.user.id;
-    const user = await getUserById(userId);
-
-    if (user === null) {
-      return res.status(401).json({
-        success: false,
-        message: 'User not found',
-      });
-    }
-    const storedPasswordHash = user.password;
-
-    // Hash the new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    // Compare current password with stored hash
-    const isMatch = await bcrypt.compare(currentPassword, storedPasswordHash);
-
-    if (!isMatch) {
-      return res.status(400).json({
-        success: false,
-        ERR_CODE: 'INCORRECT_PASSWORD',
-        message: 'Current password is incorrect',
-      });
-    }
-
-    // Update password in database
-    const updatedUser = await updateUserPasswordInDB(userId, hashedPassword);
-
-    return res.status(200).json({
-      success: true,
-      message: 'Password updated successfully',
-      result: updatedUser,
-    });
-  } catch (error) {
-    logError('Error updating user password', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error updating password',
-    });
-  }
-};
-
 export const createUser = async (req, res) => {
   if (req.sanitizedErrors) {
     return res.status(422).json({
@@ -200,6 +145,62 @@ export const updateRecoveredUserPassword = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'An error occurred, please try again later',
+    });
+  }
+};
+
+export const updateUserPassword = async (req, res) => {
+  if (req.sanitizedErrors) {
+    return res.status(400).json({
+      success: false,
+      message: req.sanitizedErrors,
+    });
+  }
+
+  const {
+    currentPassword,
+    newPassword,
+  } = req.body;
+
+  try {
+    const userId = req.user.id;
+    const user = await getUserById(userId);
+
+    if (user === null) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+    const storedPasswordHash = user.password;
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Compare current password with stored hash
+    const isMatch = await bcrypt.compare(currentPassword, storedPasswordHash);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        ERR_CODE: 'INCORRECT_PASSWORD',
+        message: 'Current password is incorrect',
+      });
+    }
+
+    // Update password in database
+    const updatedUser = await updateUserPasswordInDB(userId, hashedPassword);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password updated successfully',
+      result: updatedUser,
+    });
+  } catch (error) {
+    logError('Error updating user password', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error updating password',
     });
   }
 };

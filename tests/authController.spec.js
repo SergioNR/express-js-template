@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import config from './config/playwrightConfig.mjs';
+import config from './playwrightConfig.mjs';
 
 test.use(config.use);
 

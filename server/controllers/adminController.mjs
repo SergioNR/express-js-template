@@ -1,97 +1,76 @@
+import { logError } from '../config/loggerFunctions.mjs';
 import {
   deleteUserInDb,
-  findCustomersInDb,
+  getAllCustomersInDb,
   getUserById,
 } from '../models/userModel.mjs';
 
 export const getAllCustomers = async (req, res) => {
-  const query = await findCustomersInDb();
+  try {
+    const getAllCustomerQuery = await getAllCustomersInDb();
 
-  res.status(200).json({
-    success: true,
-    userCount: query.length,
-    users: query,
-  });
+    res.status(200).json({
+      success: true,
+      userCount: getAllCustomerQuery.length,
+      users: getAllCustomerQuery,
+    });
+  } catch (error) {
+    logError('Error getting all customers', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting all customers',
+    });
+  }
 };
 
 export const getOneUserById = async (req, res) => {
-  const { userId } = req.params;
+  try {
+    const { userId } = req.params;
 
-  const queryResult = await getUserById(userId);
+    const getOneUserByIdQuery = await getUserById(userId);
 
-  if (queryResult && queryResult?.success === false) { // This means there has been an error
+    if (getOneUserByIdQuery === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      user: getOneUserByIdQuery,
+    });
+  } catch (error) {
     return res.status(502).json({
       success: false,
-      errorMessage: queryResult.message,
+      errorMessage: 'Error retrieving user',
     });
   }
-
-  if (queryResult === null) {
-    return res.status(400).json({
-      success: false,
-      message: 'User not found',
-    });
-  }
-
-  return res.status(200).json({
-    success: true,
-    user: queryResult,
-  });
 };
 
 export const deleteOneUserById = async (req, res) => {
-  const { userId } = req.params;
+  try {
+    const { userId } = req.params;
 
-  // No point in checking if the user exists, since it will autofail it no user is deleted
+    const existingUser = await getUserById(userId);
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User does not exist',
+      });
+    }
 
-  const deletedUser = await deleteUserInDb(userId);
+    const deleteUserQuery = await deleteUserInDb(userId);
 
-  if (deletedUser && deletedUser.success === false) {
+    return res.status(200).json({
+      success: true,
+      message: 'User successfully deleted',
+      userId: deleteUserQuery.user.id,
+    });
+  } catch (error) {
     return res.status(502).json({
       success: false,
-      message: deletedUser.message,
+      message: 'Error deleting user',
     });
   }
-
-  return res.status(200).json({
-    success: true,
-    message: 'user successfully deleted',
-    userId: deletedUser.user.id,
-  });
 };
-
-// TODO - Define which properties should the admin be able to edit on the user - Commented for now
-// export const updateUser = async (req, res) => {
-//   if (req.sanitizedErrors) {
-//     return res.status(400).json({
-//       success: false,
-//       message: req.sanitizedErrors,
-//     });
-//   }
-//   const {
-//     property1,
-//     property2,
-//     property3,
-//   } = req.body;
-
-//     const updatedUser = await updateUserPasswordInDB(userId, hashedPassword);
-
-//     if (updatedUser.success === false) {
-//       return res.status(500).json({
-//         success: false,
-//         message: 'Error updating password',
-//       });
-//     }
-
-//     return res.status(200).json({
-//       success: true,
-//       message: 'Password updated successfully',
-//       userId: updatedUser.id,
-//     });
-//   } catch (error) {
-//     return {
-//       success: false,
-//       message: 'Error updating password',
-//     };
-//   }
-// };

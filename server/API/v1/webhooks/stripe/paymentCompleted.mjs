@@ -1,6 +1,6 @@
 // https://docs.stripe.com/webhooks
 
-import { logError } from '../../../config/loggerFunctions.mjs';
+import { logError } from '../../../../config/loggerFunctions.mjs';
 
 export const paymentCompletedWebhook = async (req, res) => { // * Should probably add a
 // * more specific name but cant think of any since all the stripe

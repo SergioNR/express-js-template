@@ -1,4 +1,5 @@
 import { logger } from './logger.mjs';
+import { sendErrorLogsToTelegram } from '../integrations/telegram/sendErrorLogsToTelegram.mjs';
 
 export const logUserLoggedInSuccessfully = (userId, loginMethod) => {
   logger.info({
@@ -68,15 +69,17 @@ export const logError = (message, error, additionalInfo = 'N/A') => {
     context: {
       name: error.name,
       errorMessage: error.message,
-      errorStack: error.stack,
+      // errorStack: error.stack,
       errorDetails: error, // I will log the entire error object for now just in case
       additionalInfo: additionalInfo,
     },
   });
+
+  sendErrorLogsToTelegram(error);
 };
 
 export const logWarn = async (message, error, additionalInfo = 'N/A') => {
-  const warnData = {
+  logger.warn({
     message: message,
     context: {
       name: error.name || 'no error name',
@@ -85,11 +88,5 @@ export const logWarn = async (message, error, additionalInfo = 'N/A') => {
       errorDetails: error, // I will log the entire error object for now just in case
       additionalInfo: additionalInfo,
     },
-  };
-
-  logger.warn(warnData);
-
-  return {
-    success: false,
-  };
+  });
 };

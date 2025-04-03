@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { checkSchema } from 'express-validator';
+import { posthogUserLoggedOut, posthogUserSuccessLoggedIn } from '../../../models/posthogModel.mjs';
 import { createUser, updateRecoveredUserPassword, updateUserPassword } from '../../../controllers/userController.mjs';
 import { sanitizerResult } from '../../../middlewares/sanitizerResult.mjs';
 import { createUserValidationSchema } from '../../../utils/validators/createUserSchema.mjs';
@@ -35,6 +36,7 @@ authRouter.post('/login/local', (req, res, next) => {
         });
       }
 
+      posthogUserSuccessLoggedIn(user.id, 'local');
       // Successful login
       return res.status(200).json({
         success: true,
@@ -54,6 +56,7 @@ authRouter.post('/logout', (req, res, next) => {
       logError('logoutError', err);
       return next(err);
     }
+
     return res.status(200).json({
       success: true,
       message: 'Logout successful',

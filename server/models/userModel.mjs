@@ -1,10 +1,10 @@
 import { PrismaClient } from '@prisma/client';
+import { posthogUserUpdatedPassword, posthogUserDeleteAccount, posthogUserSignedUp } from './posthogModel.mjs';
 import {
   logUserCreatedInDB,
   logError,
   logPasswordUpdated,
 } from '../config/loggerFunctions.mjs';
-import { posthogUserSignedUp } from './posthogModel.mjs';
 
 const prisma = new PrismaClient();
 
@@ -64,9 +64,6 @@ export const getUserById = async (userId) => {
   try {
     const getUserByIdQuery = await prisma.user.findUnique({
       where: { id: userId },
-      omit: {
-        password: true,
-      },
     });
 
     return getUserByIdQuery;
@@ -87,6 +84,8 @@ export const updateUserPasswordInDB = async (userId, newPassword) => {
     });
 
     logPasswordUpdated(userId);
+
+    posthogUserUpdatedPassword(userId);
 
     return updatePasswordQuery;
   } catch (error) {
@@ -123,11 +122,9 @@ export const deleteUserInDb = async (userId) => {
       },
     });
 
-    return {
-      success: true,
-      message: 'User deleted',
-      user: deleteUserQuery,
-    };
+    posthogUserDeleteAccount(userId);
+
+    return deleteUserQuery;
   } catch (error) {
     logError('Error deleting user', error);
     throw error;

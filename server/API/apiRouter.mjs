@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-import { paymentCompletedWebhook } from '../integrations/stripe/webhooks/paymentCompleted.mjs';
+import { paymentCompletedWebhook } from './v1/webhooks/stripe/paymentCompleted.mjs';
 import { userRouter } from './v1/routes/userRouter.mjs';
 
 import { authRouter } from './v1/routes/authRouter.mjs';

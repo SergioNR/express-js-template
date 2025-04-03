@@ -1,42 +1,44 @@
+# Use the latest Docker syntax parser
 # syntax=docker/dockerfile:1
 
-# Set the base image to use for subsequent instructions.
+# Define a build argument for Node.js version, defaulting to 22.14.0
 ARG NODE_VERSION=22.14.0
 
+# Use official Node.js Alpine Linux image with the specified version
 FROM node:${NODE_VERSION}-alpine
 
-# Create a directory for the app and set it as the working directory.
+# Set the working directory inside the container
 WORKDIR /usr/src/app
 
-# Download dependencies as a separate step to take advantage of Docker's caching.
-# Leverage a cache mount to /root/.npm to speed up subsequent builds.
-# Leverage a bind mounts to package.json and package-lock.json to avoid having to copy them into
-# into this layer.
+# Install dependencies using package.json and package-lock.json
+# Uses bind mounts for the files and a cache mount for npm
 RUN --mount=type=bind,source=package.json,target=package.json \
     --mount=type=bind,source=package-lock.json,target=package-lock.json \
     --mount=type=cache,target=/root/.npm \
-    --mount=type=cache,target=/root/.npm \
-    npm ci 
+    npm ci
 
-# Copy Prisma schema files
+# Copy Prisma schema files into the container
 COPY prisma ./prisma/
 
-# Run Prisma generate to ready the Prisma client
-RUN npx prisma generate
+# Generate Prisma client with npm cache mount
+RUN --mount=type=cache,target=/root/.npm npx prisma generate
 
-# Copy the rest of the source files into the image.
+# Copy all remaining source files into the container
 COPY . .
 
-# Create a startup script
+# Copy and make executable the local startup script
+COPY startLocal.sh .
+RUN chmod +x startLocal.sh
+
+# Copy and make executable the production startup script
 COPY start.sh .
 RUN chmod +x start.sh
 
-# # Run the application as a non-root user.
+# Switch to non-root user for better security
 USER node
 
-# Expose the port that the application listens on.
+# Declare that the container will listen on port 3000
 EXPOSE 3000
 
-# Run the application. - Running from the start.sh instead of CMD ["npm run start"] script since we need to run "npx prisma deploy" before starting the server to sync the database schema.
-
-CMD ["./start.sh"]
+# Set the default command to run the local startup script
+CMD ["./startLocal.sh"] 

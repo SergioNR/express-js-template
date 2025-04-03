@@ -182,7 +182,7 @@ export const updateRecoveredUserPassword = async (req, res) => {
     if (new Date(tokenExpires) < new Date()) {
       return res.status(400).json({
         success: false,
-        message: 'Token expired - Please request a new password link',
+        message: 'Token expired - Please request a new password reset link',
       });
     }
 

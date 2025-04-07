@@ -18,30 +18,73 @@ model User {
   id              String    @id @default(uuid())
   email           String    @unique
   password        String
-  role            userRoles     @default(customer)
+  role            userRoles @default(customer)
   created_at      DateTime  @default(now())
   last_updated_at DateTime  @updatedAt
   last_login_at   DateTime?
+  stripe_customer_id String? @unique
+
+  Subscription Subscription[]
 
   @@index([id, email])
-
 }
 
 model Password_reset_tokens {
-  id              String    @id @unique @default(uuid())
-  user_id         String
-  token_expires   DateTime
-  created_at      DateTime  @default(now())
+  id            String   @id @unique @default(uuid())
+  user_id       String
+  token_expires DateTime
+  created_at    DateTime @default(now())
 }
 
 model Session {
   id        String   @id
   sid       String   @unique
-  data      String 
-  expiresAt   DateTime
+  data      String
+  expiresAt DateTime
 }
 
 enum userRoles {
   customer
   admin
+}
+
+model Subscription {
+  id     Int    @id @default(autoincrement())
+  user   User   @relation(fields: [user_id], references: [id])
+  user_id String
+
+  // Subscription information
+  plan_type SubscriptionType
+  status   String // active, expired, refunded
+
+
+  // TODO - add discount code
+  discount_code String?
+
+  // Period information
+  start_date         DateTime 
+  end_date           DateTime
+  cancel_at_period_end Boolean  @default(false)
+
+  stripe_subscription_id String?   @unique
+  canceled_at           DateTime?
+
+  // Timestamps - createdAt and updatedAt are automatically managed by Prisma
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Billing information
+  billing_interval String  @default("month") // month, year
+  subtotal_amount        Decimal @default(0)
+  tax_amount          Decimal @default(0)
+  total_amount          Decimal @default(0)
+  currency        String  @default("EUR")
+
+  @@index([user_id, status])
+}
+
+enum SubscriptionType {
+  free
+  basic
+  pro
 }

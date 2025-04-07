@@ -2,6 +2,7 @@
 
 import { logError } from '../../../../config/loggerFunctions.mjs';
 import { posthogUserPaymentCompleted } from '../../../../models/posthogModel.mjs';
+import { storeTransactionInDb } from '../../../../models/subscriptionModel.mjs';
 
 export const stripeEventHandler = async (req, res) => { // * Should probably add a
 // * more specific name but cant think of any since all the stripe
@@ -14,14 +15,13 @@ export const stripeEventHandler = async (req, res) => { // * Should probably add
     // const stripeSignature = req.headers['stripe-signature'];
     // const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-    // const { variable1 } = event.data.object;
-    // const clientReferenceId = event.data.object.client_reference_id;
-    // Handle each type of event
     switch (event.type) {
       case 'checkout.session.completed':
+        // Sent when a customer completes a checkout session
 
-        // Handle successful checkout session
-        // console.log('Checkout session completed:', event.data.object);
+        console.log('Checkout session completed:', event.data.object);
+
+        // storeTransactionInDb(event.data.object.client_reference_id, 'a', 'b');
 
         break;
 
@@ -30,13 +30,6 @@ export const stripeEventHandler = async (req, res) => { // * Should probably add
       // This indicates that the customer did not complete the payment in time.
       // Useful for notifying users about the expired session.
       // TODO -- send an email to the user about the expired session
-        break;
-
-      case 'charge.succeeded':
-        // console.log('Charge succeeded:', event.data.object);
-
-        posthogUserPaymentCompleted(event.data.object.metadata.userId);
-
         break;
 
       case 'customer.subscription.created':

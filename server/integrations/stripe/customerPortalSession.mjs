@@ -5,7 +5,7 @@ export const createStripeCustomerPortalSession = async (stripeCustomerId) => {
   try {
     const customerPortalSession = await stripeInstance.billingPortal.sessions.create({
       customer: stripeCustomerId,
-      return_url: 'process.env.FRONT_WEB_APP_ORIGIN_URL}/user/billing',
+      return_url: `${process.env.FRONT_WEB_APP_ORIGIN_URL}/user/billing`,
     });
     return customerPortalSession;
   } catch (error) {

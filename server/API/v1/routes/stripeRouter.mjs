@@ -1,12 +1,19 @@
 import { Router } from 'express';
 import { checkPermissionByRole } from '../../../middlewares/permissionByRoleChecker.mjs';
-import { createStripeCustomerId, getStripeCustomerPortalUrl, getStripeCheckoutSessionUrl } from '../../../controllers/stripeController.mjs';
+import {
+  createStripeCustomerId,
+  getStripeCustomerPortalUrl,
+  getStripeCheckoutSessionUrl,
+  getSubscriptionData,
+} from '../../../controllers/stripeController.mjs';
 
 export const stripeRouter = Router();
 
 // TODO - fix authentication in tests
 
 stripeRouter.use(checkPermissionByRole('customer'));
+
+stripeRouter.get('/check-subscription', getSubscriptionData);
 
 stripeRouter.post('/create-stripe-customer-id', createStripeCustomerId);
 

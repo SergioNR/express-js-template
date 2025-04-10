@@ -54,37 +54,13 @@ model Subscription {
   user_id String
 
   // Subscription information
-  plan_type SubscriptionType
-  status   String // active, expired, refunded
-
-
-  // TODO - add discount code
-  discount_code String?
-
-  // Period information
-  start_date         DateTime 
-  end_date           DateTime
-  cancel_at_period_end Boolean  @default(false)
-
-  stripe_subscription_id String?   @unique
-  canceled_at           DateTime?
+  plan_name String
+  status   String // active, refunded, cancelled
 
   // Timestamps - createdAt and updatedAt are automatically managed by Prisma
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  // Billing information
-  billing_interval String  @default("month") // month, year
-  subtotal_amount        Decimal @default(0)
-  tax_amount          Decimal @default(0)
-  total_amount          Decimal @default(0)
-  currency        String  @default("EUR")
-
   @@index([user_id, status])
 }
 
-enum SubscriptionType {
-  free
-  basic
-  pro
-}

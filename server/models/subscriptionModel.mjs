@@ -3,25 +3,22 @@ import { logError } from '../config/loggerFunctions.mjs';
 
 const prisma = new PrismaClient();
 
-export const storeTransactionInDb = async (userId /* ,  subscriptionId, transactionId */) => {
+export const storeSubscriptionInDb = async (subscriptionData) => {
   try {
-    const transaction = await prisma.subscription.create({
+    await prisma.subscription.create({
       data: {
-        user: { connect: { id: userId } },
-        plan_type: 'free',
-        status: 'active',
-        start_date: new Date(),
-        end_date: new Date(Date.now() + 2592000000), // 30 days from now
-
-        // stripe_subscription_id: 'subscriptionId',
+        user: {
+          connect: {
+            stripe_customer_id: subscriptionData.customer,
+          },
+        },
+        plan_name: subscriptionData.planType || 'basic',
+        status: subscriptionData.status,
 
       },
     });
-
-    return transaction;
   } catch (error) {
     logError('Error storing transaction:', error);
-    throw error;
   }
 };
 
@@ -39,6 +36,48 @@ export const storeStripeCustomerIdInDb = async (userId, stripeCustomerId) => {
     return user;
   } catch (error) {
     logError('Error storing Stripe customer ID:', error);
+    throw error;
+  }
+};
+
+export const markSubscriptionAsCancelledInDb = async (cancelData) => {
+  try {
+    await prisma.subscription.update({
+      where: {
+        stripe_subscription_id: cancelData.id,
+      },
+      data: {
+        status: 'cancelled',
+        current_period_end_date: new Date(cancelData.cancelAt * 1000),
+      },
+    });
+  } catch (error) {
+    logError('error marking subscription as cancelled', error);
+  }
+};
+
+export const getSubscriptionDataInDb = async (userId) => {
+  try {
+    const subscriptionData = await prisma.subscription.findFirst({
+      where: {
+        AND: [
+          {
+            user_id: userId,
+          },
+          {
+            status: 'active',
+          },
+        ],
+      },
+      select: {
+        status: true,
+        plan_name: true,
+      },
+    });
+
+    return subscriptionData;
+  } catch (error) {
+    logError('error checking for active subscriptions', error);
     throw error;
   }
 };

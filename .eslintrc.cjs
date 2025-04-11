@@ -41,5 +41,6 @@ module.exports = {
     'no-underscore-dangle': 'off',
     'import/extensions': 'off',
     'object-shorthand': 'off',
+    'no-case-declarations': 'off',
   },
 };

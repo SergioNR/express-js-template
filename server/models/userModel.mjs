@@ -1,53 +1,49 @@
 import { PrismaClient } from '@prisma/client';
+import { posthogUserUpdatedPassword, posthogUserDeleteAccount, posthogUserSignedUp } from './posthogModel.mjs';
 import {
   logUserCreatedInDB,
   logError,
   logPasswordUpdated,
 } from '../config/loggerFunctions.mjs';
-import { posthogUserSignedUp } from './posthogModel.mjs';
 
 const prisma = new PrismaClient();
 
 export const createUserInDB = async (user) => {
   try {
-    const insertQuery = await prisma.user.create({
+    const createUserInDbQuery = await prisma.user.create({
       data: {
         email: user.userDetails.email,
         password: user.userDetails.password,
       },
     });
 
-    logUserCreatedInDB(insertQuery.id, user);
+    logUserCreatedInDB(createUserInDbQuery.id, user);
 
-    posthogUserSignedUp(user);
+    posthogUserSignedUp(createUserInDbQuery);
 
-    return insertQuery;
+    return createUserInDbQuery;
   } catch (error) {
     logError('Error creating user in DB', error);
 
-    return {
-      success: false,
-    };
+    throw error;
   }
 };
 
 export const getUserByEmail = async (userEmail) => {
   try {
-    const queryResult = await prisma.user.findUnique({
+    const getUserByEmailQuery = await prisma.user.findUnique({
       where: { email: userEmail },
     });
 
-    return queryResult;
+    return getUserByEmailQuery;
   } catch (error) {
     logError('Error getting user by email', error);
 
-    return {
-      success: false,
-    };
+    throw error;
   }
 };
 
-export const updateLastLoginDate = async (userId) => {
+export const updateUserLastLoginDate = async (userId) => {
   try {
     const queryResult = await prisma.user.update({
       where: { id: userId },
@@ -60,32 +56,26 @@ export const updateLastLoginDate = async (userId) => {
   } catch (error) {
     logError('Error updating last login date', error);
 
-    return {
-      success: false,
-    };
+    throw error;
   }
 };
 
 export const getUserById = async (userId) => {
   try {
-    const queryResult = await prisma.user.findUnique({
+    const getUserByIdQuery = await prisma.user.findUnique({
       where: { id: userId },
     });
 
-    return queryResult;
+    return getUserByIdQuery;
   } catch (error) {
     logError('Error getting user by user ID', error);
-
-    return {
-      success: false,
-      message: 'Database operation failed',
-    };
+    throw error;
   }
 };
 
 export const updateUserPasswordInDB = async (userId, newPassword) => {
   try {
-    const queryResult = await prisma.user.update({
+    const updatePasswordQuery = await prisma.user.update({
 
       where: { id: userId },
       data: {
@@ -95,65 +85,48 @@ export const updateUserPasswordInDB = async (userId, newPassword) => {
 
     logPasswordUpdated(userId);
 
-    return {
-      success: true,
-      userId: userId,
-      query: queryResult,
-    };
+    posthogUserUpdatedPassword(userId);
+
+    return updatePasswordQuery;
   } catch (error) {
     logError('Error updating user password', error, { userId: userId });
 
-    return {
-      success: false,
-    };
+    throw error;
   }
 };
 
-export const findCustomersInDb = async () => {
+export const getAllCustomersInDb = async () => {
   try {
-    const queryResult = await prisma.user.findMany({
+    const getAllCustomersQuery = await prisma.user.findMany({
       where: { role: 'customer' },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        created_at: true,
-        last_updated_at: true,
-        last_login_at: true,
+      omit: {
+        password: true,
+      },
+      orderBy: {
+        created_at: 'desc',
       },
     });
 
-    return queryResult;
+    return getAllCustomersQuery;
   } catch (error) {
     logError('Error getting user by user ID', error);
-
-    throw error; // will be handled in userService
+    throw error;
   }
 };
 
 export const deleteUserInDb = async (userId) => {
   try {
-    const queryResult = await prisma.user.delete({
+    const deleteUserQuery = await prisma.user.delete({
       where: {
         id: userId,
       },
     });
 
-    if (queryResult !== null) {
-      return {
-        success: true,
-        message: 'User deleted',
-        user: queryResult,
-      };
-    }
+    posthogUserDeleteAccount(userId);
 
-    throw Error('user was not deleted');
+    return deleteUserQuery;
   } catch (error) {
-    logError('error deleting User', error);
-
-    return {
-      success: false,
-      message: 'failed to delete user',
-    };
+    logError('Error deleting user', error);
+    throw error;
   }
 };

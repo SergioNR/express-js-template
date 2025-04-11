@@ -11,8 +11,8 @@ export const sendPaymentCompletedTransactionalEmail = async (email, param) => {
     const sendSmtpEmail = new brevo.SendSmtpEmail();
 
     sendSmtpEmail.sender = {
-      // name: "Sergio de AnalizaTuApp", //* Managed in the template
-      email: 's.navarroredondo@gmail.com',
+      // name: "<SENDER EMAIL>", //* Managed in the template
+      email: '<SENDER EMAIL>',
     };
 
     sendSmtpEmail.to = [{

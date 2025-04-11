@@ -4,7 +4,5 @@ export class User {
       email: reqBody.username,
       password: reqBody.password,
     };
-    this.createdDate = new Date();
-    this.lastUpdatedDate = new Date();
   }
 }

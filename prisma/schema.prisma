@@ -18,30 +18,49 @@ model User {
   id              String    @id @default(uuid())
   email           String    @unique
   password        String
-  role            userRoles     @default(customer)
+  role            userRoles @default(customer)
   created_at      DateTime  @default(now())
   last_updated_at DateTime  @updatedAt
   last_login_at   DateTime?
+  stripe_customer_id String? @unique
+
+  Subscription Subscription[]
 
   @@index([id, email])
-
 }
 
 model Password_reset_tokens {
-  id              String    @id @unique @default(uuid())
-  user_id         String
-  token_expires   DateTime
-  created_at      DateTime  @default(now())
+  id            String   @id @unique @default(uuid())
+  user_id       String
+  token_expires DateTime
+  created_at    DateTime @default(now())
 }
 
 model Session {
   id        String   @id
   sid       String   @unique
-  data      String 
-  expiresAt   DateTime
+  data      String
+  expiresAt DateTime
 }
 
 enum userRoles {
   customer
   admin
 }
+
+model Subscription {
+  id     Int    @id @default(autoincrement())
+  user   User   @relation(fields: [user_id], references: [id])
+  user_id String
+
+  // Subscription information
+  plan_name String
+  status   String // active, refunded, cancelled
+
+  // Timestamps - createdAt and updatedAt are automatically managed by Prisma
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([user_id, status])
+}
+

@@ -76,6 +76,20 @@ export const getStripeCheckoutSessionUrl = async (req, res) => {
     } = req.user;
     const { requestedBillingCycle: billingCycle } = req.body;
 
+    const activeSubscription = await getSubscriptionDataInDb(internalUserId);
+
+    if (activeSubscription) {
+      const error = new Error('user tried to create an checkout session with an active subscriptions - should be blocked in the FE');
+      error.name = 'Create checkout session error';
+
+      logError('user tried to create a checkout session with an active subscription', error);
+
+      return res.status(403).json({
+        success: false,
+        message: 'Checkout Session cant be created - user already has a subscription',
+      });
+    }
+
     const checkoutSession = await createStripeCheckoutSession(
       stripeCustomerId,
       internalUserId,
@@ -93,7 +107,7 @@ export const getStripeCheckoutSessionUrl = async (req, res) => {
     logError('Error creating Stripe`s checkout session:', error);
     return res.status(500).json({
       success: false,
-      message: 'There was an error creating the customer portal session',
+      message: 'There was an error creating the checkout session',
     });
   }
 };

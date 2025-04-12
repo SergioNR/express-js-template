@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { checkSchema } from 'express-validator';
-import { posthogUserLoggedOut, posthogUserSuccessLoggedIn } from '../../../models/posthogModel.mjs';
+import { posthogUserSuccessLoggedIn } from '../../../models/posthogModel.mjs';
 import { createUser, updateRecoveredUserPassword, updateUserPassword } from '../../../controllers/userController.mjs';
 import { sanitizerResult } from '../../../middlewares/sanitizerResult.mjs';
 import { createUserValidationSchema } from '../../../utils/validators/createUserSchema.mjs';
@@ -12,7 +12,7 @@ import { checkSession, forgotPasswordRequest } from '../../../controllers/authCo
 export const authRouter = Router();
 
 authRouter.post('/login/local', (req, res, next) => {
-  passport.authenticate('local', (err, user, info) => {
+  passport.authenticate('local', (err, user /* , info */) => {
     if (err) {
       return res.status(500).json({
         success: false,
@@ -28,7 +28,7 @@ authRouter.post('/login/local', (req, res, next) => {
     }
 
     // Log the user in and establish a session
-    req.login(user, (loginErr) => {
+    return req.login(user, (loginErr) => {
       if (loginErr) { //* Will trigger if password is incorrect
         return res.status(401).json({
           success: false,

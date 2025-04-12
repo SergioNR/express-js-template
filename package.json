@@ -14,6 +14,7 @@
     "scripts": {
         "start": "node ./server/app.mjs",
         "start:local": "node --watch --env-file=.env ./server/app.mjs",
+        "start:docker": "docker compose up --build --watch",
         "test:ui": "env $(cat .env | xargs) npx playwright test --ui",
         "test:noui": "env $(cat .env | xargs) npx playwright test",
         "docker:koyeb": "docker build --platform=linux/amd64 -t sergion14/expressjs-template:latest . && docker push sergion14/expressjs-template:latest",

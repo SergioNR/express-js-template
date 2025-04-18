@@ -1,11 +1,8 @@
-# .github/workflows/demo.yml
-
 name: create :LATEST docker & push image on pull request
 
 on:
-  # Triggers the workflow on push or pull request events but only for the "dev" branch
-   pull_request:
-    branches: [ "latest" ]
+    pull_request:
+      branches: [ "latest" ]
 
 jobs:
   docker:

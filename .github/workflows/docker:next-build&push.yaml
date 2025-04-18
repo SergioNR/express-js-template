@@ -8,7 +8,7 @@ on:
     branches: [ "next" ]
 
 jobs:
-  docker:
+  docker-build-and-push:
     runs-on: ubuntu-latest
     steps:
       -
@@ -34,3 +34,22 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: sergion14/expressjs-template:next
+
+  koyeb-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install and configure the Koyeb CLI
+        uses: koyeb-community/koyeb-actions@v2
+        with:
+          api_token: "${{ secrets.KOYEB_API_TOKEN }}"
+      - name: Build and deploy the application to Koyeb
+        uses: koyeb/action-git-deploy@v1
+        with:
+          service-env: "PORT=3000"
+          service-ports: "3000:http"
+          service-routes: "/:3000"
+          app-name: "expressjs-template-next"
+          service-name: "expressjs-template-next"
+          service-type: "web"
+          service-regions: "fra"
+

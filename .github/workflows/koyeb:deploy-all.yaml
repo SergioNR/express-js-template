@@ -1,0 +1,26 @@
+name: create :LATEST docker & push image on pull request
+
+on:
+    pull_request:
+        branches: [ "*" ]
+
+jobs:
+    koyeb-deploy:
+        runs-on: ubuntu-latest
+        concurrency: 
+            group: "${{ github.ref_name }}"
+            cancel-in-progress: true
+        steps:
+            - 
+                name: Install and configure the Koyeb CLI
+                uses: koyeb-community/koyeb-actions@v2
+                with:
+                    api_token: "${{ secrets.KOYEB_API_TOKEN }}"
+            - 
+                name: Build and deploy the application to Koyeb
+                uses: koyeb/action-git-deploy@v1
+                with:
+                    service-env: "PORT=3000"
+                    service-ports: "3000:http"
+                    service-routes: "/:3000"
+                    service-regions: "fra"

@@ -12,12 +12,11 @@ jobs:
             group: "${{ github.ref_name }}"
             cancel-in-progress: true
         steps:
-            # -
-            #     name: Create application secret
-            #     uses: koyeb/action-git-deploy/secret@v1
-            #     with:
-            #         secret-name: BREVO_API_KEY
-            #         secret-value: "${{ secrets.BREVO_API_KEY }}" 
+            - 
+                name: Install and configure the Koyeb CLI
+                uses: koyeb-community/koyeb-actions@v2
+                with:
+                    api_token: "${{ secrets.KOYEB_API_TOKEN }}"
             - 
                 name: Create Docker registry secret
                 uses: koyeb/action-git-deploy/secret@v1
@@ -28,14 +27,8 @@ jobs:
                     # registry-server: https://index.docker.io/v1/  # For Docker Hub
                     # registry-username: ${{ secrets.DOCKER_USERNAME }}
                     # registry-password: ${{ secrets.DOCKER_PASSWORD }}
-
-            - 
-                name: Install and configure the Koyeb CLI
-                uses: koyeb-community/koyeb-actions@v2
-                with:
-                    api_token: "${{ secrets.KOYEB_API_TOKEN }}"
-            -
-                name: Use repository secret
+            -   
+                name: print repository secret
                 run: echo "Using ${{ secrets.KOYEB_API_TOKEN }} and ${{ secrets.DOCKER_PRIVATE_REGISTRY_SECRET }}" 
             -
                 name: Build and deploy the application to Koyeb

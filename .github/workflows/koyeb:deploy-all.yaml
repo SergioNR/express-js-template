@@ -36,5 +36,5 @@ jobs:
                     service-routes: "/:3000"
                     service-regions: "fra"
                     docker: "sergion14/expressjs-template:latest"
-                    docker-private-registry-secret: "${{ secrets.DOCKER_PRIVATE_REGISTRY_SECRET }}"
+                    docker-private-registry-secret: "DOCKER_PRIVATE_REGISTRY_SECRET" # MANAGED IN KOYEB
                     docker-command: "CMD [\"./startLocal.sh\"]"

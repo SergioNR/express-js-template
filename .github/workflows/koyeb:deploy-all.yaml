@@ -27,17 +27,15 @@ jobs:
                     # registry-server: https://index.docker.io/v1/  # For Docker Hub
                     # registry-username: ${{ secrets.DOCKER_USERNAME }}
                     # registry-password: ${{ secrets.DOCKER_PASSWORD }}
-            -   
-                name: print repository secret
-                run: echo "Using ${{ secrets.KOYEB_API_TOKEN }} and ${{ secrets.DOCKER_PRIVATE_REGISTRY_SECRET }}" 
+
             -
                 name: Build and deploy the application to Koyeb
                 uses: koyeb/action-git-deploy@v1
                 with:
-                    service-env: "PORT=3000"
+                    service-env: "PORT=3000,BREVO_API_KEY=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,PINOJS_SOURCE_TOKEN=TBD" 
                     service-ports: "3000:http"
                     service-routes: "/:3000"
                     service-regions: "fra"
                     docker: "sergion14/expressjs-template:latest"
-                    docker-private-registry-secret: "DOCKER_PRIVATE_REGISTRY_SECRET" # MANAGED IN KOYEB
+                    docker-private-registry-secret: DOCKER_PRIVATE_REGISTRY_SECRET # MANAGED IN KOYEB
                     docker-command: "CMD [\"./startLocal.sh\"]"

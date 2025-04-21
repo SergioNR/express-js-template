@@ -15,7 +15,7 @@ export const forgotPasswordRequest = async (req, res) => {
     if (user) {
       const tokenCreation = await createPasswordResetToken(user.id);
 
-      await sendResetPasswordTokenToUser(email, tokenCreation.tokenId);
+      await sendResetPasswordTokenToUser(email, tokenCreation.id);
     }
 
     return res.status(200).json({

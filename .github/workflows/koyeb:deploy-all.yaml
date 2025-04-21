@@ -28,11 +28,14 @@ jobs:
                     # registry-username: ${{ secrets.DOCKER_USERNAME }}
                     # registry-password: ${{ secrets.DOCKER_PASSWORD }}
 
+
+
             -
                 name: Build and deploy the application to Koyeb
                 uses: koyeb/action-git-deploy@v1
                 with:
-                    service-env: "PORT=3000,BREVO_API_KEY=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,PINOJS_SOURCE_TOKEN=TBD" 
+                    service-env: "PORT=3000, BREVO_API_KEY=${{ secrets.BREVO_API_KEY }}, PINOJS_SOURCE_TOKEN=${{ secrets.PINOJS_SOURCE_TOKEN }}"
+                    service-instance-type: "nano"
                     service-ports: "3000:http"
                     service-routes: "/:3000"
                     service-regions: "fra"

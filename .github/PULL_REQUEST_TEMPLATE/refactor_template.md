@@ -5,10 +5,10 @@
 ## Types of Changes
 <!-- What types of changes does your code introduce? Put an `x` in all the boxes that apply: -->
 - [ ] Bug fix (non-breaking change which fixes an issue)
-- [X] New feature (non-breaking change which adds functionality)
+- [ ] New feature (non-breaking change which adds functionality)
 - [ ] Breaking change (fix or feature that would cause existing functionality to change)
 - [ ] Documentation update (if applicable)
-- [ ] Refactor (non-breaking change that improves the code structure)
+- [X] Refactor (non-breaking change that improves the code structure)
 
 ## Related issue
 <!-- Please link any related issues here. -->

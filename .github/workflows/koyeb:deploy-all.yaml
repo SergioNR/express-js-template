@@ -34,11 +34,13 @@ jobs:
                 name: Build and deploy the application to Koyeb
                 uses: koyeb/action-git-deploy@v1
                 with:
-                    service-env: "PORT=3000, BREVO_API_KEY=${{ secrets.BREVO_API_KEY }}, PINOJS_SOURCE_TOKEN=${{ secrets.PINOJS_SOURCE_TOKEN }}"
+                    # service-env: "PORT=3000,BREVO_API_KEY=${{ secrets.BREVO_API_KEY }}, PINOJS_SOURCE_TOKEN=${{ secrets.PINOJS_SOURCE_TOKEN }}"
+                    service-env: "PORT=3000"
+
                     service-instance-type: "nano"
                     service-ports: "3000:http"
                     service-routes: "/:3000"
                     service-regions: "fra"
                     docker: "sergion14/expressjs-template:latest"
-                    docker-private-registry-secret: "DOCKER_PRIVATE_REGISTRY_SECRET" # MANAGED IN KOYEB
+                    docker-private-registry-secret: "SNR-Docker" # MANAGED in https://app.koyeb.com/settings/registry-configuration
                     docker-command: "CMD [\"./startLocal.sh\"]"

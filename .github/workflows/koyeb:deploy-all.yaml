@@ -18,15 +18,17 @@ jobs:
                 with:
                     api_token: "${{ secrets.KOYEB_API_TOKEN }}"
             # - 
-            #     name: Create Docker registry secret
+            #     name: Create DEV Brevo API key secret
             #     uses: koyeb/action-git-deploy/secret@v1
             #     with:
-            #         secret-name: DOCKER_PRIVATE_REGISTRY_SECRET
-            #         secret-value: "${{ secrets.DOCKER_PRIVATE_REGISTRY_SECRET }}"
-            #         # secret-type: registry
-            #         # registry-server: https://index.docker.io/v1/  # For Docker Hub
-            #         # registry-username: ${{ secrets.DOCKER_USERNAME }}
-            #         # registry-password: ${{ secrets.DOCKER_PASSWORD }}
+            #         secret-name: DEV_BREVO_API_KEY_SECRET
+            #         secret-value: "${{ secrets.BREVO_API_KEY }}"
+            # - 
+            #     name: Create DEV Brevo API key secret
+            #     uses: koyeb/action-git-deploy/secret@v1
+            #     with:
+            #         secret-name: DEV_BREVO_API_KEY_SECRET
+            #         secret-value: "${{ secrets.BREVO_API_KEY }}"
 
 
 
@@ -35,7 +37,7 @@ jobs:
                 uses: koyeb/action-git-deploy@v1
                 with:
                     # service-env: "PORT=3000,BREVO_API_KEY=${{ secrets.BREVO_API_KEY }}, PINOJS_SOURCE_TOKEN=${{ secrets.PINOJS_SOURCE_TOKEN }}"
-                    service-env: PORT=3000,NODE_ENV=production,FAKE_ENV=fakeenv,BREVO_API_KEY=${{ secrets.BREVO_API_KEY }}, 
+                    service-env: PORT=3000,NODE_ENV=production,BREVO_API_KEY=@DEV_BREVO_API_SECRET, 
 
                     service-instance-type: "eco-nano" #https://www.koyeb.com/docs/reference/instances
                     service-ports: "3000:http"
@@ -44,3 +46,4 @@ jobs:
                     docker: "sergion14/expressjs-template:latest"
                     docker-private-registry-secret: "SNR-Docker" # MANAGED in https://app.koyeb.com/settings/registry-configuration
                     docker-command: "./startLocal.sh"
+                    skip-cache: true

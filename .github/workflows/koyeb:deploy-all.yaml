@@ -43,4 +43,4 @@ jobs:
                     service-regions: "fra"
                     docker: "sergion14/expressjs-template:latest"
                     docker-private-registry-secret: "SNR-Docker" # MANAGED in https://app.koyeb.com/settings/registry-configuration
-                    docker-command: "CMD [\"./startLocal.sh\"]"
+                    docker-command: "./startLocal.sh"

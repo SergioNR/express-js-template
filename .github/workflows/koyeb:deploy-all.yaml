@@ -37,7 +37,7 @@ jobs:
                     # service-env: "PORT=3000,BREVO_API_KEY=${{ secrets.BREVO_API_KEY }}, PINOJS_SOURCE_TOKEN=${{ secrets.PINOJS_SOURCE_TOKEN }}"
                     service-env: "PORT=3000"
 
-                    service-instance-type: "nano"
+                    service-instance-type: "eNano"
                     service-ports: "3000:http"
                     service-routes: "/:3000"
                     service-regions: "fra"

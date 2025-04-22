@@ -1,4 +1,4 @@
-name: create :LATEST docker & push image on pull request
+name: deploy :next docker container to koyeb
 
 on:
     pull_request:
@@ -43,7 +43,7 @@ jobs:
                     service-ports: "3000:http"
                     service-routes: "/:3000"
                     service-regions: "fra" # https://www.koyeb.com/docs/reference/regions
-                    docker: "sergion14/expressjs-template:latest"
+                    docker: "sergion14/expressjs-template:next"
                     docker-private-registry-secret: "SNR-Docker" # MANAGED in https://app.koyeb.com/settings/registry-configuration
                     docker-command: "./startLocal.sh"
                     skip-cache: true

@@ -18,7 +18,7 @@ const transport = pino.transport({
     // {
     //   target: 'pino-mongodb',
     //   options: {
-    //     uri: process.env.MONGODB_CONNECTIONSTRING,
+    //     uri: process.env.MONGODB_CONNECTION_STRING,
     //     database: 'logs',
     //     collection: 'log-collection',
     //     mongoOptions: {

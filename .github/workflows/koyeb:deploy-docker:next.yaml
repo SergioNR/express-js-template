@@ -17,27 +17,90 @@ jobs:
                 uses: koyeb-community/koyeb-actions@v2
                 with:
                     api_token: "${{ secrets.KOYEB_API_TOKEN }}"
-            # - 
-            #     name: Create DEV Brevo API key secret
-            #     uses: koyeb/action-git-deploy/secret@v1
-            #     with:
-            #         secret-name: DEV_BREVO_API_KEY_SECRET
-            #         secret-value: "${{ secrets.BREVO_API_KEY }}"
-            # - 
-            #     name: Create DEV Brevo API key secret
-            #     uses: koyeb/action-git-deploy/secret@v1
-            #     with:
-            #         secret-name: DEV_BREVO_API_KEY_SECRET
-            #         secret-value: "${{ secrets.BREVO_API_KEY }}"
-
-
-
+            - 
+                name: Create DEV Brevo API key secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: DEV_BREVO_API_KEY
+                    secret-value: "${{ secrets.BREVO_API_KEY }}"
+            - 
+                name: Create DEV MONGODB_CONNECTION_STRING secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: DEV_MONGODB_CONNECTION_STRING
+                    secret-value: "${{ secrets.MONGODB_CONNECTION_STRING }}"
+            - 
+                name: Create DEV POSTHOG_API_KEY secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: DEV_POSTHOG_API_KEY
+                    secret-value: "${{ secrets.POSTHOG_API_KEY }}"
+            - 
+                name: Create DEV PINOJS_SOURCE_TOKEN secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: DEV_PINOJS_SOURCE_TOKEN
+                    secret-value: "${{ secrets.PINOJS_SOURCE_TOKEN }}"
+            - 
+                name: Create DEV PRISMA_POSTGRES_CONNECTION_DIRECT_URL secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: DEV_PRISMA_POSTGRES_CONNECTION_DIRECT_URL
+                    secret-value: "${{ secrets.PRISMA_POSTGRES_CONNECTION_DIRECT_URL }}"
+            - 
+                name: Create DEV PRISMA_POSTGRES_CONNECTION_STRING secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: DEV_PRISMA_POSTGRES_CONNECTION_STRING
+                    secret-value: "${{ secrets.PRISMA_POSTGRES_CONNECTION_STRING }}"
+            - 
+                name: Create DEV Brevo API key secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: DEV_BREVO_API_KEY
+                    secret-value: "${{ secrets.BREVO_API_KEY }}"
+            - 
+                name: Create DEV Brevo API key secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: DEV_BREVO_API_KEY
+                    secret-value: "${{ secrets.BREVO_API_KEY }}"
+            
+            - 
+                name: Create DEV MONGODB_USERNAME secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: DEV_MONGODB_USERNAME
+                    secret-value: "${{ secrets.MONGODB_USERNAME }}"
+            - 
+                name: Create DEV MONGODB_PASSWORD secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: DEV_MONGODB_PASSWORD
+                    secret-value: "${{ secrets.MONGODB_PASSWORD }}"
+            - 
+                name: Create DEV MONGODB_URI secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: DEV_MONGODB_URI
+                    secret-value: "${{ secrets.MONGODB_URI }}"
+            - 
+                name: Create DEV STRIPE_API_KEY secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: DEV_STRIPE_API_KEY
+                    secret-value: "${{ secrets.STRIPE_API_KEY }}"
+            - 
+                name: Create DEV SESSION_SECRET secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: DEV_SESSION_SECRET
+                    secret-value: "${{ secrets.SESSION_SECRET }}"
             -
                 name: Build and deploy the application to Koyeb
                 uses: koyeb/action-git-deploy@v1
                 with:
-                    # service-env: "PORT=3000,BREVO_API_KEY=${{ secrets.BREVO_API_KEY }}, PINOJS_SOURCE_TOKEN=${{ secrets.PINOJS_SOURCE_TOKEN }}"
-                    service-env: PORT=3000,NODE_ENV=production,BREVO_API_KEY=@DEV_BREVO_API_SECRET, 
+                    service-env: PORT=3000,NODE_ENV=production,BREVO_API_KEY=@DEV_BREVO_API_KEY,MONGODB_CONNECTION_STRING=@DEV_MONGODB_CONNECTION_STRING,POSTHOG_API_KEY=@DEV_POSTHOG_API_KEY,PINOJS_SOURCE_TOKEN=@DEV_PINOJS_SOURCE_TOKEN,PRISMA_POSTGRES_CONNECTION_DIRECT_URL=@DEV_PRISMA_POSTGRES_CONNECTION_DIRECT_URL,PRISMA_POSTGRES_CONNECTION_STRING=@DEV_PRISMA_POSTGRES_CONNECTION_STRING,STRIPE_ANNUAL_PRICE_ID=@DEV_STRIPE_ANNUAL_PRICE_ID,MONGODB_USERNAME=@DEV_MONGODB_USERNAME,MONGODB_PASSWORD=@DEV_MONGODB_PASSWORD,MONGODB_URI=@DEV_MONGODB_URI,TELEGRAM_BOT_LOGS_CHAT_ID="${{ vars.TELEGRAM_BOT_LOGS_CHAT_ID }}",FRONT_WEB_APP_ORIGIN_URL="${{ vars.FRONT_WEB_APP_ORIGIN_URL }}",STRIPE_API_KEY=@DEV_STRIPE_API_KEY,STRIPE_MONTHLY_PRICE_ID="${{ vars.STRIPE_MONTHLY_PRICE_ID }}",STRIPE_ANNUAL_PRICE_ID="${{ vars.STRIPE_ANNUAL_PRICE_ID }}",SESSION_SECRET=@DEV_SESSION_SECRET
 
                     service-instance-type: "eco-nano" #https://www.koyeb.com/docs/reference/instances
                     service-ports: "3000:http"
@@ -46,4 +109,3 @@ jobs:
                     docker: "sergion14/expressjs-template:next"
                     docker-private-registry-secret: "SNR-Docker" # MANAGED in https://app.koyeb.com/settings/registry-configuration
                     docker-command: "./startLocal.sh"
-                    skip-cache: true

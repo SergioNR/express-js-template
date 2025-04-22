@@ -35,7 +35,7 @@ jobs:
                 uses: koyeb/action-git-deploy@v1
                 with:
                     # service-env: "PORT=3000,BREVO_API_KEY=${{ secrets.BREVO_API_KEY }}, PINOJS_SOURCE_TOKEN=${{ secrets.PINOJS_SOURCE_TOKEN }}"
-                    service-env: PORT=3000, NODE_ENV=production, FAKE_ENV=fakeenv, BREVO_API_KEY=${{ secrets.BREVO_API_KEY }}, 
+                    service-env: PORT=3000,NODE_ENV=production,FAKE_ENV=fakeenv,BREVO_API_KEY=${{ secrets.BREVO_API_KEY }}, 
 
                     service-instance-type: "eco-nano" #https://www.koyeb.com/docs/reference/instances
                     service-ports: "3000:http"

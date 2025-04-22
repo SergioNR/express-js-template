@@ -17,16 +17,16 @@ jobs:
                 uses: koyeb-community/koyeb-actions@v2
                 with:
                     api_token: "${{ secrets.KOYEB_API_TOKEN }}"
-            - 
-                name: Create Docker registry secret
-                uses: koyeb/action-git-deploy/secret@v1
-                with:
-                    secret-name: DOCKER_PRIVATE_REGISTRY_SECRET
-                    secret-value: "${{ secrets.DOCKER_PRIVATE_REGISTRY_SECRET }}"
-                    # secret-type: registry
-                    # registry-server: https://index.docker.io/v1/  # For Docker Hub
-                    # registry-username: ${{ secrets.DOCKER_USERNAME }}
-                    # registry-password: ${{ secrets.DOCKER_PASSWORD }}
+            # - 
+            #     name: Create Docker registry secret
+            #     uses: koyeb/action-git-deploy/secret@v1
+            #     with:
+            #         secret-name: DOCKER_PRIVATE_REGISTRY_SECRET
+            #         secret-value: "${{ secrets.DOCKER_PRIVATE_REGISTRY_SECRET }}"
+            #         # secret-type: registry
+            #         # registry-server: https://index.docker.io/v1/  # For Docker Hub
+            #         # registry-username: ${{ secrets.DOCKER_USERNAME }}
+            #         # registry-password: ${{ secrets.DOCKER_PASSWORD }}
 
 
 
@@ -40,5 +40,5 @@ jobs:
                     service-routes: "/:3000"
                     service-regions: "fra"
                     docker: "sergion14/expressjs-template:latest"
-                    docker-private-registry-secret: DOCKER_PRIVATE_REGISTRY_SECRET # MANAGED IN KOYEB
+                    docker-private-registry-secret: "DOCKER_PRIVATE_REGISTRY_SECRET" # MANAGED IN KOYEB
                     docker-command: "CMD [\"./startLocal.sh\"]"

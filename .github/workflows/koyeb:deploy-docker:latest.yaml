@@ -1,0 +1,128 @@
+name: Push to Docker Hub, build and deploy :latest tag image to Koyeb
+
+on:
+    pull_request:
+        branches: [ "latest" ]
+
+jobs:
+    docker-build-and-push:
+        runs-on: ubuntu-latest
+        steps:
+        -
+            name: Checkout
+            uses: actions/checkout@v4
+        -
+            name: Login to Docker Hub
+            uses: docker/login-action@v3
+            with:
+                username: ${{ secrets.DOCKERHUB_USERNAME }}
+                password: ${{ secrets.DOCKERHUB_TOKEN }}
+        -
+            name: Set up QEMU
+            uses: docker/setup-qemu-action@v3
+        -
+            name: Set up Docker Buildx
+            uses: docker/setup-buildx-action@v3
+        -
+            name: Build and push
+            uses: docker/build-push-action@v6
+            with:
+                context: .
+                platforms: linux/amd64,linux/arm64
+                push: true
+                tags: sergion14/expressjs-template:latest
+    
+    
+    koyeb-deploy:
+        runs-on: ubuntu-latest
+        environment: production
+        needs: docker-build-and-push
+        concurrency: 
+            group: "${{ github.ref_name }}"
+            cancel-in-progress: true
+        steps:
+            - 
+                name: Install and configure the Koyeb CLI
+                uses: koyeb-community/koyeb-actions@v2
+                with:
+                    api_token: "${{ secrets.KOYEB_API_TOKEN }}"
+            - 
+                name: Create DEV Brevo API key secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: BREVO_API_KEY
+                    secret-value: "${{ secrets.BREVO_API_KEY }}"
+            - 
+                name: Create DEV MONGODB_CONNECTION_STRING secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: MONGODB_CONNECTION_STRING
+                    secret-value: "${{ secrets.MONGODB_CONNECTION_STRING }}"
+            - 
+                name: Create DEV POSTHOG_API_KEY secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: POSTHOG_API_KEY
+                    secret-value: "${{ secrets.POSTHOG_API_KEY }}"
+            - 
+                name: Create DEV PINOJS_SOURCE_TOKEN secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: PINOJS_SOURCE_TOKEN
+                    secret-value: "${{ secrets.PINOJS_SOURCE_TOKEN }}"
+            - 
+                name: Create DEV PRISMA_POSTGRES_CONNECTION_DIRECT_URL secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: PRISMA_POSTGRES_CONNECTION_DIRECT_URL
+                    secret-value: "${{ secrets.PRISMA_POSTGRES_CONNECTION_DIRECT_URL }}"
+            - 
+                name: Create DEV PRISMA_POSTGRES_CONNECTION_STRING secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: PRISMA_POSTGRES_CONNECTION_STRING
+                    secret-value: "${{ secrets.PRISMA_POSTGRES_CONNECTION_STRING }}"
+            - 
+                name: Create DEV MONGODB_USERNAME secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: MONGODB_USERNAME
+                    secret-value: "${{ secrets.MONGODB_USERNAME }}"
+            - 
+                name: Create DEV MONGODB_PASSWORD secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: MONGODB_PASSWORD
+                    secret-value: "${{ secrets.MONGODB_PASSWORD }}"
+            - 
+                name: Create DEV MONGODB_URI secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: MONGODB_URI
+                    secret-value: "${{ secrets.MONGODB_URI }}"
+            - 
+                name: Create DEV STRIPE_API_KEY secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: STRIPE_API_KEY
+                    secret-value: "${{ secrets.STRIPE_API_KEY }}"
+            - 
+                name: Create DEV SESSION_SECRET secret
+                uses: koyeb/action-git-deploy/secret@v1
+                with:
+                    secret-name: SESSION_SECRET
+                    secret-value: "${{ secrets.SESSION_SECRET }}"
+            -
+                name: Build and deploy the application to Koyeb
+                uses: koyeb/action-git-deploy@v1
+                with:
+                    service-env: PORT=3000,NODE_ENV=production,BREVO_API_KEY=@BREVO_API_KEY,MONGODB_CONNECTION_STRING=@MONGODB_CONNECTION_STRING,POSTHOG_API_KEY=@POSTHOG_API_KEY,PINOJS_SOURCE_TOKEN=@PINOJS_SOURCE_TOKEN,PRISMA_POSTGRES_CONNECTION_DIRECT_URL=@PRISMA_POSTGRES_CONNECTION_DIRECT_URL,PRISMA_POSTGRES_CONNECTION_STRING=@PRISMA_POSTGRES_CONNECTION_STRING,STRIPE_ANNUAL_PRICE_ID=@STRIPE_ANNUAL_PRICE_ID,MONGODB_USERNAME=@MONGODB_USERNAME,MONGODB_PASSWORD=@MONGODB_PASSWORD,MONGODB_URI=@MONGODB_URI,TELEGRAM_BOT_LOGS_CHAT_ID="${{ vars.TELEGRAM_BOT_LOGS_CHAT_ID }}",FRONT_WEB_APP_ORIGIN_URL="${{ vars.FRONT_WEB_APP_ORIGIN_URL }}",STRIPE_API_KEY=@STRIPE_API_KEY,STRIPE_MONTHLY_PRICE_ID="${{ vars.STRIPE_MONTHLY_PRICE_ID }}",STRIPE_ANNUAL_PRICE_ID="${{ vars.STRIPE_ANNUAL_PRICE_ID }}",SESSION_SECRET=@SESSION_SECRET
+
+                    service-instance-type: "eco-nano" #https://www.koyeb.com/docs/reference/instances
+                    service-name: "expressjs-template:latest"
+                    service-ports: "3000:http"
+                    service-routes: "/:3000"
+                    service-regions: "fra" # https://www.koyeb.com/docs/reference/regions
+                    docker: "sergion14/expressjs-template:latest"
+                    docker-private-registry-secret: "SNR-Docker" # MANAGED in https://app.koyeb.com/settings/registry-configuration
+                    docker-command: "./start.sh"

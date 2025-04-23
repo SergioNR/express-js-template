@@ -119,9 +119,10 @@ jobs:
                     service-env: PORT=3000,NODE_ENV=production,BREVO_API_KEY=@BREVO_API_KEY,MONGODB_CONNECTION_STRING=@MONGODB_CONNECTION_STRING,POSTHOG_API_KEY=@POSTHOG_API_KEY,PINOJS_SOURCE_TOKEN=@PINOJS_SOURCE_TOKEN,PRISMA_POSTGRES_CONNECTION_DIRECT_URL=@PRISMA_POSTGRES_CONNECTION_DIRECT_URL,PRISMA_POSTGRES_CONNECTION_STRING=@PRISMA_POSTGRES_CONNECTION_STRING,STRIPE_ANNUAL_PRICE_ID=@STRIPE_ANNUAL_PRICE_ID,MONGODB_USERNAME=@MONGODB_USERNAME,MONGODB_PASSWORD=@MONGODB_PASSWORD,MONGODB_URI=@MONGODB_URI,TELEGRAM_BOT_LOGS_CHAT_ID="${{ vars.TELEGRAM_BOT_LOGS_CHAT_ID }}",FRONT_WEB_APP_ORIGIN_URL="${{ vars.FRONT_WEB_APP_ORIGIN_URL }}",STRIPE_API_KEY=@STRIPE_API_KEY,STRIPE_MONTHLY_PRICE_ID="${{ vars.STRIPE_MONTHLY_PRICE_ID }}",STRIPE_ANNUAL_PRICE_ID="${{ vars.STRIPE_ANNUAL_PRICE_ID }}",SESSION_SECRET=@SESSION_SECRET
 
                     service-instance-type: "eco-nano" #https://www.koyeb.com/docs/reference/instances
+                    service-name: "expressjs-template:latest"
                     service-ports: "3000:http"
                     service-routes: "/:3000"
                     service-regions: "fra" # https://www.koyeb.com/docs/reference/regions
                     docker: "sergion14/expressjs-template:latest"
                     docker-private-registry-secret: "SNR-Docker" # MANAGED in https://app.koyeb.com/settings/registry-configuration
-                    docker-command: "./startLocal.sh"
+                    docker-command: "./start.sh"

@@ -36,6 +36,7 @@ jobs:
     koyeb-deploy:
         runs-on: ubuntu-latest
         environment: dev
+        needs: docker-build-and-push
         concurrency: 
             group: "${{ github.ref_name }}"
             cancel-in-progress: true
@@ -124,3 +125,4 @@ jobs:
                     docker: "sergion14/expressjs-template:next"
                     docker-private-registry-secret: "SNR-Docker" # MANAGED in https://app.koyeb.com/settings/registry-configuration
                     docker-command: "./startLocal.sh"
+                    

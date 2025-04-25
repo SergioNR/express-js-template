@@ -29,11 +29,11 @@ authRouter.post('/logout', (req, res, next) => {
 
 authRouter.post('/register/local', checkSchema(createUserValidationSchema), sanitizerResult, createUser);
 
-authRouter.patch('/updateUserPassword', checkSchema(updatePasswordSchema), sanitizerResult, updateUserPassword);
+authRouter.patch('/update-user-password', checkSchema(updatePasswordSchema), sanitizerResult, updateUserPassword);
 
-authRouter.post('/recoverPassword', forgotPasswordRequest);
+authRouter.post('/request-new-password', forgotPasswordRequest);
 
-authRouter.patch('/createNewPassword', checkSchema(updatePasswordSchema), sanitizerResult, updateRecoveredUserPassword);
+authRouter.patch('/create-new-user-password', checkSchema(updatePasswordSchema), sanitizerResult, updateRecoveredUserPassword);
 
 authRouter.get('/check-session', checkSession);
 

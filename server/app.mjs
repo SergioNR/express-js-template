@@ -9,7 +9,6 @@ import { indexRouter } from './routers/indexRouter.mjs';
 import { limiter } from './middlewares/express-rate-limiter.mjs';
 import { slowLimiter } from './middlewares/express-slow-down.mjs';
 import { startCronJobs } from './cron/jobsContainer.mjs';
-import { start } from 'repl';
 
 const app = express();
 

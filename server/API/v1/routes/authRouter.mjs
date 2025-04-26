@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { checkSchema } from 'express-validator';
-import { createUser, updateRecoveredUserPassword, updateUserPassword } from '../../../controllers/userController.mjs';
+import {
+  checkPasswordResetTokenExpirationDate,
+  createUser,
+  updateRecoveredUserPassword,
+  updateUserPassword,
+} from '../../../controllers/userController.mjs';
 import { sanitizerResult } from '../../../middlewares/sanitizerResult.mjs';
 import { createUserValidationSchema } from '../../../utils/validators/createUserSchema.mjs';
 import { userLoginValidationSchema } from '../../../utils/validators/userLoginValidationSchema.mjs';
@@ -30,6 +35,8 @@ authRouter.post('/logout', (req, res, next) => {
 authRouter.post('/register/local', checkSchema(createUserValidationSchema), sanitizerResult, createUser);
 
 authRouter.patch('/update-user-password', checkSchema(updatePasswordSchema), sanitizerResult, updateUserPassword);
+
+authRouter.get('/validate-password-reset-token', checkPasswordResetTokenExpirationDate);
 
 authRouter.post('/request-new-password', forgotPasswordRequest);
 

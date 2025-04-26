@@ -8,6 +8,8 @@ import { storeSessions } from './middlewares/storeExpressSessions.mjs';
 import { indexRouter } from './routers/indexRouter.mjs';
 import { limiter } from './middlewares/express-rate-limiter.mjs';
 import { slowLimiter } from './middlewares/express-slow-down.mjs';
+import { startCronJobs } from './cron/jobsContainer.mjs';
+import { start } from 'repl';
 
 const app = express();
 
@@ -44,6 +46,8 @@ const server = app.listen(process.env.PORT, () => {
 // eslint-disable-next-line no-console
   console.log(`Server running at http://localhost:${process.env.PORT}/`);
 });
+
+startCronJobs();
 
 const gracefulShutdown = () => {
   console.log('Received shutdown signal, closing server...');

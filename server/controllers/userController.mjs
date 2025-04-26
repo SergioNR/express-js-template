@@ -87,6 +87,51 @@ export const createUser = async (req, res) => {
   }
 };
 
+export const checkPasswordResetTokenExpirationDate = async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token is required',
+      });
+    }
+
+    const passwordResetTokenData = await getPasswordResetTokenData(token);
+
+    if (!passwordResetTokenData) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token not found',
+      });
+    }
+
+    const {
+      token_expires: tokenExpirationDate,
+    } = passwordResetTokenData;
+
+    if (new Date(tokenExpirationDate) < new Date()) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token expired - Please request a new password reset link',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Token is valid',
+      tokenData: passwordResetTokenData,
+    });
+  } catch (error) {
+    logError('Error checking password reset token expiration date', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred while checking the token',
+    });
+  }
+};
+
 export const updateRecoveredUserPassword = async (req, res) => {
   if (req.sanitizedErrors) {
     return res.status(400).json({

@@ -55,3 +55,19 @@ export const deletePasswordResetTokens = async (userId) => {
     //*  flow should not be interrupted with this cleanup operation
   }
 };
+
+export const deleteExpiredPasswordResetTokens = async () => {
+  try {
+    await prisma.password_reset_tokens.deleteMany({
+      where: {
+        token_expires: {
+          lt: new Date(),
+        },
+      },
+    });
+  } catch (error) {
+    logError('Error deleting expired password reset tokens', error);
+
+    throw error;
+  }
+};

@@ -16,8 +16,8 @@ const app = express();
 app.use(helmetMiddleware);
 app.use(corsMiddleware);
 app.use(cookieParserMiddleware);
-app.use(slowLimiter);
-app.use(limiter);
+if (process.env.NODE_ENV === 'production') app.use(slowLimiter);
+if (process.env.NODE_ENV === 'production') app.use(limiter);
 
 //* Middleware to create parse request (read req.body from form data & JSON) & parse query
 app.use(express.urlencoded());

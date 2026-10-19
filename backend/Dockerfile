@@ -17,8 +17,9 @@ RUN --mount=type=bind,source=package.json,target=package.json \
     --mount=type=cache,target=/root/.npm \
     npm ci --omit-dev --force
 
-# Copy Prisma schema files into the container
+# Copy Prisma schema and CLI config files into the container
 COPY prisma ./prisma/
+COPY prisma.config.ts ./
 
 # Generate Prisma client with npm cache mount
 RUN --mount=type=cache,target=/root/.npm npx prisma generate

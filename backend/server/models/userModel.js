@@ -1,11 +1,9 @@
-import { PrismaClient } from '../config/generated/prisma/client/index.js';
+import { prisma } from '../config/prismaClient.js';
 import { posthogUserDeleteAccount, posthogUserSignedUp } from './posthogModel.js';
 import {
   logError,
   logInfo,
 } from '../config/loggerFunctions.js';
-
-const prisma = new PrismaClient();
 
 export const createUserInDB = async (userData) => {
   const createUserInDbQuery = await prisma.user.create({

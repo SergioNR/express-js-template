@@ -1,7 +1,5 @@
-import { PrismaClient } from '../config/generated/prisma/client/index.js';
+import { prisma } from '../config/prismaClient.js';
 import { logError, logPasswordResetTokenCreated } from '../config/loggerFunctions.js';
-
-const prisma = new PrismaClient();
 
 export const createPasswordResetToken = async (userId) => {
   const createPasswordResetTokenQuery = await prisma.passwordResetTokens.create({

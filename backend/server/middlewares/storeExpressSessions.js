@@ -1,8 +1,6 @@
 import session from 'express-session';
 import { PrismaSessionStore } from '@quixo3/prisma-session-store';
-import { PrismaClient } from '../config/generated/prisma/client/index.js';
-
-const prisma = new PrismaClient();
+import { prisma } from '../config/prismaClient.js';
 
 const prismaSessionStore = new PrismaSessionStore(prisma, {
   checkPeriod: 2 * 60 * 1000, // ms

@@ -1,8 +1,8 @@
-import brevo, { TransactionalEmailsApi } from '@getbrevo/brevo';
+import { BrevoClient } from '@getbrevo/brevo';
 
-export const apiInstance = new TransactionalEmailsApi();
-const { apiKey } = apiInstance.authentications;
-apiKey.apiKey = process.env.BREVO_API_KEY;
+export const brevoClient = new BrevoClient({
+  apiKey: process.env.BREVO_API_KEY,
+});
 
 export const companyEmails = {
   support: process.env.BREVO_SENDER_EMAIL,
@@ -10,15 +10,7 @@ export const companyEmails = {
   hello: process.env.BREVO_SENDER_EMAIL,
 };
 
-export const emailInstance = new brevo.SendSmtpEmail();
-
-emailInstance.headers = {
-  'api-key': process.env.BREVO_API_KEY,
-  'content-type': 'application/json',
-  accept: 'application/json',
-};
-
-//* emailInstance available properties -- eg: emailInstance.sender = {}
+//* sendTransacEmail available properties -- eg: brevoClient.transactionalEmails.sendTransacEmail({ sender: {}, ... })
 // 'sender';
 // 'to'
 // 'bcc'
@@ -33,4 +25,4 @@ emailInstance.headers = {
 // 'params'
 // 'messageVersions'
 // 'tags'?: Array<string>;
-// 'scheduledAt'
+// 'scheduledAt';

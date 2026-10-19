@@ -1,7 +1,5 @@
-import { PrismaClient } from '../config/generated/prisma/client/index.js';
+import { prisma } from '../config/prismaClient.js';
 // import { posthogUserSubscriptionCreated, posthogUserSubscriptionEnded } from './posthogModel.js';
-
-const prisma = new PrismaClient();
 
 export const updateSubscriptionInDb = async (checkoutSessionData) => {
   const whereClause = {

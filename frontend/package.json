@@ -43,5 +43,10 @@
     "postcss-preset-mantine": "^1.17.0",
     "postcss-simple-vars": "^7.0.1",
     "vite": "^7.0.5"
+  },
+  "allowScripts": {
+    "core-js@3.51.0": true,
+    "esbuild@0.28.2": true,
+    "fsevents@2.3.3": true
   }
 }

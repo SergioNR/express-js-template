@@ -19,7 +19,5 @@ export const userLoginValidationSchema = {
     notEmpty: {
       errorMessage: 'Invalid email or password',
     },
-    trim: true,
-    escape: true,
   },
 };

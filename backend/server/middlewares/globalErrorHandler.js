@@ -4,7 +4,7 @@ export const globalErrorHandler = (err, req, res, next) => { // eslint-disable-l
   logError(err.name, err);
   res.status(err.status || 500).json({
     success: false,
-    name: err.name || 'Internal Server Error',
-    message: err.message || '',
+    name: process.env.NODE_ENV === 'development' ? err.name || '' : 'Internal Server Error',
+    message: process.env.NODE_ENV === 'development' ? err.message || '' : '',
   });
 };

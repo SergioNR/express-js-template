@@ -8,22 +8,12 @@ import {
   createUserInDB,
   getUserPassword,
   updateUserLastLoginDate,
-  createAdminInDB,
 } from '../models/userModel.js';
 import { createPasswordResetToken, getPasswordResetTokenData, deletePasswordResetTokens } from '../models/passwordResetTokensModel.js';
+import { deleteUserSessions } from '../models/sessionModel.js';
 import { sendResetPasswordTokenToUser } from '../integrations/brevo/transactionalEmails/sendResetPasswordTokenToUser.js';
-import { createFreeTrialSubscription } from '../models/subscriptionModel.js';
-import { createCompanyBillingId } from './billingController.js';
 
 export const requestPasswordResetToken = async (req, res) => {
-  if (req.sanitizedErrors) {
-    return res.status(422).json({
-      success: false,
-      message: 'New password could not be requested due to validation errors',
-      errors: req.sanitizedErrors,
-    });
-  }
-
   try {
     const { email } = req.body;
 
@@ -46,7 +36,6 @@ export const requestPasswordResetToken = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'An error occurred, please try again later',
-      error: error,
     });
   }
 };
@@ -84,8 +73,7 @@ export const checkPasswordResetTokenValidity = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Successfully retrieved password reset token',
-      tokenData: passwordResetTokenData,
+      message: 'Password reset token is valid',
     });
   } catch (error) {
     logError('Failed retrieving password reset token', error);
@@ -97,13 +85,6 @@ export const checkPasswordResetTokenValidity = async (req, res) => {
 };
 
 export const updateRecoveredUserPassword = async (req, res) => {
-  if (req.sanitizedErrors) {
-    return res.status(422).json({
-      success: false,
-      message: req.sanitizedErrors,
-    });
-  }
-
   try {
     const {
       newPassword,
@@ -113,9 +94,16 @@ export const updateRecoveredUserPassword = async (req, res) => {
 
     const passwordResetTokenData = await getPasswordResetTokenData(passwordResetToken);
 
+    if (!passwordResetTokenData) {
+      return res.status(404).json({
+        success: false,
+        message: 'Password reset token does not exist',
+      });
+    }
+
     const {
       user_id: userId,
-      tokenExpires,
+      token_expires: tokenExpires,
     } = passwordResetTokenData;
 
     if (new Date(tokenExpires) < new Date()) {
@@ -137,6 +125,9 @@ export const updateRecoveredUserPassword = async (req, res) => {
     await updateUserPasswordInDB(userId, hashedPassword);
 
     await deletePasswordResetTokens(userId);
+
+    //* Revoke every active session of the user - the old credential is no longer valid
+    await deleteUserSessions(userId);
 
     return res.status(200).json({
       success: true,
@@ -168,135 +159,75 @@ export const checkSession = async (req, res) => {
   });
 };
 
-export const loginLocal = async (req, res, next) => {
-  if (req.sanitizedErrors) {
-    return res.status(422).json({
-      message: 'Login could not be completed due to validation errors',
-      errors: req.sanitizedErrors,
+export const loginLocal = (req, res, next) => passport.authenticate('local', (err, user /* , info */) => {
+  if (err) {
+    return next(err);
+  }
+
+  if (!user) { //* Will trigger if user does not exist
+    return res.status(401).json({
+      message: 'The combination of email and password is incorrect',
     });
   }
 
-  return passport.authenticate('local', (err, user /* , info */) => {
-    if (err) {
-      return next(err);
-    }
-
-    if (!user) { //* Will trigger if user does not exist
+  // Log the user in and establish a session
+  return req.login(user, (loginErr) => {
+    if (loginErr) { //* Will trigger if password is incorrect
       return res.status(401).json({
+        success: false,
         message: 'The combination of email and password is incorrect',
       });
     }
 
-    // Log the user in and establish a session
-    return req.login(user, (loginErr) => {
-      if (loginErr) { //* Will trigger if password is incorrect
-        return res.status(401).json({
-          success: false,
-          message: 'The combination of email and password is incorrect',
-        });
-      }
+    // Successful login
+    posthogUserSuccessLoggedIn(user.id, 'local'); // Fire-and-forget function
 
-      // Successful login
-      posthogUserSuccessLoggedIn(user.id, 'local'); // Fire-and-forget function
+    updateUserLastLoginDate(user.id); // Fire-and-forget function
 
-      updateUserLastLoginDate(user.id); // Fire-and-forget function
-
-      return res.status(200).json({
-        message: 'Login successful',
-        user: {
-          id: user.id,
-          role: req.user.role,
-        },
-      });
+    return res.status(200).json({
+      message: 'Login successful',
+      user: {
+        id: user.id,
+        role: user.role,
+      },
     });
-  })(req, res, next);
-};
+  });
+})(req, res, next);
 
 export const createUserInDb = async (req, res) => {
-  if (req.sanitizedErrors) {
-    return res.status(422).json({
-      success: false,
-      message: 'User could not be created due to validation errors',
-      errors: req.sanitizedErrors,
-    });
-  }
-
-  const userData = {
-    username: req.body.username,
-    password: await bcrypt.hash(req.body.password, 10),
-    role: req.body.role,
-  };
-
-  const isExistingUser = await getUserByEmail(userData.username);
-
-  if (isExistingUser !== null) {
-    return res.status(409).json({
-      success: false,
-      message: 'User creation failed - User already exists',
-    });
-  }
-
-  const createdUser = await createUserInDB(userData);
-
-  try { // ? Unsure if this error should interrupt registration flow - I think its not a good idea since we rather have the user register and then fix the issue manually that the other way around
-    await createFreeTrialSubscription(createdUser.company_id);
-  } catch (error) {
-    logError('Error creating free trial subscription', error);
-  }
-
   try {
-    await createCompanyBillingId(createdUser);
+    const userData = {
+      username: req.body.username,
+      password: await bcrypt.hash(req.body.password, 10),
+    };
+
+    const isExistingUser = await getUserByEmail(userData.username);
+
+    if (isExistingUser !== null) {
+      //* Responding with the same shape & status as a successful creation
+      //* so the endpoint cannot be used to enumerate registered emails
+      return res.status(201).json({
+        success: true,
+        message: 'User created successfully',
+      });
+    }
+
+    await createUserInDB(userData);
+
+    return res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+    });
   } catch (error) {
-    logError('Error creating stripe billing Id', error);
-  }
-
-  return res.status(201).json({
-    success: true,
-    message: 'User created successfully',
-    userId: createdUser.id,
-  });
-};
-
-export const createAdminInDb = async (req, res) => {
-  if (req.sanitizedErrors) {
-    return res.status(422).json({
+    logError('User creation failed', error);
+    return res.status(500).json({
       success: false,
-      message: 'User could not be created due to validation errors',
-      errors: req.sanitizedErrors,
+      message: 'User creation failed - Please try again later',
     });
   }
-
-  const userData = {
-    username: req.body.username,
-    password: await bcrypt.hash(req.body.password, 10),
-    role: req.body.role,
-  };
-
-  const isExistingUser = await getUserByEmail(userData.username);
-
-  if (isExistingUser !== null) {
-    return res.status(409).json({
-      success: false,
-      message: 'User creation failed - User already exists',
-    });
-  }
-
-  const createdUser = await createAdminInDB(userData);
-  return res.status(201).json({
-    success: true,
-    message: 'User created successfully',
-    userId: createdUser.id,
-  });
 };
 
 export const updateUserPassword = async (req, res) => {
-  if (req.sanitizedErrors) {
-    return res.status(422).json({
-      success: false,
-      message: req.sanitizedErrors,
-    });
-  }
-
   const {
     currentPassword,
     newPassword,
@@ -331,6 +262,9 @@ export const updateUserPassword = async (req, res) => {
 
     // Update password in database
     const updatedUser = await updateUserPasswordInDB(userId, newHashedPassword);
+
+    //* Revoke every other session of the user - the current one is kept alive
+    await deleteUserSessions(userId, req.sessionID);
 
     return res.status(200).json({
       success: true,

@@ -27,6 +27,13 @@ export const createUserValidationSchema = {
         icloud_remove_subaddress: true,
       },
     },
+    isLength: {
+      options: {
+        max: 254,
+        min: 3,
+      },
+      errorMessage: 'Email must not exceed 254 characters',
+    },
     escape: true,
   },
   password: {
@@ -41,7 +48,5 @@ export const createUserValidationSchema = {
       },
       errorMessage: 'Password must be between 6-32 characters long',
     },
-    trim: true,
-    escape: true,
   },
 };

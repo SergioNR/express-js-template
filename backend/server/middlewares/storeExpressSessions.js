@@ -18,7 +18,7 @@ export const storeSessions = session({
     // secure: process.env.DEPLOY_ENVIRONMENT === 'localhost', // Secure in production
     secure: 'auto',
     httpOnly: true,
-    SameSite: 'None',
+    sameSite: 'none',
   },
   store: prismaSessionStore,
 });

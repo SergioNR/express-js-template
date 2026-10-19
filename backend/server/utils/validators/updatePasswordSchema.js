@@ -1,4 +1,12 @@
 export const updatePasswordSchema = {
+  currentPassword: {
+    notEmpty: {
+      errorMessage: 'Current password is required',
+    },
+    isString: {
+      errorMessage: 'Current password must be a string',
+    },
+  },
   newPassword: {
     notEmpty: {
       errorMessage: 'Password is required',
@@ -13,7 +21,5 @@ export const updatePasswordSchema = {
       },
       errorMessage: 'Password must be between 6-32 characters long',
     },
-    trim: true,
-    escape: true,
   },
 };

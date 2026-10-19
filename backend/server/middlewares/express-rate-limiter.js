@@ -7,7 +7,7 @@ export const limiter = rateLimit({
   standardHeaders: 'draft-8', // draft-6: `RateLimit-*` headers; draft-7 & draft-8: combined `RateLimit` header
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers.
   // store: ... , // Redis, Memcached, etc. See below.
-  skipFailedRequests: true, // Skip failed requests (e.g., due to authentication errors).
+  skipFailedRequests: false, // Skip failed requests (e.g., due to authentication errors).
   // message: { //* being returned on the handler
   //   success: false,
   //   message: 'Too many requests - please try again later',

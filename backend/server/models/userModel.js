@@ -10,7 +10,7 @@ export const createUserInDB = async (userData) => {
     data: {
       email: userData.username,
       password: userData.password,
-      role: userData.role,
+      role: 'user',
       Company: {
         create: {
         },
@@ -21,20 +21,6 @@ export const createUserInDB = async (userData) => {
   logInfo(`${userData.role} ${createUserInDbQuery.id} created in DB`, createUserInDbQuery);
 
   posthogUserSignedUp(createUserInDbQuery); // Fire-and-forget
-
-  return createUserInDbQuery;
-};
-
-export const createAdminInDB = async (userData) => {
-  const createUserInDbQuery = await prisma.user.create({
-    data: {
-      email: userData.username,
-      password: userData.password,
-      role: userData.role,
-    },
-  });
-
-  logInfo(`${userData.role} ${createUserInDbQuery.id} created in DB`, createUserInDbQuery);
 
   return createUserInDbQuery;
 };

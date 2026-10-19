@@ -2,6 +2,13 @@ import { prisma } from '../config/prismaClient.js';
 import { logError, logPasswordResetTokenCreated } from '../config/loggerFunctions.js';
 
 export const createPasswordResetToken = async (userId) => {
+  //* Invalidate previous tokens so only the most recently requested link is usable
+  await prisma.passwordResetTokens.deleteMany({
+    where: {
+      user_id: userId,
+    },
+  });
+
   const createPasswordResetTokenQuery = await prisma.passwordResetTokens.create({
     data: {
       user_id: userId,
@@ -21,6 +28,10 @@ export const getPasswordResetTokenData = async (token) => {
 
   const getPasswordResetTokenDataQuery = await prisma.passwordResetTokens.findFirst({
     where: whereClause,
+    select: {
+      user_id: true,
+      token_expires: true,
+    },
   });
 
   return getPasswordResetTokenDataQuery;

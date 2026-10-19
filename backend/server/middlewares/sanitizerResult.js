@@ -1,16 +1,18 @@
 import { validationResult } from 'express-validator';
 
-const sanitizeValidationError = (error) => {
-  // List of fields to hide
-  const sensitiveFields = ['password',
-    'confirmPassword',
-    'token',
-    'email',
-    'username',
-    'newPassword',
-    'currentPassword',
-  ];
+const sensitiveFields = [
+  'password',
+  'confirmPassword',
+  'confirmNewPassword',
+  'token',
+  'passwordResetToken',
+  'email',
+  'username',
+  'newPassword',
+  'currentPassword',
+];
 
+const sanitizeValidationError = (error) => {
   // Create a copy of the error object
   const sanitizedError = { ...error };
 
@@ -24,10 +26,18 @@ const sanitizeValidationError = (error) => {
 
 export const sanitizerResult = (req, res, next) => {
   const result = validationResult(req);
+
   if (!result.isEmpty()) {
     const sanitizedErrors = result.errors.map(sanitizeValidationError);
 
-    req.sanitizedErrors = sanitizedErrors;
+    //* Requests with validation errors are rejected here so no controller
+    //* can accidentally continue processing invalid input
+    return res.status(422).json({
+      success: false,
+      message: 'Request could not be completed due to validation errors',
+      errors: sanitizedErrors,
+    });
   }
-  next();
+
+  return next();
 };

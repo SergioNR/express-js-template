@@ -62,7 +62,7 @@ export const updateUserLastLoginDate = async (userId) => {
 
     return queryResult;
   } catch (error) {
-    return logError(`could not update last login date for userid ${userId}`);
+    return logError(`could not update last login date for userid ${userId}`, error);
   }
 };
 

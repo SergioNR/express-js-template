@@ -7,6 +7,7 @@ import { helmetMiddleware } from './middlewares/helmet.js';
 import { apiRouter } from './API/apiRouter.js';
 import { storeSessions } from './middlewares/storeExpressSessions.js';
 import { indexRouter } from './routers/indexRouter.js';
+import { docsRouter } from './routers/docsRouter.js';
 import { limiter } from './middlewares/express-rate-limiter.js';
 import { slowLimiter } from './middlewares/express-slow-down.js';
 import { startCronJobs } from './cron/jobsContainer.js';
@@ -25,6 +26,10 @@ if (process.env.DEPLOY_ENVIRONMENT !== 'localhost') app.use(limiter);
 
 //* Webhooks router
 app.use('/webhooks', webhookRouter);
+
+//* API documentation (Swagger UI + raw OpenAPI spec) - mounted before rate limiters
+//* so the documentation static assets are not throttled in production
+app.use('/api', docsRouter);
 
 //* Middleware to create parse request (read req.body from form data & JSON) & parse query
 app.use(express.urlencoded());

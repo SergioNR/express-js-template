@@ -43,6 +43,8 @@
         "posthog-node": "^5.13.2",
         "prisma": "^7.10.1",
         "stripe": "^23.0.0",
+        "swagger-jsdoc": "^6.3.0",
+        "swagger-ui-express": "^5.0.1",
         "tsx": "^4.19.2"
     },
     "devDependencies": {

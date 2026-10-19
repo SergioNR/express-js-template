@@ -1,0 +1,164 @@
+import swaggerJsdoc from 'swagger-jsdoc';
+
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.3',
+    info: {
+      title: 'Express.js Template API',
+      description: 'REST API for the Express.js server template. Interactive documentation is generated from `@openapi` JSDoc annotations declared next to each route definition.',
+      version: '1.0.0',
+    },
+    servers: [
+      {
+        url: `http://localhost:${process.env.PORT || 3000}`,
+        description: 'Local server',
+      },
+    ],
+    tags: [
+      { name: 'Health', description: 'Server health check' },
+      { name: 'Auth', description: 'Authentication and password management' },
+      { name: 'User', description: 'Logged-in user profile management' },
+      { name: 'Billing', description: 'Stripe subscription billing' },
+      { name: 'Admin', description: 'Admin-only user management' },
+      { name: 'Webhooks', description: 'Inbound third-party webhooks' },
+    ],
+    components: {
+      securitySchemes: {
+        sessionCookie: {
+          type: 'apiKey',
+          in: 'cookie',
+          name: 'connect.sid',
+          description: 'Session cookie issued by POST /api/v1/auth/login. Authentication is passive — a valid cookie must be present on requests to secured endpoints.',
+        },
+      },
+      schemas: {
+        SuccessMessage: {
+          type: 'object',
+          properties: {
+            success: {
+              type: 'boolean',
+            },
+            message: {
+              type: 'string',
+            },
+          },
+        },
+        ErrorMessage: {
+          type: 'object',
+          properties: {
+            success: {
+              type: 'boolean',
+              example: false,
+            },
+            message: {
+              type: 'string',
+            },
+          },
+        },
+        ValidationError: {
+          type: 'object',
+          properties: {
+            success: {
+              type: 'boolean',
+              example: false,
+            },
+            message: {
+              type: 'string',
+            },
+            errors: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  type: { type: 'string' },
+                  msg: { type: 'string' },
+                  path: { type: 'string' },
+                  location: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        LoginRequest: {
+          type: 'object',
+          required: ['username', 'password'],
+          properties: {
+            username: {
+              type: 'string',
+              format: 'email',
+              description: 'The user email (the field is historically named username)',
+            },
+            password: {
+              type: 'string',
+            },
+          },
+        },
+        RegisterRequest: {
+          type: 'object',
+          required: ['username', 'password'],
+          properties: {
+            username: {
+              type: 'string',
+              format: 'email',
+              description: 'The user email (the field is historically named username)',
+            },
+            password: {
+              type: 'string',
+              minLength: 6,
+              maxLength: 32,
+            },
+          },
+        },
+        PasswordResetRequest: {
+          type: 'object',
+          required: ['email'],
+          properties: {
+            email: {
+              type: 'string',
+              format: 'email',
+            },
+          },
+        },
+        RecoverPasswordRequest: {
+          type: 'object',
+          required: ['newPassword', 'confirmNewPassword', 'passwordResetToken'],
+          properties: {
+            newPassword: {
+              type: 'string',
+              minLength: 6,
+              maxLength: 32,
+            },
+            confirmNewPassword: {
+              type: 'string',
+            },
+            passwordResetToken: {
+              type: 'string',
+              format: 'uuid',
+            },
+          },
+        },
+        UpdatePasswordRequest: {
+          type: 'object',
+          required: ['currentPassword', 'newPassword'],
+          properties: {
+            currentPassword: {
+              type: 'string',
+            },
+            newPassword: {
+              type: 'string',
+              minLength: 6,
+              maxLength: 32,
+            },
+          },
+        },
+      },
+    },
+  },
+  apis: [
+    './server/routers/indexRouter.js',
+    './server/API/v1/routes/*.js',
+    './server/webhooks/webhooksRouter.js',
+  ],
+};
+
+export const openapiSpecification = swaggerJsdoc(swaggerOptions);

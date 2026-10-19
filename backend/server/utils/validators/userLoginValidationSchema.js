@@ -5,6 +5,7 @@ export const userLoginValidationSchema = {
     },
     normalizeEmail: {
       options: {
+        lowercase: true,
         gmail_remove_dots: true,
         gmail_remove_subaddress: true,
         gmail_convert_googlemaildotcom: true,

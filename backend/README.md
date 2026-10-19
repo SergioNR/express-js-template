@@ -72,7 +72,7 @@ See `.env.example` for the full list. Key variables:
 | `PRISMA_POSTGRES_DIRECT_URL` / `PRISMA_POSTGRES_CONNECTION_STRING` | PostgreSQL connection strings |
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Docker Compose database credentials |
 | `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_ID` | Stripe billing configuration |
-| `BREVO_API_KEY` / `BREVO_SENDER_EMAIL` | Transactional email configuration |
+| `BREVO_API_KEY` / `BREVO_SENDER_EMAIL` / `BREVO_ACCOUNT_EXISTS_TEMPLATE_ID` | Transactional email configuration; template id for the duplicate-registration notice (optional - notice is skipped when unset) |
 | `POSTHOG_API_KEY` | Product analytics |
 | `TELEGRAM_BOT_API_KEY` / `TELEGRAM_INFO_CHAT_ID` / `TELEGRAM_ERRORS_CHAT_ID` | Telegram log notifications |
 | `FRONT_WEB_APP_ORIGIN_URL` | Front-end origin (CORS + Stripe redirects) |

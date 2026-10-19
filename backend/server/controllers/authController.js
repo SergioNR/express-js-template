@@ -12,6 +12,7 @@ import {
 import { createPasswordResetToken, getPasswordResetTokenData, deletePasswordResetTokens } from '../models/passwordResetTokensModel.js';
 import { deleteUserSessions } from '../models/sessionModel.js';
 import { sendResetPasswordTokenToUser } from '../integrations/brevo/transactionalEmails/sendResetPasswordTokenToUser.js';
+import { sendExistingAccountNoticeToUser } from '../integrations/brevo/transactionalEmails/sendExistingAccountNoticeToUser.js';
 
 export const requestPasswordResetToken = async (req, res) => {
   try {
@@ -204,6 +205,10 @@ export const createUserInDb = async (req, res) => {
     const isExistingUser = await getUserByEmail(userData.username);
 
     if (isExistingUser !== null) {
+      //* Fire-and-forget so email delivery cannot change the response
+      //* shape or timing of the duplicate-registration path
+      sendExistingAccountNoticeToUser(userData.username);
+
       //* Responding with the same shape & status as a successful creation
       //* so the endpoint cannot be used to enumerate registered emails
       return res.status(201).json({
@@ -280,34 +285,25 @@ export const updateUserPassword = async (req, res) => {
   }
 };
 
-export const logoutUser = (req, res, next) => {
-  if (!req.user) {
-    return res.status(400).json({
-      success: false,
-      message: 'User is not logged in',
-    });
+export const logoutUser = (req, res, next) => req.logout((err) => {
+  if (err) {
+    logError('User logout failed', err);
+    return next(err);
   }
 
-  return req.logout((err) => {
-    if (err) {
-      logError('User logout failed', err);
-      return next(err);
+  // Destroy session explicitly
+  return req.session.destroy((error) => {
+    if (error) {
+      logError('Session destruction failed', error);
+      return next(error);
     }
 
-    // Destroy session explicitly
-    return req.session.destroy((error) => {
-      if (error) {
-        logError('Session destruction failed', error);
-        return next(error);
-      }
+    // Clear cookie on client side - adjust cookie name as needed
+    res.clearCookie('connect.sid');
 
-      // Clear cookie on client side - adjust cookie name as needed
-      res.clearCookie('connect.sid');
-
-      return res.status(200).json({
-        success: true,
-        message: 'User logged out successfully',
-      });
+    return res.status(200).json({
+      success: true,
+      message: 'User logged out successfully',
     });
   });
-};
+});

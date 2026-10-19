@@ -1,7 +1,7 @@
 {
     "name": "expressjs-template",
     "engines": {
-        "node": "24.x"
+        "node": ">=24"
     },
     "description": "Express.js server template with authentication, billing, and database integrations",
     "main": "app.js",
@@ -52,5 +52,18 @@
     },
     "directories": {
         "test": "tests"
+    },
+    "overrides": {
+        "deepmerge-ts": "^8.0.0",
+        "argparse": "^2.0.0"
+    },
+    "allowScripts": {
+        "@parcel/watcher@2.6.0": true,
+        "@prisma/client@6.19.3": true,
+        "@prisma/engines@6.19.3": true,
+        "esbuild@0.28.2": true,
+        "fsevents@2.3.3": true,
+        "prisma@6.19.3": true,
+        "unrs-resolver@1.12.2": true
     }
 }

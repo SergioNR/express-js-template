@@ -2,7 +2,7 @@
 # syntax=docker/dockerfile:1
 
 # Define a build argument for Node.js version, defaulting to 22.14.0
-ARG NODE_VERSION=24.11.1
+ARG NODE_VERSION=26
 
 # Use official Node.js Alpine Linux image with the specified version
 FROM node:${NODE_VERSION}-alpine

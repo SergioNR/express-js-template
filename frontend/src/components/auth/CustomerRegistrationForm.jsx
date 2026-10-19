@@ -32,7 +32,7 @@ const handleRegister = async (e) => {
     }
     
     try {
-        await apiClient.post(`/api/v1/auth/register/local/user`, data)
+        await apiClient.post(`/api/v1/auth/register`, data)
         
         setRegisterResponse({
             success: true,
@@ -58,13 +58,6 @@ const handleRegister = async (e) => {
     } catch (err) {
 
         setRegisterResponse(null)
-
-        if (err.status === 409) {
-            return setRegisterError({
-                success: false,
-                message: 'No ha sido posible crear un usuario con este correo electrónico'
-            })
-        }
 
         if (err.status === 422) {
             return setRegisterError({

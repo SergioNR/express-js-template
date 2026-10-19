@@ -35,7 +35,7 @@ export function LoginForm() {
     };
 
     try {
-      const loginResponse = await apiClient.post('/api/v1/auth/login/local', data);
+      const loginResponse = await apiClient.post('/api/v1/auth/login', data);
 
       switch (loginResponse.data.user.role) {
         case "admin":

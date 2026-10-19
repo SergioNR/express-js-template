@@ -79,12 +79,13 @@ See `.env.example` for the full list. Key variables:
 
 ## API overview
 
-All routes are versioned under `/api/v1`. Full documentation lives in `swagger.yaml`.
+All routes are versioned under `/api/v1`. Interactive documentation is served by Swagger UI at [`/api/docs`](http://localhost:3000/api/docs) (raw OpenAPI spec at `/api/docs.json`), generated at server start from the `@openapi` JSDoc annotations declared next to each route definition.
 
 | Area | Endpoints |
 | --- | --- |
 | Health | `GET /` |
-| Auth | `POST /api/v1/auth/login/local`, `POST /api/v1/auth/register/local/user`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/session`, password reset (`GET/POST/PATCH /api/v1/auth/password-reset`), `PATCH /api/v1/auth/update-user-password` |
+| Docs | `GET /api/docs` (Swagger UI), `GET /api/docs.json` (OpenAPI spec) |
+| Auth | `POST /api/v1/auth/login`, `POST /api/v1/auth/register`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/session`, password reset (`GET/POST/PATCH /api/v1/auth/password-reset`), `PATCH /api/v1/auth/update-user-password` |
 | User | `GET /api/v1/user`, `DELETE /api/v1/user` |
 | Billing | `GET/POST /api/v1/billing`, `POST /api/v1/billing/checkout-session`, `POST /api/v1/billing/customer-portal` |
 | Admin | `GET /api/v1/admin`, `GET /api/v1/admin/:userId`, `DELETE /api/v1/admin/:userId` |

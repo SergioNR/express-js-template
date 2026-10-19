@@ -1,0 +1,64 @@
+# .dockerignore
+
+
+# Filesystem
+**/.DS_Store
+
+
+# Build and Dependency Artifacts (highest priority)
+**/node_modules
+**/dist
+**/build
+**/obj
+**/.cache
+**/.next
+**/*.dbmdl
+**/*.jfm
+**/*.*proj.user
+**/npm-debug.log
+
+# Docker and Compose Files
+**/.dockerignore
+**/docker-compose*
+**/compose.y*ml
+**/Dockerfile*
+
+# Github files
+**/.github
+**/.gitattributes
+
+# ESLint files
+**/.eslintrc.cjs
+
+## Swagger file
+**/swagger.yaml
+
+# Environment and Configuration Files
+**/.env
+**/.env.example
+**/secrets.dev.yaml
+**/values.dev.yaml
+
+# Version Control Files
+**/.git
+**/.gitignore
+
+# IDE and Editor Configurations
+**/.classpath
+**/.project
+**/.settings
+**/.toolstarget
+**/.vs
+**/.vscode
+
+# Charts and Deployment Files
+**/charts
+
+# Tests and Results
+**/tests
+**/test-results
+
+# Documentation and Licenses
+README*
+LICENSE
+README.md

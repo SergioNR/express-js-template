@@ -1,0 +1,56 @@
+{
+    "name": "expressjs-template",
+    "engines": {
+        "node": "24.x"
+    },
+    "description": "Express.js server template with authentication, billing, and database integrations",
+    "main": "app.js",
+    "private": true,
+    "version": "1.0.0",
+    "type": "module",
+    "keywords": [],
+    "license": "Proprietary",
+    "author": "Sergio Navarro Redondo",
+    "scripts": {
+        "start": "node ./server/app.js",
+        "start:local": "node --watch --env-file=.env ./server/app.js",
+        "start:docker": "docker compose up --build --watch",
+        "stripe:listen": "stripe listen --forward-to localhost:3000/webhooks/v1/stripe",
+        "test": "jest"
+    },
+    "dependencies": {
+        "@getbrevo/brevo": "^3.0.1",
+        "@prisma/client": "^6.19.0",
+        "@quixo3/prisma-session-store": "^3.1.13",
+        "axios": "^1.13.2",
+        "bcryptjs": "^3.0.3",
+        "cookie-parser": "^1.4.7",
+        "cors": "^2.8.5",
+        "cron": "^4.3.4",
+        "express": "^5.1.0",
+        "express-rate-limit": "^8.2.1",
+        "express-session": "^1.18.2",
+        "express-slow-down": "^3.0.1",
+        "express-validator": "^7.3.1",
+        "helmet": "^8.1.0",
+        "passport": "^0.7.0",
+        "passport-local": "^1.0.0",
+        "pino": "^10.1.0",
+        "pino-pretty": "^13.1.2",
+        "posthog-node": "^5.13.2",
+        "prisma": "^6.19.0",
+        "stripe": "^20.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^24.0.11",
+        "eslint": "^8.57.1",
+        "eslint-config-airbnb-base": "^15.0.0",
+        "eslint-plugin-import": "^2.31.0",
+        "jest": "^30.2.0",
+        "tsx": "^4.19.2",
+        "typescript": "^5.7.3"
+    },
+    "directories": {
+        "test": "tests"
+    }
+}

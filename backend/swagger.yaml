@@ -1,0 +1,320 @@
+openapi: 3.0.3
+info:
+  title: Express.js Template API
+  description: REST API for the Express.js server template
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Local server
+tags:
+  - name: Health
+  - name: Auth
+  - name: User
+  - name: Billing
+  - name: Admin
+paths:
+  /:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+  /api/v1/auth/login/local:
+    post:
+      tags: [Auth]
+      summary: Log in with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+        '401':
+          description: Incorrect email or password
+        '422':
+          description: Validation errors
+  /api/v1/auth/register/local/user:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User created successfully
+        '409':
+          description: User already exists
+        '422':
+          description: Validation errors
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Log out the current user
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: User logged out successfully
+        '400':
+          description: User is not logged in
+  /api/v1/auth/session:
+    get:
+      tags: [Auth]
+      summary: Check whether the current session is valid
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Session is valid
+        '401':
+          description: Session is invalid
+  /api/v1/auth/password-reset:
+    get:
+      tags: [Auth]
+      summary: Check password reset token validity
+      parameters:
+        - in: query
+          name: passwordResetToken
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Token data retrieved successfully
+        '403':
+          description: Token expired
+        '404':
+          description: Token does not exist
+    post:
+      tags: [Auth]
+      summary: Request a password reset token by email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Reset link will be sent if the email exists
+    patch:
+      tags: [Auth]
+      summary: Update password using a reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [newPassword, confirmNewPassword, passwordResetToken]
+              properties:
+                newPassword:
+                  type: string
+                confirmNewPassword:
+                  type: string
+                passwordResetToken:
+                  type: string
+      responses:
+        '200':
+          description: Password updated successfully
+        '400':
+          description: Token expired or passwords do not match
+  /api/v1/auth/update-user-password:
+    patch:
+      tags: [Auth]
+      summary: Update the password of the logged-in user
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+      responses:
+        '200':
+          description: Password updated successfully
+        '400':
+          description: Current password is incorrect
+  /api/v1/user:
+    get:
+      tags: [User]
+      summary: Get the profile of the logged-in user
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: User profile retrieved successfully
+        '401':
+          description: Not authenticated
+    delete:
+      tags: [User]
+      summary: Delete the logged-in user account
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: User deleted successfully
+        '401':
+          description: Not authenticated
+  /api/v1/billing:
+    get:
+      tags: [Billing]
+      summary: Get the subscription data of the user's company
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Subscription data retrieved successfully
+        '401':
+          description: Not authenticated
+    post:
+      tags: [Billing]
+      summary: Create a Stripe customer for the user's company
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Billing id created successfully
+        '401':
+          description: Not authenticated
+  /api/v1/billing/checkout-session:
+    post:
+      tags: [Billing]
+      summary: Create a Stripe checkout session
+      security:
+        - sessionCookie: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                planName:
+                  type: string
+                planBillingCycle:
+                  type: string
+      responses:
+        '200':
+          description: Checkout session URL generated successfully
+        '401':
+          description: Not authenticated
+  /api/v1/billing/customer-portal:
+    post:
+      tags: [Billing]
+      summary: Create a Stripe customer portal session
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Customer portal URL retrieved successfully
+        '401':
+          description: Not authenticated
+  /api/v1/admin:
+    get:
+      tags: [Admin]
+      summary: List all users (admin only)
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Users retrieved successfully
+        '401':
+          description: Not authenticated or missing permissions
+  /api/v1/admin/{userId}:
+    get:
+      tags: [Admin]
+      summary: Get a single user by id (admin only)
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User retrieved successfully
+        '400':
+          description: User not found
+        '401':
+          description: Not authenticated or missing permissions
+    delete:
+      tags: [Admin]
+      summary: Delete a user by id (admin only)
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User deleted successfully
+        '404':
+          description: User does not exist
+        '401':
+          description: Not authenticated or missing permissions
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: connect.sid
+  schemas:
+    SuccessMessage:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          format: email
+        password:
+          type: string
+    RegisterRequest:
+      type: object
+      required: [username, password, role]
+      properties:
+        username:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+          maxLength: 32
+        role:
+          type: string
+          enum: [user, admin]

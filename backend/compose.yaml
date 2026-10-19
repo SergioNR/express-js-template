@@ -1,0 +1,70 @@
+name: expressjs-template
+
+networks:
+  template-network:
+    name: template-network
+    driver: bridge
+
+volumes:
+  template-database:
+    name: template-database
+
+services:
+  # server:
+  #   container_name: server
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.dev
+  #   environment:
+  #     NODE_ENV: ${NODE_ENV}
+  #     DEPLOY_ENVIRONMENT: ${DEPLOY_ENVIRONMENT}
+  #     POSTHOG_API_KEY: ${POSTHOG_API_KEY}
+  #     SESSION_SECRET: ${SESSION_SECRET}
+  #     BREVO_API_KEY: ${BREVO_API_KEY}
+  #     BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL}
+  #     PRISMA_POSTGRES_DIRECT_URL: ${PRISMA_POSTGRES_DIRECT_URL}
+  #     PRISMA_POSTGRES_CONNECTION_STRING: ${PRISMA_POSTGRES_CONNECTION_STRING}
+  #     TELEGRAM_BOT_API_KEY: ${TELEGRAM_BOT_API_KEY}
+  #     TELEGRAM_INFO_CHAT_ID: ${TELEGRAM_INFO_CHAT_ID}
+  #     TELEGRAM_ERRORS_CHAT_ID: ${TELEGRAM_ERRORS_CHAT_ID}
+  #     FRONT_WEB_APP_ORIGIN_URL: ${FRONT_WEB_APP_ORIGIN_URL}
+  #     STRIPE_API_KEY: ${STRIPE_API_KEY}
+  #     STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+  #     STRIPE_PRICE_ID: ${STRIPE_PRICE_ID}
+  #     PORT: ${PORT}
+  #   ports:
+  #     - 3000:3000
+  #   develop:
+  #     watch:
+  #       - path: .
+  #         action: sync+restart #* Synchronize code changes and restart the server
+  #         target: /usr/src/app/
+  #   depends_on: #* References the SERVICE name - NOT the container_name
+  #     database:
+  #       condition: service_started
+  #   networks:
+  #     - template-network
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1.0'
+  #         memory: 512M
+  #       reservations:
+  #         cpus: '0.5'
+  #         memory: 256M
+
+  database:
+    image: postgres:17.5
+    restart: on-failure
+    container_name: postgresDB
+    user: postgres
+    volumes:
+      - template-database:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - 5432:5432
+    networks:
+      - template-network

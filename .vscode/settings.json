@@ -1,0 +1,4 @@
+{
+    "prisma.fileWatcher": true,
+    "prisma.pinToPrisma6": true
+}

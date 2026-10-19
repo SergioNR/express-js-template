@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../server/config/generated/prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+
+  directUrl = env("PRISMA_POSTGRES_DIRECT_URL")
+  url       = env("PRISMA_POSTGRES_CONNECTION_STRING")
+}
+
+model User {
+  id                  String                @id @default(uuid())
+  email               String                @unique
+  password            String
+  role                UserRoles
+  created_at          DateTime              @default(now())
+  last_updated_at     DateTime              @default(now()) @updatedAt
+  last_login_at       DateTime?
+  company_id          String
+  Company             Company               @relation(fields: [company_id], references: [id])
+  PasswordResetTokens PasswordResetTokens[]
+}
+
+model Company {
+  id           String         @id @default(uuid())
+  name         String?
+  User         User[]
+  Subscription Subscription[]
+  stripe_id    String?        @unique
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @default(now()) @updatedAt
+}
+
+model PasswordResetTokens {
+  id            String   @id @unique @default(uuid())
+  User          User     @relation(fields: [user_id], references: [id])
+  user_id       String
+  token_expires DateTime
+  created_at    DateTime @default(now())
+}
+
+model Session {
+  id        String   @id
+  sid       String   @unique
+  data      String
+  expiresAt DateTime
+}
+
+model Subscription {
+  id         String    @id @unique @default(uuid())
+  company_id String    @unique
+  Company    Company   @relation(fields: [company_id], references: [id])
+  created_at DateTime  @default(now())
+  updated_at DateTime  @default(now()) @updatedAt
+  expires_at DateTime?
+}
+
+enum UserRoles {
+  user
+  admin
+}

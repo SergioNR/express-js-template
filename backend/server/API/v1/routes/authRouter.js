@@ -251,8 +251,6 @@ authRouter.patch('/password-reset', checkSchema(recoverPasswordSchema), sanitize
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 email:
  *                   type: string
  *                   format: email

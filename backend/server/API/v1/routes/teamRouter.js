@@ -57,8 +57,6 @@ const updateMemberRoleValidation = [
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 members:
  *                   type: array
  *                   items:
@@ -147,8 +145,6 @@ teamRouter.get('/', checkCompanyPermission('team.view'), getTeamData);
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 invite:
  *                   type: object
  *                   properties:
@@ -223,8 +219,6 @@ teamRouter.post('/invites', checkCompanyPermission('team.invite'), createInviteV
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 invite:
  *                   type: object
  *       401:
@@ -338,8 +332,6 @@ teamRouter.delete('/invites/:inviteId', checkCompanyPermission('team.invite'), i
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 userId:
  *                   type: string
  *                   format: uuid
@@ -409,8 +401,6 @@ teamRouter.delete('/members/:userId', checkCompanyPermission('team.remove'), use
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 member:
  *                   type: object
  *                   properties:

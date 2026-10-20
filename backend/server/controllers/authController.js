@@ -127,7 +127,6 @@ export const checkTeamInviteValidity = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Team invite is valid',
     email: inviteData.email,
     companyName: inviteData.Company?.name,
     roleName: inviteData.Role.name,
@@ -199,7 +198,6 @@ export const acceptTeamInvite = async (req, res) => {
   //* No auto-login here - consistent with the register endpoint
   return res.status(201).json({
     success: true,
-    message: 'Invite accepted successfully - You can now log in',
   });
 };
 

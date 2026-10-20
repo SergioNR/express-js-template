@@ -73,7 +73,6 @@ export const getTeamData = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Team data retrieved successfully',
     members: companyMembers.map(toMemberShape),
     invites: companyInvites.map((invite) => toInviteShape(invite, invite.Role.name)),
     callerPermissions,
@@ -161,7 +160,6 @@ export const createTeamInvite = async (req, res) => {
 
   return res.status(201).json({
     success: true,
-    message: 'Invite sent successfully',
     invite: toInviteShape(invite, role.name),
   });
 };
@@ -211,7 +209,6 @@ export const resendTeamInvite = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Invite resent successfully',
     invite: toInviteShape(rotatedInvite, invite.Role.name),
   });
 };
@@ -234,7 +231,6 @@ export const revokeTeamInvite = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Invite revoked successfully',
   });
 };
 
@@ -290,7 +286,6 @@ export const removeTeamMember = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Member removed successfully',
     userId,
   });
 };
@@ -365,7 +360,6 @@ export const updateTeamMemberRole = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Member role updated successfully',
     member: toMemberShape(updatedMember),
   });
 };

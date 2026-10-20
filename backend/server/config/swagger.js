@@ -19,6 +19,7 @@ const swaggerOptions = {
       { name: 'Health', description: 'Server health check' },
       { name: 'Auth', description: 'Authentication and password management' },
       { name: 'User', description: 'Logged-in user profile management' },
+      { name: 'Team', description: 'Company team and invite management' },
       { name: 'Billing', description: 'Stripe subscription billing' },
       { name: 'Admin', description: 'Admin-only user management' },
       { name: 'Webhooks', description: 'Inbound third-party webhooks' },
@@ -148,6 +149,32 @@ const swaggerOptions = {
               type: 'string',
               minLength: 8,
               maxLength: 64,
+            },
+          },
+        },
+        TeamInviteRequest: {
+          type: 'object',
+          required: ['email', 'roleName'],
+          properties: {
+            email: {
+              type: 'string',
+              format: 'email',
+              maxLength: 254,
+            },
+            roleName: {
+              type: 'string',
+              enum: ['company_owner', 'company_admin', 'company_member'],
+              description: 'Company role the invitee will receive. The inviter must hold it themselves unless they are a global admin.',
+            },
+          },
+        },
+        UpdateMemberRoleRequest: {
+          type: 'object',
+          required: ['roleName'],
+          properties: {
+            roleName: {
+              type: 'string',
+              enum: ['company_owner', 'company_admin', 'company_member'],
             },
           },
         },

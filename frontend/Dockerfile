@@ -2,7 +2,7 @@
 # syntax=docker/dockerfile:1
 
 # Define build arguments for environment variables
-ARG NODE_VERSION=24.11.1
+ARG NODE_VERSION=26
 
 # First stage: Build the application
 FROM node:${NODE_VERSION}-alpine AS build

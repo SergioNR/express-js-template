@@ -66,7 +66,9 @@ export const getSubscriptionDataInDb = async (companyId) => {
 };
 
 //* Public shape returned to clients - deliberately excludes the internal
-//* Stripe customer id and any other Company fields
+//* Stripe customer id and any other Company fields. The id's existence is
+//* exposed as a boolean so the client can gate portal access without ever
+//* seeing the id itself
 export const getSubscriptionPublicDataInDb = async (companyId) => {
   const subscriptionData = await prisma.subscription.findUnique({
     where: {
@@ -77,10 +79,24 @@ export const getSubscriptionPublicDataInDb = async (companyId) => {
       expires_at: true,
       created_at: true,
       updated_at: true,
+      Company: {
+        select: {
+          stripe_id: true,
+        },
+      },
     },
   });
 
-  return subscriptionData;
+  if (!subscriptionData) {
+    return null;
+  }
+
+  const { Company, ...publicData } = subscriptionData;
+
+  return {
+    ...publicData,
+    has_billing_id: Boolean(Company?.stripe_id),
+  };
 };
 
 export const deleteSubscriptionByCompanyId = async (companyId) => {

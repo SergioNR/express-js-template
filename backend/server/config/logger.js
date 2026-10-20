@@ -1,7 +1,12 @@
 import pino from 'pino';
 
 const redactOptions = {
-  paths: ['context.email', 'context.password'],
+  paths: [
+    'context.email',
+    'context.password',
+    'context.inviteToken',
+    'context.userData.inviteToken',
+  ],
   censor: '[REDACTED]',
 };
 

@@ -11,6 +11,7 @@ import {
   updateUserLastLoginDate,
 } from '../models/userModel.js';
 import { createPasswordResetToken, getPasswordResetTokenData, deletePasswordResetTokens } from '../models/passwordResetTokensModel.js';
+import { getTeamInviteByToken, deleteTeamInviteByTokenSafe } from '../models/teamInvitesModel.js';
 import { deleteUserSessions, linkSessionToUser } from '../models/sessionModel.js';
 import { sendResetPasswordTokenToUser } from '../integrations/brevo/transactionalEmails/sendResetPasswordTokenToUser.js';
 import { sendExistingAccountNoticeToUser } from '../integrations/brevo/transactionalEmails/sendExistingAccountNoticeToUser.js';
@@ -100,6 +101,105 @@ export const updateRecoveredUserPassword = async (req, res) => {
 
   return res.status(200).json({
     success: true,
+  });
+};
+
+export const checkTeamInviteValidity = async (req, res) => {
+  const { inviteToken } = req.query;
+
+  const inviteData = await getTeamInviteByToken(inviteToken);
+
+  if (!inviteData) {
+    return res.status(404).json({
+      success: false,
+      message: 'Team invite does not exist',
+    });
+  }
+
+  const { token_expires: tokenExpirationDate } = inviteData;
+
+  if (new Date(tokenExpirationDate) < new Date()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invite expired - Please ask a team admin for a new invite',
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: 'Team invite is valid',
+    email: inviteData.email,
+    companyName: inviteData.Company?.name,
+    roleName: inviteData.Role.name,
+  });
+};
+
+export const acceptTeamInvite = async (req, res) => {
+  const {
+    inviteToken,
+    password,
+  } = req.body;
+
+  const inviteData = await getTeamInviteByToken(inviteToken);
+
+  if (!inviteData) {
+    return res.status(404).json({
+      success: false,
+      message: 'Team invite does not exist',
+    });
+  }
+
+  const { token_expires: tokenExpires } = inviteData;
+
+  if (new Date(tokenExpires) < new Date()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invite expired - Please ask a team admin for a new invite',
+    });
+  }
+
+  const existingUser = await getUserByEmail(inviteData.email);
+
+  if (existingUser) {
+    //* The invitee registered on their own in the meantime - the invite is void
+    await deleteTeamInviteByTokenSafe(inviteToken);
+
+    return res.status(409).json({
+      success: false,
+      message: 'Email is already registered - Please log in instead',
+    });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+
+  try {
+    await createUserInDB({
+      username: inviteData.email,
+      password: hashedPassword,
+      companyId: inviteData.company_id,
+      roleId: inviteData.role_id,
+    });
+  } catch (error) {
+    //* Concurrent self-registration with the same email can beat the check
+    //* above - the unique constraint resolves the race
+    if (error.code === 'P2002') {
+      await deleteTeamInviteByTokenSafe(inviteToken);
+
+      return res.status(409).json({
+        success: false,
+        message: 'Email is already registered - Please log in instead',
+      });
+    }
+
+    throw error;
+  }
+
+  await deleteTeamInviteByTokenSafe(inviteToken);
+
+  //* No auto-login here - consistent with the register endpoint
+  return res.status(201).json({
+    success: true,
+    message: 'Invite accepted successfully - You can now log in',
   });
 };
 

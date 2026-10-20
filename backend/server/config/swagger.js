@@ -178,6 +178,21 @@ const swaggerOptions = {
             },
           },
         },
+        AcceptInviteRequest: {
+          type: 'object',
+          required: ['inviteToken', 'password'],
+          properties: {
+            inviteToken: {
+              type: 'string',
+              format: 'uuid',
+            },
+            password: {
+              type: 'string',
+              minLength: 8,
+              maxLength: 64,
+            },
+          },
+        },
       },
     },
   },

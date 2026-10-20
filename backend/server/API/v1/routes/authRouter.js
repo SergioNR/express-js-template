@@ -9,6 +9,8 @@ import {
   checkPasswordResetTokenValidity,
   updateRecoveredUserPassword,
   logoutUser,
+  checkTeamInviteValidity,
+  acceptTeamInvite,
 } from '../../../controllers/authController.js';
 import { sanitizerResult } from '../../../middlewares/sanitizerResult.js';
 import { authLimiter } from '../../../middlewares/authRateLimiter.js';
@@ -20,6 +22,8 @@ import { recoverPasswordSchema } from '../../../utils/validators/recoverPassword
 import { checkAuthentication } from '../../../middlewares/authenticationChecker.js';
 import { requestNewPasswordSchema } from '../../../utils/validators/requestNewPasswordSchema.js';
 import { passwordResetTokenQuerySchema } from '../../../utils/validators/passwordResetTokenQuerySchema.js';
+import { teamInviteTokenQuerySchema } from '../../../utils/validators/teamInviteTokenQuerySchema.js';
+import { acceptTeamInviteSchema } from '../../../utils/validators/acceptTeamInviteSchema.js';
 
 export const authRouter = Router();
 
@@ -222,6 +226,108 @@ authRouter.post('/password-reset', authLimiter, checkSchema(requestNewPasswordSc
  *               $ref: '#/components/schemas/ValidationError'
  */
 authRouter.patch('/password-reset', checkSchema(recoverPasswordSchema), sanitizerResult, updateRecoveredUserPassword);
+
+/**
+ * @openapi
+ * /api/v1/auth/invite:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Check team invite token validity
+ *     description: Retrieves the data of a team invite (invited email, company name and offered role) and whether it is still valid. Invite links are single-use per company and email and expire after 7 days.
+ *     parameters:
+ *       - in: query
+ *         name: inviteToken
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Invite exists and is valid
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 email:
+ *                   type: string
+ *                   format: email
+ *                 companyName:
+ *                   type: string
+ *                   nullable: true
+ *                 roleName:
+ *                   type: string
+ *       400:
+ *         description: Token is missing from the query string, is not a valid UUID or has expired
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ *       404:
+ *         description: Token does not exist
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ */
+authRouter.get('/invite', checkSchema(teamInviteTokenQuerySchema), sanitizerResult, checkTeamInviteValidity);
+
+/**
+ * @openapi
+ * /api/v1/auth/invite-accept:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Accept a team invite and create the account
+ *     description: Validates the invite token, creates the user in the invited company with the invited company role and the global `user` role, and deletes the invite. No session is established - the new member logs in afterwards.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AcceptInviteRequest'
+ *     responses:
+ *       201:
+ *         description: Account created successfully - the user can now log in
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessMessage'
+ *       400:
+ *         description: Token is not a valid UUID or has expired
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ *       404:
+ *         description: Token does not exist
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ *       409:
+ *         description: The invited email became registered in the meantime - the invite was revoked
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ *       422:
+ *         description: Validation errors
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ *       429:
+ *         description: Too many authentication attempts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ */
+authRouter.post('/invite-accept', authLimiter, checkSchema(acceptTeamInviteSchema), sanitizerResult, acceptTeamInvite);
 
 authRouter.use(checkAuthentication());
 

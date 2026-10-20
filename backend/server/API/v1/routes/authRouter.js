@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { checkSchema } from 'express-validator';
 import {
-  createUserInDb,
+  registerUser,
   updateUserPassword,
   checkSession,
   requestPasswordResetToken,
@@ -11,6 +11,7 @@ import {
   logoutUser,
 } from '../../../controllers/authController.js';
 import { sanitizerResult } from '../../../middlewares/sanitizerResult.js';
+import { authLimiter } from '../../../middlewares/authRateLimiter.js';
 import { createUserValidationSchema } from '../../../utils/validators/createUserSchema.js';
 import { userLoginValidationSchema } from '../../../utils/validators/userLoginValidationSchema.js';
 
@@ -18,6 +19,7 @@ import { updatePasswordSchema } from '../../../utils/validators/updatePasswordSc
 import { recoverPasswordSchema } from '../../../utils/validators/recoverPasswordSchema.js';
 import { checkAuthentication } from '../../../middlewares/authenticationChecker.js';
 import { requestNewPasswordSchema } from '../../../utils/validators/requestNewPasswordSchema.js';
+import { passwordResetTokenQuerySchema } from '../../../utils/validators/passwordResetTokenQuerySchema.js';
 
 export const authRouter = Router();
 
@@ -42,6 +44,8 @@ export const authRouter = Router();
  *             schema:
  *               type: object
  *               properties:
+ *                 success:
+ *                   type: boolean
  *                 message:
  *                   type: string
  *                 user:
@@ -65,8 +69,14 @@ export const authRouter = Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ValidationError'
+ *       429:
+ *         description: Too many authentication attempts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
  */
-authRouter.post('/login', checkSchema(userLoginValidationSchema), sanitizerResult, loginLocal);
+authRouter.post('/login', authLimiter, checkSchema(userLoginValidationSchema), sanitizerResult, loginLocal);
 
 /**
  * @openapi
@@ -94,8 +104,14 @@ authRouter.post('/login', checkSchema(userLoginValidationSchema), sanitizerResul
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ValidationError'
+ *       429:
+ *         description: Too many authentication attempts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
  */
-authRouter.post('/register', checkSchema(createUserValidationSchema), sanitizerResult, createUserInDb);
+authRouter.post('/register', authLimiter, checkSchema(createUserValidationSchema), sanitizerResult, registerUser);
 
 /**
  * @openapi
@@ -119,13 +135,7 @@ authRouter.post('/register', checkSchema(createUserValidationSchema), sanitizerR
  *             schema:
  *               $ref: '#/components/schemas/SuccessMessage'
  *       400:
- *         description: Token is missing from the query string
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorMessage'
- *       403:
- *         description: Token expired - a new reset link must be requested
+ *         description: Token is missing from the query string, is not a valid UUID or has expired
  *         content:
  *           application/json:
  *             schema:
@@ -137,7 +147,7 @@ authRouter.post('/register', checkSchema(createUserValidationSchema), sanitizerR
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  */
-authRouter.get('/password-reset', checkPasswordResetTokenValidity);
+authRouter.get('/password-reset', checkSchema(passwordResetTokenQuerySchema), sanitizerResult, checkPasswordResetTokenValidity);
 
 /**
  * @openapi
@@ -165,8 +175,14 @@ authRouter.get('/password-reset', checkPasswordResetTokenValidity);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ValidationError'
+ *       429:
+ *         description: Too many authentication attempts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
  */
-authRouter.post('/password-reset', checkSchema(requestNewPasswordSchema), sanitizerResult, requestPasswordResetToken);
+authRouter.post('/password-reset', authLimiter, checkSchema(requestNewPasswordSchema), sanitizerResult, requestPasswordResetToken);
 
 /**
  * @openapi

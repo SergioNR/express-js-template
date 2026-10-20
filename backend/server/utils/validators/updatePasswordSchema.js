@@ -16,10 +16,20 @@ export const updatePasswordSchema = {
     },
     isLength: {
       options: {
-        min: 6,
-        max: 32,
+        min: 8,
+        max: 64,
       },
-      errorMessage: 'Password must be between 6-32 characters long',
+      errorMessage: 'Password must be between 8-64 characters long',
+    },
+    isStrongPassword: {
+      options: {
+        minLength: 8,
+        minLowercase: 1,
+        minUppercase: 1,
+        minNumbers: 1,
+        minSymbols: 0,
+      },
+      errorMessage: 'Password must contain at least one lowercase letter, one uppercase letter and one number',
     },
   },
 };

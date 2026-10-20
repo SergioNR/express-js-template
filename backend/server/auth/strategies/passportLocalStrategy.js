@@ -1,10 +1,11 @@
 import LocalStrategy from 'passport-local';
 import bcrypt from 'bcryptjs';
 import { getUserByEmail } from '../../models/userModel.js';
+import { BCRYPT_SALT_ROUNDS } from '../../config/security.js';
 
 //* Constant invalid hash used to equalize response times for nonexistent users,
 //* preventing user enumeration through login response timing
-const DUMMY_PASSWORD_HASH = bcrypt.hashSync('timing-attack-mitigation-dummy-hash', 10);
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync('timing-attack-mitigation-dummy-hash', BCRYPT_SALT_ROUNDS);
 
 export const localStrategy = new LocalStrategy(async (userEmail, password, done) => {
   try {

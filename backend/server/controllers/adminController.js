@@ -3,35 +3,51 @@ import {
   getAllUsersInDb,
   countUsersInDb,
   getUserById,
+  getUserDetailInDb,
 } from '../models/userModel.js';
+import {
+  getAllCompaniesInDb,
+  countCompaniesInDb,
+  getCompanyDetailInDb,
+} from '../models/companyModel.js';
+import {
+  countActiveSubscriptionsInDb,
+  countTotalSubscriptionsInDb,
+} from '../models/subscriptionModel.js';
+import {
+  countActiveSessionsInDb,
+  countActiveSessionsByUserInDb,
+} from '../models/sessionModel.js';
 import { cleanupAfterUserDeletion } from '../utils/userDeletionCleanup.js';
 
-const ALLOWED_ROLES = ['user', 'admin'];
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
+const WEEK_IN_MS = 7 * 24 * 60 * 60 * 1000;
+
+const parsePagination = (query) => ({
+  limit: Math.min(Number.parseInt(query.limit, 10) || DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE),
+  cursor: typeof query.cursor === 'string' && query.cursor.length > 0
+    ? query.cursor
+    : undefined,
+});
 
 export const getAllUsers = async (req, res) => {
   const filters = {};
 
-  //* Whitelist the supported filter - any other query parameter is ignored
+  //* Whitelist the supported filters - any other query parameter is ignored
   //* instead of being passed through to the database
-  const { role } = req.query;
-
-  if (role) {
-    if (!ALLOWED_ROLES.includes(role)) {
-      return res.status(422).json({
-        success: false,
-        message: `Role filter must be one of: ${ALLOWED_ROLES.join(', ')}`,
-      });
-    }
-
-    filters.role = role;
+  if (req.query.role) {
+    filters.role = req.query.role;
   }
 
-  const limit = Math.min(Number.parseInt(req.query.limit, 10) || DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
-  const cursor = typeof req.query.cursor === 'string' && req.query.cursor.length > 0
-    ? req.query.cursor
-    : undefined;
+  if (req.query.search) {
+    filters.email = {
+      contains: req.query.search,
+      mode: 'insensitive',
+    };
+  }
+
+  const { limit, cursor } = parsePagination(req.query);
 
   const users = await getAllUsersInDb(filters, { limit, cursor });
 
@@ -53,19 +69,24 @@ export const getAllUsers = async (req, res) => {
 export const getOneUserById = async (req, res) => {
   const { userId } = req.params;
 
-  const getOneUserByIdQuery = await getUserById(userId);
+  const userDetail = await getUserDetailInDb(userId);
 
-  if (getOneUserByIdQuery === null) {
+  if (userDetail === null) {
     return res.status(404).json({
       success: false,
       message: 'User not found',
     });
   }
 
+  const activeSessionCount = await countActiveSessionsByUserInDb(userId);
+
   return res.status(200).json({
     success: true,
     message: 'User successfully retrieved - DB',
-    user: getOneUserByIdQuery,
+    user: {
+      ...userDetail,
+      activeSessionCount,
+    },
   });
 };
 
@@ -108,4 +129,88 @@ export const deleteOneUserById = async (req, res) => {
 
     throw error; //* Forwarded to the global error handler (Express 5)
   }
+};
+
+export const getAllCompanies = async (req, res) => {
+  const filters = {};
+
+  //* Whitelist the supported filter - any other query parameter is ignored
+  //* instead of being passed through to the database
+  if (req.query.search) {
+    filters.name = {
+      contains: req.query.search,
+      mode: 'insensitive',
+    };
+  }
+
+  const { limit, cursor } = parsePagination(req.query);
+
+  const companies = await getAllCompaniesInDb(filters, { limit, cursor });
+
+  const nextCursor = companies.length === limit && companies.length > 0
+    ? companies[companies.length - 1].id
+    : undefined;
+
+  const totalCompanyCount = await countCompaniesInDb(filters);
+
+  return res.status(200).json({
+    success: true,
+    message: 'Companies successfully retrieved - DB',
+    companyCount: totalCompanyCount,
+    companies: companies,
+    nextCursor: nextCursor,
+  });
+};
+
+export const getOneCompanyById = async (req, res) => {
+  const { companyId } = req.params;
+
+  const companyDetail = await getCompanyDetailInDb(companyId);
+
+  if (companyDetail === null) {
+    return res.status(404).json({
+      success: false,
+      message: 'Company not found',
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: 'Company successfully retrieved - DB',
+    company: companyDetail,
+  });
+};
+
+export const getAdminStats = async (req, res) => {
+  const [
+    totalUserCount,
+    totalAdminCount,
+    newUsersLastWeekCount,
+    totalCompanyCount,
+    totalSubscriptionCount,
+    activeSubscriptionCount,
+    activeSessionCount,
+  ] = await Promise.all([
+    countUsersInDb(),
+    countUsersInDb({ role: 'admin' }),
+    countUsersInDb({ created_at: { gte: new Date(Date.now() - WEEK_IN_MS) } }),
+    countCompaniesInDb(),
+    countTotalSubscriptionsInDb(),
+    countActiveSubscriptionsInDb(),
+    countActiveSessionsInDb(),
+  ]);
+
+  return res.status(200).json({
+    success: true,
+    message: 'Stats successfully retrieved - DB',
+    stats: {
+      totalUsers: totalUserCount,
+      totalAdmins: totalAdminCount,
+      newUsersLastWeek: newUsersLastWeekCount,
+      totalCompanies: totalCompanyCount,
+      totalSubscriptions: totalSubscriptionCount,
+      activeSubscriptions: activeSubscriptionCount,
+      activeSessions: activeSessionCount,
+    },
+  });
 };

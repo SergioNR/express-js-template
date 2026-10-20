@@ -91,6 +91,26 @@ export const deleteSubscriptionByCompanyId = async (companyId) => {
   });
 };
 
+export const countTotalSubscriptionsInDb = async () => {
+  const totalSubscriptionCount = await prisma.subscription.count();
+
+  return totalSubscriptionCount;
+};
+
+//* Mirrors the client-side definition of an active subscription:
+//* an existing `expires_at` in the future (null counts as inactive)
+export const countActiveSubscriptionsInDb = async () => {
+  const activeSubscriptionCount = await prisma.subscription.count({
+    where: {
+      expires_at: {
+        gt: new Date(),
+      },
+    },
+  });
+
+  return activeSubscriptionCount;
+};
+
 //* Best-effort cancellation at period end - a Stripe API failure must not
 //* block the account deletion flow, so errors are logged and swallowed
 export const cancelCompanySubscriptionInStripe = async (subscription) => {

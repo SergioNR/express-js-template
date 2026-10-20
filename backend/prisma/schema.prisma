@@ -20,6 +20,7 @@ model User {
   company_id          String
   Company             Company               @relation(fields: [company_id], references: [id])
   PasswordResetTokens PasswordResetTokens[]
+  UserRoles           UserRole[]
 }
 
 model Company {
@@ -27,9 +28,57 @@ model Company {
   name         String?
   User         User[]
   Subscription Subscription[]
+  TeamInvites  TeamInvites[]
   stripe_id    String?        @unique
   created_at   DateTime       @default(now())
   updated_at   DateTime       @default(now()) @updatedAt
+}
+
+model Role {
+  id              String           @id @default(uuid())
+  name            String           @unique
+  created_at      DateTime         @default(now())
+  RolePermissions RolePermission[]
+  UserRoles       UserRole[]
+  TeamInvites     TeamInvites[]
+}
+
+model Permission {
+  id              String           @id @default(uuid())
+  name            String           @unique
+  RolePermissions RolePermission[]
+}
+
+model RolePermission {
+  role_id       String
+  permission_id String
+  Role          Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  Permission    Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@id([role_id, permission_id])
+}
+
+model UserRole {
+  user_id String
+  role_id String
+  User    User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  Role    Role  @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, role_id])
+}
+
+model TeamInvites {
+  id            String   @id @unique @default(uuid())
+  email         String
+  company_id    String
+  role_id       String
+  invited_by    String
+  token_expires DateTime
+  created_at    DateTime @default(now())
+  Company       Company  @relation(fields: [company_id], references: [id])
+  Role          Role     @relation(fields: [role_id], references: [id])
+
+  @@unique([company_id, email])
 }
 
 model PasswordResetTokens {

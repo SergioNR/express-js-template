@@ -17,7 +17,8 @@
       "navigation": "Navegación",
       "dashboard": "Dashboard",
       "profile": "Cambiar contraseña",
-      "plans": "Planes"
+      "plans": "Planes",
+      "team": "Equipo"
     }
   },
   "footer": {
@@ -113,6 +114,25 @@
         "samePassword": "La nueva contraseña debe ser diferente de la contraseña actual",
         "invalid": "Los datos introducidos no son válidos. Por favor, inténtalo de nuevo.",
         "unexpected": "Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo."
+      }
+    },
+    "acceptInvite": {
+      "title": "Unirse al equipo",
+      "email": "Email invitado",
+      "company": "Empresa",
+      "role": "Rol",
+      "password": "Contraseña",
+      "passwordPlaceholder": "Crea tu contraseña",
+      "passwordHint": "Mínimo 8 caracteres, con al menos una mayúscula, una minúscula y un número.",
+      "submit": "Crear cuenta y unirme",
+      "success": "Cuenta creada correctamente. Ya puedes iniciar sesión.",
+      "invalidLinkTitle": "Invitación inválida",
+      "invalidLinkBody": "La invitación no existe o ha caducado. Pide al equipo que te envíe una nueva.",
+      "backToLogin": "Volver al inicio de sesión",
+      "errors": {
+        "expired": "La invitación ha caducado. Pide una nueva invitación.",
+        "registered": "Ese email ya tiene una cuenta. Inicia sesión.",
+        "generic": "No se pudo aceptar la invitación. Inténtalo de nuevo."
       }
     }
   },
@@ -491,7 +511,9 @@
       "profile": "Perfil",
       "billing": "Facturación",
       "admin": "Administración",
-      "notFound": "Página no encontrada"
+      "notFound": "Página no encontrada",
+      "team": "Equipo",
+      "acceptInvite": "Aceptar invitación"
     }
   },
   "notFound": {
@@ -503,5 +525,65 @@
     "title": "Algo ha ido mal",
     "description": "Se ha producido un error inesperado y no se pudo mostrar esta página. Puedes intentar recargarla.",
     "reload": "Recargar"
+  },
+  "team": {
+    "title": "Equipo",
+    "inviteButton": "Invitar al equipo",
+    "roles": {
+      "company_owner": "Propietario",
+      "company_admin": "Administrador",
+      "company_member": "Miembro"
+    },
+    "members": {
+      "title": "Miembros",
+      "empty": "Todavía no hay miembros en la empresa.",
+      "columns": {
+        "email": "Email",
+        "role": "Rol",
+        "joined": "Miembro desde"
+      },
+      "roleChange": "Cambiar el rol de {{email}}",
+      "removeAction": "Eliminar a {{email}}",
+      "removedToast": "Miembro {{email}} eliminado",
+      "roleUpdatedToast": "Rol actualizado correctamente",
+      "removeModal": {
+        "title": "Eliminar miembro",
+        "description": "Se eliminará la cuenta de {{email}} y se cerrarán todas sus sesiones. Esta acción no se puede deshacer.",
+        "cancel": "Cancelar",
+        "confirm": "Eliminar miembro"
+      }
+    },
+    "invites": {
+      "title": "Invitaciones pendientes",
+      "empty": "No hay invitaciones pendientes.",
+      "expiredBadge": "Caducada",
+      "sentToast": "Invitación enviada",
+      "resentToast": "Invitación reenviada",
+      "revokedToast": "Invitación revocada",
+      "resend": "Reenviar invitación a {{email}}",
+      "revoke": "Revocar invitación de {{email}}",
+      "columns": {
+        "email": "Email",
+        "role": "Rol",
+        "expires": "Caduca"
+      }
+    },
+    "inviteModal": {
+      "title": "Invitar al equipo",
+      "email": "Email",
+      "emailPlaceholder": "correo@empresa.com",
+      "role": "Rol",
+      "rolePlaceholder": "Selecciona un rol",
+      "submit": "Enviar invitación",
+      "cancel": "Cancelar"
+    },
+    "errors": {
+      "loadError": "No se pudo cargar la información del equipo. Inténtalo de nuevo.",
+      "inviteConflict": "Ese email ya está registrado o ya tiene una invitación pendiente.",
+      "removeConflict": "No se puede eliminar a este miembro.",
+      "roleConflict": "No se puede cambiar el rol de este miembro.",
+      "forbidden": "No tienes permisos para realizar esta acción.",
+      "generic": "Ha ocurrido un error. Inténtalo de nuevo."
+    }
   }
 }

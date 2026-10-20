@@ -23,7 +23,9 @@ export const storeSessions = session({
     maxAge: 86400000, // 24 hours
     secure: process.env.DEPLOY_ENVIRONMENT !== 'localhost', // Cookie must travel over HTTPS outside local development
     httpOnly: true,
-    sameSite: 'none',
+    // 'none' requires 'Secure' - browsers reject SameSite=None without it, so
+    // local HTTP dev must use 'lax' (ports are irrelevant for same-site cookies)
+    sameSite: process.env.DEPLOY_ENVIRONMENT !== 'localhost' ? 'none' : 'lax',
   },
   store: prismaSessionStore,
 });

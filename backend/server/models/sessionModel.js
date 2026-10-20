@@ -20,6 +20,33 @@ export const linkSessionToUser = async (sessionId, userId) => {
   }
 };
 
+export const countActiveSessionsInDb = async () => {
+  const activeSessionCount = await prisma.session.count({
+    where: {
+      expiresAt: {
+        gt: new Date(),
+      },
+    },
+  });
+
+  return activeSessionCount;
+};
+
+//* Session counts only - the serialized `data` blob is sensitive and never
+//* exposed through the admin API
+export const countActiveSessionsByUserInDb = async (userId) => {
+  const activeSessionCount = await prisma.session.count({
+    where: {
+      user_id: userId,
+      expiresAt: {
+        gt: new Date(),
+      },
+    },
+  });
+
+  return activeSessionCount;
+};
+
 export const deleteUserSessions = async (userId, exceptSessionId = null) => {
   try {
     const whereClause = {

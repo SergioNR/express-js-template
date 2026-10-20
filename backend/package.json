@@ -16,7 +16,7 @@
         "start:local": "node --import tsx --watch --env-file=.env ./server/app.js",
         "start:docker": "docker compose up --build --watch",
         "stripe:listen": "stripe listen --forward-to localhost:3000/webhooks/v1/stripe",
-        "test": "jest"
+        "test": "NODE_OPTIONS='--experimental-vm-modules' jest"
     },
     "dependencies": {
         "@getbrevo/brevo": "^6.2.0",

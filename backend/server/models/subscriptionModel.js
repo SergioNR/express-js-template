@@ -1,15 +1,21 @@
 import { prisma } from '../config/prismaClient.js';
+import { stripeInstance } from '../config/stripe.js';
+import { logError } from '../config/loggerFunctions.js';
 // import { posthogUserSubscriptionCreated, posthogUserSubscriptionEnded } from './posthogModel.js';
 
-export const updateSubscriptionInDb = async (checkoutSessionData) => {
-  const whereClause = {
-    company_id: checkoutSessionData.companyId,
-  };
-
-  await prisma.subscription.update({
-    where: whereClause,
-    data: {
+//* Upsert (instead of update) so Stripe event retries and first checkout for a
+//* company without a Subscription row are both handled idempotently
+export const upsertSubscriptionInDb = async (checkoutSessionData) => {
+  await prisma.subscription.upsert({
+    where: {
+      company_id: checkoutSessionData.companyId,
+    },
+    update: {
       id: checkoutSessionData.subscriptionId,
+    },
+    create: {
+      id: checkoutSessionData.subscriptionId,
+      company_id: checkoutSessionData.companyId,
     },
   });
 
@@ -31,13 +37,13 @@ export const storeBillingCompanyIdInDb = async (companyId, stripeCustomerId) => 
   return user;
 };
 
+//* deleteMany (instead of delete) so repeated Stripe delivery attempts of
+//* `customer.subscription.deleted` do not fail on an already-deleted row
 export const deleteSubscriptionInDb = async (subscriptionDeletionData) => {
-  const whereClause = {
-    id: subscriptionDeletionData.subscriptionId,
-  };
-
-  await prisma.subscription.delete({
-    where: whereClause,
+  await prisma.subscription.deleteMany({
+    where: {
+      id: subscriptionDeletionData.subscriptionId,
+    },
   });
 
   // posthogUserSubscriptionEnded(subscriptionDeletionData);
@@ -53,19 +59,59 @@ export const getSubscriptionDataInDb = async (companyId) => {
     select: {
       id: true,
       expires_at: true,
-      Company: true, // TODO - improve this query to return only stripe_id
+      Company: {
+        select: {
+          stripe_id: true,
+        },
+      },
     },
   });
 
   return subscriptionData;
 };
 
-export const createFreeTrialSubscription = async (companyId) => {
-  const createUserSubscriptionQuery = await prisma.subscription.create({
-    data: {
+//* Public shape returned to clients - deliberately excludes the internal
+//* Stripe customer id and any other Company fields
+export const getSubscriptionPublicDataInDb = async (companyId) => {
+  const subscriptionData = await prisma.subscription.findUnique({
+    where: {
       company_id: companyId,
-      expires_at: new Date(Date.now() + 604800000), // 7 day trial
+    },
+    select: {
+      id: true,
+      expires_at: true,
+      created_at: true,
+      updated_at: true,
     },
   });
-  return createUserSubscriptionQuery;
+
+  return subscriptionData;
+};
+
+export const deleteSubscriptionByCompanyId = async (companyId) => {
+  await prisma.subscription.deleteMany({
+    where: {
+      company_id: companyId,
+    },
+  });
+};
+
+//* Best-effort cancellation at period end - a Stripe API failure must not
+//* block the account deletion flow, so errors are logged and swallowed
+export const cancelCompanySubscriptionInStripe = async (subscription) => {
+  const stripeSubscriptionId = subscription?.id;
+
+  //* Trial subscriptions have a random uuid as id - only `sub_` prefixed ids
+  //* reference a real Stripe subscription
+  if (!stripeSubscriptionId || !stripeSubscriptionId.startsWith('sub_')) {
+    return;
+  }
+
+  try {
+    await stripeInstance.subscriptions.update(stripeSubscriptionId, {
+      cancel_at_period_end: true,
+    });
+  } catch (error) {
+    logError(`Could not cancel Stripe subscription ${stripeSubscriptionId} at period end`, error);
+  }
 };

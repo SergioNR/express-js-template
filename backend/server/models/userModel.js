@@ -1,5 +1,6 @@
 import { prisma } from '../config/prismaClient.js';
 import { posthogUserDeleteAccount, posthogUserSignedUp } from './posthogModel.js';
+import { FREE_TRIAL_DURATION_MS } from '../config/security.js';
 import {
   logError,
   logInfo,
@@ -13,12 +14,17 @@ export const createUserInDB = async (userData) => {
       role: 'user',
       Company: {
         create: {
+          Subscription: {
+            create: {
+              expires_at: new Date(Date.now() + FREE_TRIAL_DURATION_MS),
+            },
+          },
         },
       },
     },
   });
 
-  logInfo(`${userData.role} ${createUserInDbQuery.id} created in DB`, createUserInDbQuery);
+  logInfo(`User ${createUserInDbQuery.id} (${createUserInDbQuery.role}) created in DB`, createUserInDbQuery);
 
   posthogUserSignedUp(createUserInDbQuery); // Fire-and-forget
 
@@ -95,7 +101,7 @@ export const updateUserPasswordInDB = async (userId, newPassword) => {
   return updatePasswordQuery;
 };
 
-export const getAllUsersInDb = async (filters = {}) => {
+export const getAllUsersInDb = async (filters = {}, pagination = {}) => {
   const getAllUsersQuery = await prisma.user.findMany({
     where: filters,
     omit: {
@@ -104,9 +110,20 @@ export const getAllUsersInDb = async (filters = {}) => {
     orderBy: {
       created_at: 'desc',
     },
+    take: pagination.limit,
+    skip: pagination.cursor ? 1 : undefined,
+    cursor: pagination.cursor ? { id: pagination.cursor } : undefined,
   });
 
   return getAllUsersQuery;
+};
+
+export const countUsersInDb = async (filters = {}) => {
+  const userCount = await prisma.user.count({
+    where: filters,
+  });
+
+  return userCount;
 };
 
 export const deleteUserInDb = async (userId) => {

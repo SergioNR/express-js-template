@@ -95,7 +95,7 @@ const RestorePasswordPage = () => {
             color={passwordUpdateResponse.success ? 'green' : 'red'}
             title={passwordUpdateResponse.success ? t('common.success') : t('common.error')}
           >
-            {passwordUpdateResponse.message}
+            {passwordUpdateResponse.success ? t('auth.restore.success') : t('auth.restore.invalidLinkBody')}
           </Alert>
 
           {passwordUpdateResponse.success && (

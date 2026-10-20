@@ -24,8 +24,8 @@ const UserBilling = () => {
       if (err.status === 400) {
         return notifyError(t('billing.errors.existingSubscription'));
       }
-      if ((err.status === 409 || err.status === 422) && err.response?.data?.message) {
-        return notifyError(err.response.data.message);
+      if (err.status === 409 || err.status === 422) {
+        return notifyError(t('billing.errors.invalid'));
       }
       return notifyError(t('billing.errors.checkout'));
     }

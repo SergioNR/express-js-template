@@ -92,6 +92,7 @@
       "confirmNewPasswordPlaceholder": "Confirma tu nueva contraseña",
       "passwordMismatch": "Las contraseñas no coinciden",
       "submit": "Actualizar contraseña",
+      "success": "Tu contraseña ha sido actualizada correctamente",
       "backToLogin": "Volver al inicio de sesión",
       "invalidLinkTitle": "Enlace inválido",
       "invalidLinkBody": "El enlace para restablecer la contraseña es inválido o ha expirado. Por favor, solicita un nuevo enlace.",
@@ -108,6 +109,9 @@
       "newPassword": "Nueva contraseña",
       "newPasswordPlaceholder": "Introduce tu nueva contraseña",
       "errors": {
+        "currentPassword": "La contraseña actual es incorrecta",
+        "samePassword": "La nueva contraseña debe ser diferente de la contraseña actual",
+        "invalid": "Los datos introducidos no son válidos. Por favor, inténtalo de nuevo.",
         "unexpected": "Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo."
       }
     }
@@ -263,6 +267,9 @@
   "user": {
     "panelTitle": "Panel de control",
     "backToSite": "Volver al sitio",
+    "profile": {
+      "loadError": "No se pudo cargar tu perfil. Por favor, inténtalo de nuevo más tarde."
+    },
     "noSubscriptionBanner": {
       "title": "Suscripción inactiva",
       "body": "No tienes una suscripción activa. Activa un plan para continuar usando la plataforma.",
@@ -347,6 +354,8 @@
     },
     "errors": {
       "existingSubscription": "El usuario ya tiene una suscripción existente",
+      "invalid": "Los datos de la solicitud no son válidos. Por favor, inténtalo de nuevo.",
+      "load": "No se pudo obtener la información de la suscripción",
       "checkout": "Se ha producido un error generando el enlace de pago. Por favor, inténtalo más tarde",
       "portal": "Se ha producido un error obteniendo el área de usuario. Por favor, inténtalo más tarde"
     }

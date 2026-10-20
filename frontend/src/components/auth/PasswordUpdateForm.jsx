@@ -7,13 +7,13 @@ import { notifySuccess } from '../../utils/notifications.js';
 
 const PasswordUpdateForm = () => {
   const { t } = useTranslation();
-  const [response, setResponse] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setResponse(null);
+    setErrorMessage(null);
 
     const passwordUpdateData = {
       currentPassword: e.target.currentPassword.value,
@@ -24,32 +24,18 @@ const PasswordUpdateForm = () => {
       await apiClient.patch('/api/v1/auth/update-user-password', passwordUpdateData);
       notifySuccess(t('auth.passwordUpdate.success'));
     } catch (error) {
-      if (error.response && error.response.status === 401) {
-        setResponse({
-          success: false,
-          message: error.response.data.message,
-        });
-      } else if (error.response && error.response.status === 400) {
-        const errorMessage = error.response.data.message;
+      const { status, data } = error.response ?? {};
+      const errorCode = status === 400 ? data?.code : null;
 
-        // Check if message is an array of validation objects
-        if (Array.isArray(errorMessage)) {
-          setResponse({
-            success: false,
-            message: errorMessage.map((err) => err.msg),
-          });
-        } else {
-          setResponse({
-            success: false,
-            message: errorMessage,
-          });
-        }
+      if (errorCode === 'AUTH_CURRENT_PASSWORD_INCORRECT') {
+        setErrorMessage(t('auth.passwordUpdate.errors.currentPassword'));
+      } else if (errorCode === 'AUTH_PASSWORD_UNCHANGED') {
+        setErrorMessage(t('auth.passwordUpdate.errors.samePassword'));
+      } else if (status === 400 || status === 422) {
+        setErrorMessage(t('auth.passwordUpdate.errors.invalid'));
       } else {
-        // Handle other errors (network errors, server errors, etc)
-        setResponse({
-          success: false,
-          message: t('auth.passwordUpdate.errors.unexpected'),
-        });
+        // Handle other errors (network errors, server errors, expired session, etc)
+        setErrorMessage(t('auth.passwordUpdate.errors.unexpected'));
       }
     } finally {
       setLoading(false);
@@ -60,18 +46,10 @@ const PasswordUpdateForm = () => {
     <Card shadow="sm" padding="lg" radius="md" withBorder mt="lg">
       <Text size="lg" fw={600} mb="md">{t('auth.passwordUpdate.title')}</Text>
 
-      {response && response.success === false && (
+      {errorMessage && (
         <Box mb="md">
           <Alert icon={<IconAlertCircle size="1rem" />} title={t('common.error')} color="red">
-            {Array.isArray(response.message) ? (
-              <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
-                {response.message.map((msg, index) => (
-                  <li key={index}>{msg}</li>
-                ))}
-              </ul>
-            ) : (
-              <Text>{response.message}</Text>
-            )}
+            <Text>{errorMessage}</Text>
           </Alert>
         </Box>
       )}

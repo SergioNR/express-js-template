@@ -29,6 +29,15 @@ export default [
       ...react.configs['jsx-runtime'].rules,
       ...reactHooks.configs.recommended.rules,
       'react/jsx-no-target-blank': 'off',
+      // Axios/backend errors expose raw English strings (err.message, response
+      // bodies) that must never reach the UI - map status + code to t() keys
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "MemberExpression[property.name='message'][object.name=/^(err|error|e)$/]",
+          message: 'Never render axios/backend error messages — map status/code to t() keys.',
+        },
+      ],
       // The codebase fetches on mount in effects (see SubscriptionContext);
       // this rule cannot trace setState past async boundaries and false-flags it
       'react-hooks/set-state-in-effect': 'off',

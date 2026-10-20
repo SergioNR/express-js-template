@@ -18,7 +18,7 @@ Full-stack template monorepo: Express.js 5 API (`backend/`) + React/Vite/Mantine
 - Separate lockfiles per package — run `npm ci` inside `backend/` or `frontend/`, never at the root.
 - Read the scoped `AGENTS.md` before changing a package.
 - New environment variables: add to the package's `.env.example` and README table in the same change.
-- Node 24+.
+- Node 26+.
 
 ## Never
 

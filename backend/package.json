@@ -1,7 +1,7 @@
 {
     "name": "expressjs-template",
     "engines": {
-        "node": ">=24"
+        "node": ">=26"
     },
     "description": "Express.js server template with authentication, billing, and database integrations",
     "main": "app.js",

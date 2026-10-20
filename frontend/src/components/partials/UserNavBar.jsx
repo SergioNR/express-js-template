@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router'
+import { NavLink } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import {
   IconHomeFilled,
   IconUserCircle,
@@ -7,14 +8,14 @@ import {
 import classes from './NavbarSimple.module.css';
 import LogOutButton from '../navBarElements/LogOutButton';
 
-
 const UserNavBar = () => {
+  const { t } = useTranslation();
 
   const data = [
-  { link: '/dashboard', label: 'Dashboard', icon: IconHomeFilled },
-  { link: '/user/profile', label: 'Cambiar contraseña', icon: IconUserCircle },
-  { link: '/user/billing', label: 'Planes', icon: IconCreditCardFilled },
-];
+    { link: '/dashboard', label: t('nav.user.dashboard'), icon: IconHomeFilled },
+    { link: '/user/profile', label: t('nav.user.profile'), icon: IconUserCircle },
+    { link: '/user/billing', label: t('nav.user.plans'), icon: IconCreditCardFilled },
+  ];
 
   const links = data.map((item) => (
     <NavLink
@@ -30,7 +31,7 @@ const UserNavBar = () => {
   return (
     <nav className={classes.navbar}>
       <div className={classes.header}>
-        <span className={classes.sectionTitle}>Navegación</span>
+        <span className={classes.sectionTitle}>{t('nav.user.navigation')}</span>
       </div>
 
       <div className={classes.navbarMain}>
@@ -42,7 +43,6 @@ const UserNavBar = () => {
       </div>
     </nav>
   );
-
 };
 
 export default UserNavBar;

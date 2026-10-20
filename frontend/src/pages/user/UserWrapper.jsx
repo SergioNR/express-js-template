@@ -1,47 +1,42 @@
-import { Outlet, Link } from "react-router";
-import NavbarSimple from "../../components/partials/UserNavBar";
-import { useNavigate } from "react-router";
-import { useState, useEffect } from "react";
-import apiClient from "../../config/API/axiosConfig.mjs";
-import { usePostHog } from 'posthog-js/react'
+import { Outlet, Link } from 'react-router';
+import NavbarSimple from '../../components/partials/UserNavBar';
+import { useNavigate } from 'react-router';
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import apiClient from '../../config/API/axiosConfig.mjs';
+import { usePostHog } from 'posthog-js/react';
 import { AppShell, Anchor, Burger, Group, Image, Text } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { SubscriptionProvider } from "../../contexts/SubscriptionContext.jsx";
-
+import PageLoader from '../../components/PageLoader.jsx';
+import { SubscriptionProvider } from '../../contexts/SubscriptionContext.jsx';
 
 const UserWrapper = () => {
+  const { t } = useTranslation();
+  const posthog = usePostHog();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [opened, { toggle }] = useDisclosure();
+  const [userId, setUserId] = useState(null);
 
-    const posthog = usePostHog()
-    const navigate = useNavigate();
-    const [loading, setLoading] = useState(true);
-    const [opened, { toggle }] = useDisclosure();
-    const [userId, setUserId] = useState(null);
-
-
-    useEffect(() => {
-        const checkSession = async () => {
-            try {
-                const response = await apiClient.get(`/api/v1/auth/session`);
-                setUserId(response.data.user.id)
-                setLoading(false);
-
-            } catch {
-                navigate('/auth/login');
-            }
-        };
-
-        checkSession();
-    }, [navigate]);
-
-
-    useEffect(() => {
-
-      if (userId) {
-        posthog?.identify(userId, {
-        })
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const response = await apiClient.get(`/api/v1/auth/session`);
+        setUserId(response.data.user.id);
+        setLoading(false);
+      } catch {
+        navigate('/auth/login');
       }
-    }, [userId, posthog])
+    };
 
+    checkSession();
+  }, [navigate]);
+
+  useEffect(() => {
+    if (userId) {
+      posthog?.identify(userId, {});
+    }
+  }, [userId, posthog]);
 
   return (
     <SubscriptionProvider>
@@ -65,15 +60,15 @@ const UserWrapper = () => {
               />
               <Anchor component={Link} to="/dashboard" underline="never" inherit>
                 <Group gap="xs" wrap="nowrap">
-                  <Image src="/logo.svg" alt="logo" h={28} w={28} />
-                  <Text fw={600} size="lg" component="span">Panel de control</Text>
+                  <Image src="/logo.svg" alt={t('common.logoAlt')} h={28} w={28} />
+                  <Text fw={600} size="lg" component="span">{t('user.panelTitle')}</Text>
                 </Group>
               </Anchor>
             </Group>
 
             <Group gap="lg" wrap="nowrap" visibleFrom="xs">
               <Anchor component={Link} to="/" size="sm" c="dimmed">
-                Volver al sitio
+                {t('user.backToSite')}
               </Anchor>
             </Group>
           </Group>
@@ -84,18 +79,11 @@ const UserWrapper = () => {
         </AppShell.Navbar>
 
         <AppShell.Main>
-          {loading ? (
-            <div>Cargando...</div>
-          ) : (
-            <>
-              <Outlet />
-            </>
-          )}
+          {loading ? <PageLoader /> : <Outlet />}
         </AppShell.Main>
       </AppShell>
     </SubscriptionProvider>
   );
-
-}
+};
 
 export default UserWrapper;

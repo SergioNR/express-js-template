@@ -3,18 +3,26 @@ import HowItWorks from './sections/HowItWorks.jsx';
 import Features from './sections/Features.jsx';
 import FAQ from './sections/FAQ.jsx';
 import DashboardExample from '../../components/DashboardExample.jsx';
+import Seo from '../../components/Seo.jsx';
+import { useTranslation } from 'react-i18next';
 
 const Homepage = () => {
-    return (
+  const { t } = useTranslation();
 
-        <div className="home-page">
+  return (
+    <div className="home-page">
+      <Seo
+        title={t('seo.homeTitle')}
+        description={t('index.hero.subtitle')}
+        path="/"
+      />
       <MainHero />
       <HowItWorks />
       <DashboardExample />
       <Features />
       <FAQ />
     </div>
-    )
-}
+  );
+};
 
 export default Homepage;

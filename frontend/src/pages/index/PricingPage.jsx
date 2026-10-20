@@ -1,17 +1,25 @@
 import { Container, Title, Text, Card, List, ThemeIcon, Stack, SimpleGrid } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 import RegisterButton from '../../components/navBarElements/RegisterButton.jsx';
+import Seo from '../../components/Seo.jsx';
 import { PLANS } from '../../config/plans.js';
 
 export const PricingPage = () => {
+  const { t } = useTranslation();
   const plansArray = Object.values(PLANS);
 
   return (
     <Container py="xl" size="lg">
+      <Seo
+        title={t('index.pricing.title')}
+        description={t('index.pricing.subtitle')}
+        path="/pricing"
+      />
       <Stack align="center" gap="xl">
         <div style={{ textAlign: 'center' }}>
-          <Title order={2}>Planes y precios</Title>
+          <Title order={2}>{t('index.pricing.title')}</Title>
           <Text c="dimmed" mt="xs" style={{ maxWidth: 640, marginInline: 'auto' }}>
-            Un único plan simple para empezar hoy mismo. Sin complicaciones, cancela cuando quieras.
+            {t('index.pricing.subtitle')}
           </Text>
         </div>
 
@@ -58,3 +66,5 @@ export const PricingPage = () => {
     </Container>
   );
 };
+
+export default PricingPage;

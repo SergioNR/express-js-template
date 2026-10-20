@@ -1,55 +1,50 @@
+import { useTranslation } from 'react-i18next';
 import { Box, Container, SimpleGrid, Stack, Group, Divider, Image, Text, Anchor } from '@mantine/core';
 import classes from './SiteFooter.module.css';
 
 export const SiteFooter = () => {
+  const { t } = useTranslation();
 
   const year = new Date().getFullYear();
 
   const columns = [
     {
-      title: 'Producto',
+      title: t('footer.columns.product'),
       links: [
-        { label: 'Precio', href: '/pricing' },
+        { label: t('footer.links.pricing'), href: '/pricing' },
       ],
     },
     {
-      title: 'Recursos',
+      title: t('footer.columns.resources'),
       links: [
-        { label: 'Preguntas frecuentes', href: '/preguntas-frecuentes' },
+        { label: t('footer.links.faq'), href: '/preguntas-frecuentes' },
       ],
     },
-
     {
-      title: 'Legal',
+      title: t('footer.columns.legal'),
       links: [
-        { label: 'Términos y condiciones', href: '/terminos-condiciones' },
-        { label: 'Contacto', href: 'mailto:hello@yourapp.com' },
-
+        { label: t('footer.links.terms'), href: '/terminos-condiciones' },
+        { label: t('footer.links.contact'), href: 'mailto:hello@yourapp.com' },
       ],
     },
   ];
 
   return (
-    <Box component="footer" role="contentinfo" aria-label="Site footer" p="xl" className={classes.footer}>
+    <Box component="footer" role="contentinfo" aria-label={t('footer.ariaLabel')} p="xl" className={classes.footer}>
       <Container size="xl">
         <SimpleGrid
-          cols={5}
+          cols={{ base: 1, sm: 3, md: 4, lg: 5 }}
           spacing="xl"
-          breakpoints={[
-            { maxWidth: 'lg', cols: 4, spacing: 'xl' },
-            { maxWidth: 'md', cols: 3, spacing: 'lg' },
-            { maxWidth: 'sm', cols: 1, spacing: 'md' },
-          ]}
         >
           <Stack gap="xs">
             <Group gap="sm" align="center" wrap="nowrap">
-              <Image src="/logo.svg" alt="Company logo" w={36} h={36} />
+              <Image src="/logo.svg" alt={t('footer.logoAlt')} w={36} h={36} />
               <Text fw={700} fz="lg">
-                Your App
+                {t('common.siteName')}
               </Text>
             </Group>
             <Text c="dimmed" fz="sm">
-              Una descripción corta de tu producto: qué hace, para quién es y por qué merece la pena probarlo.
+              {t('footer.tagline')}
             </Text>
           </Stack>
 
@@ -77,12 +72,10 @@ export const SiteFooter = () => {
 
         <Group justify="space-between" wrap="wrap" gap="md">
           <Text c="dimmed" fz="sm">
-            © {year} Your App. Todos los derechos reservados.
+            {t('footer.copyright', { year, siteName: t('common.siteName') })}
           </Text>
-
-
         </Group>
       </Container>
     </Box>
   );
-}
+};

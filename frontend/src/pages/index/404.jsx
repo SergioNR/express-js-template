@@ -1,28 +1,31 @@
 import { Button, Container, Group, Text, Title } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 import classes from './NotFoundTitle.module.css';
 import { Link } from 'react-router';
 import { SiteFooter } from '../../components/partials/SiteFooter';
+import Seo from '../../components/Seo.jsx';
 
 const PageNotFound = () => {
+  const { t } = useTranslation();
+
   return (
     <>
+      <Seo title={t('seo.pages.notFound')} />
       <Container className={classes.root}>
         <div className={classes.label}>404</div>
-        <Title className={classes.title}>You have found a secret place.</Title>
+        <Title className={classes.title}>{t('notFound.title')}</Title>
         <Text c="dimmed" size="lg" ta="center" className={classes.description}>
-          Unfortunately, this is only a 404 page. You may have mistyped the address, or the page has
-          been moved to another URL.
+          {t('notFound.description')}
         </Text>
         <Group justify="center">
           <Button component={Link} to="/" variant="subtle" size="md">
-            Take me back to home page
+            {t('notFound.backHome')}
           </Button>
         </Group>
       </Container>
       <SiteFooter />
     </>
   );
-}
+};
 
 export default PageNotFound;
-

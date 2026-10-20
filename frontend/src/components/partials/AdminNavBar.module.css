@@ -1,0 +1,138 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-md);
+  min-height: 60px;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  background-color: var(--mantine-color-default);
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.brandLogo {
+  height: 28px;
+  width: 28px;
+}
+
+.brandTitle {
+  font-weight: 600;
+  font-size: var(--mantine-font-size-lg);
+  white-space: nowrap;
+}
+
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  flex-wrap: wrap;
+}
+
+.link {
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-1));
+  text-decoration: none;
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-sm);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.link:hover {
+  background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+  color: light-dark(var(--mantine-color-black), var(--mantine-color-white));
+}
+
+/* NavLink adds the `active` class automatically - highlight the current
+   admin section the same way the user-area sidebar does */
+.link.active {
+  &,
+  &:hover {
+    background-color: var(--mantine-color-blue-light);
+    color: var(--mantine-color-blue-light-color);
+  }
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-md);
+  flex-shrink: 0;
+}
+
+.backToSite {
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-dark-2));
+  font-size: var(--mantine-font-size-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.backToSite:hover {
+  text-decoration: underline;
+}
+
+.burger {
+  display: none;
+}
+
+.mobileNav {
+  display: none;
+}
+
+.mobileNavOpen {
+  display: flex !important;
+  flex-direction: column;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: var(--mantine-color-default);
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  padding: var(--mantine-spacing-md) 0;
+  gap: var(--mantine-spacing-xs);
+}
+
+.mobileActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mantine-spacing-sm);
+  width: 100%;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md) 0;
+  margin: 0;
+  box-sizing: border-box;
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+@media (max-width: 768px) {
+  .header {
+    position: relative;
+    flex-wrap: nowrap;
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  }
+
+  .brandTitle {
+    display: none;
+  }
+
+  .navLinks,
+  .actions {
+    display: none;
+  }
+
+  .burger {
+    display: block;
+    margin-left: auto;
+  }
+}

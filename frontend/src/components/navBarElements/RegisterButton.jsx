@@ -1,18 +1,21 @@
-import { NavLink } from "react-router";
+import { NavLink } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@mantine/core';
 
 const RegisterButton = () => {
-    return (
-        <Button
-            component={NavLink}
-            to="/auth/register"
-            variant="filled"
-            color="blue"
-            size="sm"
-        >
-            Pruébalo gratis
-        </Button>
-    );
-}
+  const { t } = useTranslation();
+
+  return (
+    <Button
+      component={NavLink}
+      to="/auth/register"
+      variant="filled"
+      color="blue"
+      size="sm"
+    >
+      {t('nav.register')}
+    </Button>
+  );
+};
 
 export default RegisterButton;

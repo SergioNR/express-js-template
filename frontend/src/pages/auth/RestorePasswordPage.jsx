@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import apiClient from '../../config/API/axiosConfig.mjs';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -12,180 +13,173 @@ import {
   PasswordInput,
   Title,
   Alert,
-  Loader,
 } from '@mantine/core';
 import { IconAlertCircle, IconCheck, IconArrowLeft } from '@tabler/icons-react';
 import classes from '../../components/auth/ForgotPassword.module.css';
 import { Link } from 'react-router';
-
+import PageLoader from '../../components/PageLoader.jsx';
+import Seo from '../../components/Seo.jsx';
 
 const RestorePasswordPage = () => {
-    const [searchParams] = useSearchParams();
-    const [passwordUpdateResponse, setPasswordUpdateResponse] = useState(null);
-    const [passwordResetTokenValidity, setPasswordResetTokenValidity] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmNewPassword, setConfirmNewPassword] = useState('');
-    const [passwordMismatch, setPasswordMismatch] = useState(false);
+  const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
+  const [passwordUpdateResponse, setPasswordUpdateResponse] = useState(null);
+  const [passwordResetTokenValidity, setPasswordResetTokenValidity] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordMismatch, setPasswordMismatch] = useState(false);
 
-    // Get a specific query parameter
-    const passwordResetToken = searchParams.get('passwordResetToken');
+  // Get a specific query parameter
+  const passwordResetToken = searchParams.get('passwordResetToken');
 
+  const [loading, setLoading] = useState(Boolean(passwordResetToken));
 
-    useEffect(() => {
-        const checkPasswordResetTokenValidity = async () => {
-            try {
-                const response = await apiClient.get(`/api/v1/auth/password-reset?passwordResetToken=${passwordResetToken}`);
-                setPasswordResetTokenValidity(response.data);
-                setLoading(false);
-            } catch {
-                console.error('Error checking password reset token validity:');
-                setLoading(false);
-            }
-        };
-
-        if (passwordResetToken) {
-            checkPasswordResetTokenValidity();
-        } else {
-            setLoading(false);
-        }
-    }, [passwordResetToken]);
-
-    const updateRecoveredPassword = async (e) => {
-        e.preventDefault();
-        
-        // Check if passwords match
-        if (newPassword !== confirmNewPassword) {
-            setPasswordMismatch(true);
-            return;
-        }
-        
-        setPasswordMismatch(false);
-        setLoading(true);
-        
-        try {
-            const formData = {
-                passwordResetToken: passwordResetToken,
-                newPassword: newPassword,
-                confirmNewPassword: confirmNewPassword,
-            };
-
-            const response = await apiClient.patch(`/api/v1/auth/password-reset`, formData);
-
-            setPasswordUpdateResponse(response.data);
-            setLoading(false);
-        } catch {
-            setLoading(false);
-        }
+  useEffect(() => {
+    const checkPasswordResetTokenValidity = async () => {
+      try {
+        const response = await apiClient.get(`/api/v1/auth/password-reset?passwordResetToken=${passwordResetToken}`);
+        setPasswordResetTokenValidity(response.data);
+      } catch {
+        console.error('Error checking password reset token validity:');
+      } finally {
+        setLoading(false);
+      }
     };
-    
-    return (
-        <Container size={460} my={30}>
-            <Title className={classes.title} ta="center">
-                Restablecer contraseña
-            </Title>
 
-            {loading && (
-                <Center mt="xl">
-                    <Loader />
-                </Center>
-            )}
+    if (passwordResetToken) {
+      checkPasswordResetTokenValidity();
+    }
+  }, [passwordResetToken]);
 
-            
-            
+  const updateRecoveredPassword = async (e) => {
+    e.preventDefault();
 
-            {passwordUpdateResponse ? (
-                <Paper shadow="xs" p={20} mt="xl" radius="md">
-                    <Alert
-                        icon={passwordUpdateResponse.success ? <IconCheck size="1rem" /> : <IconAlertCircle size="1rem" />}
-                        color={passwordUpdateResponse.success ? "green" : "red"}
-                        title={passwordUpdateResponse.success ? "Success" : "Error"}
-                    >
-                        {passwordUpdateResponse.message}
-                    </Alert>
-                    
-                    {passwordUpdateResponse.success && (
-                        <Center mt="xl">
-                            <Anchor component={Link} to="/auth/login">
-                                <Button variant="outline" leftSection={<IconArrowLeft size="1rem" />}>
-                                    Volver al inicio de sesión
-                                </Button>
-                            </Anchor>
-                        </Center>
-                    )}
-                </Paper>
-            ) : (
-                passwordResetTokenValidity?.success ? (
-                    <Paper withBorder shadow="md" p={30} radius="md" mt="xl">
-                        <form onSubmit={updateRecoveredPassword}>
-                            <PasswordInput
-                                label="Nueva contraseña"
-                                placeholder="Introduce tu nueva contraseña"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                required
-                                mt="md"
-                            />
-                            
-                            <PasswordInput
-                                label="Confirmar nueva contraseña"
-                                placeholder="Confirma tu nueva contraseña"
-                                value={confirmNewPassword}
-                                onChange={(e) => setConfirmNewPassword(e.target.value)}
-                                required
-                                mt="md"
-                            />
-                            
-                            {passwordMismatch && (
-                                <Alert
-                                    icon={<IconAlertCircle size="1rem" />}
-                                    title="Error"
-                                    color="red"
-                                    mt="md"
-                                >
-                                    Las contraseñas no coinciden
-                                </Alert>
-                            )}
-                            
-                            <Group justify="space-between" mt="lg" className={classes.controls}>
-                                <Anchor c="dimmed" component={Link} to="/auth/login" size="sm" className={classes.control}>
-                                    <Center inline>
-                                        <IconArrowLeft size={12} stroke={1.5} />
-                                        <Box ml={5}>Volver a la página de inicio de sesión</Box>
-                                    </Center>
-                                </Anchor>
-                                <Button
-                                    type="submit"
-                                    className={classes.control}
-                                    loading={loading}
-                                >
-                                    Actualizar contraseña
-                                </Button>
-                            </Group>
-                        </form>
-                    </Paper>
-                ) : (
-                    <Paper shadow="xs" p={20} mt="xl" radius="md">
-                        <Alert
-                            icon={<IconAlertCircle size="1rem" />}
-                            title="Enlace inválido"
-                            color="red"
-                        >
-                            El enlace para restablecer la contraseña es inválido o ha expirado. Por favor, solicita un nuevo enlace.
-                        </Alert>
-                        
-                        <Center mt="xl">
-                            <Anchor component={Link} to="/auth/recover-password">
-                                <Button variant="outline" leftSection={<IconArrowLeft size="1rem" />}>
-                                    Solicitar nuevo enlace
-                                </Button>
-                            </Anchor>
-                        </Center>
-                    </Paper>
-                )
-            )}
-        </Container>
-    );
+    // Check if passwords match
+    if (newPassword !== confirmNewPassword) {
+      setPasswordMismatch(true);
+      return;
+    }
+
+    setPasswordMismatch(false);
+    setLoading(true);
+
+    try {
+      const formData = {
+        passwordResetToken: passwordResetToken,
+        newPassword: newPassword,
+        confirmNewPassword: confirmNewPassword,
+      };
+
+      const response = await apiClient.patch(`/api/v1/auth/password-reset`, formData);
+
+      setPasswordUpdateResponse(response.data);
+      setLoading(false);
+    } catch {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Container size={460} my={30}>
+      <Seo title={t('seo.pages.restore')} />
+      <Title className={classes.title} ta="center">
+        {t('auth.restore.title')}
+      </Title>
+
+      {loading && <PageLoader />}
+
+      {passwordUpdateResponse ? (
+        <Paper shadow="xs" p={20} mt="xl" radius="md">
+          <Alert
+            icon={passwordUpdateResponse.success ? <IconCheck size="1rem" /> : <IconAlertCircle size="1rem" />}
+            color={passwordUpdateResponse.success ? 'green' : 'red'}
+            title={passwordUpdateResponse.success ? t('common.success') : t('common.error')}
+          >
+            {passwordUpdateResponse.message}
+          </Alert>
+
+          {passwordUpdateResponse.success && (
+            <Center mt="xl">
+              <Anchor component={Link} to="/auth/login">
+                <Button variant="outline" leftSection={<IconArrowLeft size="1rem" />}>
+                  {t('auth.restore.backToLogin')}
+                </Button>
+              </Anchor>
+            </Center>
+          )}
+        </Paper>
+      ) : (
+        passwordResetTokenValidity?.success ? (
+          <Paper withBorder shadow="md" p={30} radius="md" mt="xl">
+            <form onSubmit={updateRecoveredPassword}>
+              <PasswordInput
+                label={t('auth.restore.newPassword')}
+                placeholder={t('auth.restore.newPasswordPlaceholder')}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                mt="md"
+              />
+
+              <PasswordInput
+                label={t('auth.restore.confirmNewPassword')}
+                placeholder={t('auth.restore.confirmNewPasswordPlaceholder')}
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                required
+                mt="md"
+              />
+
+              {passwordMismatch && (
+                <Alert
+                  icon={<IconAlertCircle size="1rem" />}
+                  title={t('common.error')}
+                  color="red"
+                  mt="md"
+                >
+                  {t('auth.restore.passwordMismatch')}
+                </Alert>
+              )}
+
+              <Group justify="space-between" mt="lg" className={classes.controls}>
+                <Anchor c="dimmed" component={Link} to="/auth/login" size="sm" className={classes.control}>
+                  <Center inline>
+                    <IconArrowLeft size={12} stroke={1.5} />
+                    <Box ml={5}>{t('auth.backToLoginSmall')}</Box>
+                  </Center>
+                </Anchor>
+                <Button
+                  type="submit"
+                  className={classes.control}
+                  loading={loading}
+                >
+                  {t('auth.restore.submit')}
+                </Button>
+              </Group>
+            </form>
+          </Paper>
+        ) : (
+          <Paper shadow="xs" p={20} mt="xl" radius="md">
+            <Alert
+              icon={<IconAlertCircle size="1rem" />}
+              title={t('auth.restore.invalidLinkTitle')}
+              color="red"
+            >
+              {t('auth.restore.invalidLinkBody')}
+            </Alert>
+
+            <Center mt="xl">
+              <Anchor component={Link} to="/auth/recover-password">
+                <Button variant="outline" leftSection={<IconArrowLeft size="1rem" />}>
+                  {t('auth.restore.requestNewLink')}
+                </Button>
+              </Anchor>
+            </Center>
+          </Paper>
+        )
+      )}
+    </Container>
+  );
 };
 
 export default RestorePasswordPage;

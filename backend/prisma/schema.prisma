@@ -34,17 +34,20 @@ model Company {
 
 model PasswordResetTokens {
   id            String   @id @unique @default(uuid())
-  User          User     @relation(fields: [user_id], references: [id])
+  User          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   user_id       String
   token_expires DateTime
   created_at    DateTime @default(now())
 }
 
 model Session {
-  id        String   @id
-  sid       String   @unique
+  id        String    @id
+  sid       String    @unique
   data      String
   expiresAt DateTime
+  user_id   String?
+
+  @@index([user_id])
 }
 
 model Subscription {

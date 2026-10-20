@@ -1,7 +1,6 @@
 import { prisma } from '../config/prismaClient.js';
 import { stripeInstance } from '../config/stripe.js';
 import { logError } from '../config/loggerFunctions.js';
-// import { posthogUserSubscriptionCreated, posthogUserSubscriptionEnded } from './posthogModel.js';
 
 //* Upsert (instead of update) so Stripe event retries and first checkout for a
 //* company without a Subscription row are both handled idempotently
@@ -18,8 +17,6 @@ export const upsertSubscriptionInDb = async (checkoutSessionData) => {
       company_id: checkoutSessionData.companyId,
     },
   });
-
-  // posthogUserSubscriptionCreated(checkoutSessionData);// TODO -- fix the associated of the event
 };
 
 export const storeBillingCompanyIdInDb = async (companyId, stripeCustomerId) => {
@@ -45,8 +42,6 @@ export const deleteSubscriptionInDb = async (subscriptionDeletionData) => {
       id: subscriptionDeletionData.subscriptionId,
     },
   });
-
-  // posthogUserSubscriptionEnded(subscriptionDeletionData);
 };
 
 export const getSubscriptionDataInDb = async (companyId) => {

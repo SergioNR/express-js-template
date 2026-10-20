@@ -27,8 +27,6 @@ export const SubscriptionProvider = ({ children }) => {
       setSubscription(subscriptionData);
     } catch (err) {
       setError(err?.message ?? 'Failed to fetch subscription');
-      try {
-      } catch (_) {}
     } finally {
       setLoading(false);
     }

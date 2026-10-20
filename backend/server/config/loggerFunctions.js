@@ -46,17 +46,6 @@ export const logInfo = async (message, context = 'no context') => {
   }
 };
 
-export const logUserLoggedInSuccessfully = (userId, loginMethod) => {
-  logger.info({
-    message: 'User logged in successfully',
-    context: {
-      userId: userId,
-      loginMethod: loginMethod,
-      additionalInfo: 'n/a',
-    },
-  });
-};
-
 export const logPasswordResetTokenCreated = (userId) => {
   logger.info({
     message: 'User password reset token succesfully created in database',
@@ -64,15 +53,6 @@ export const logPasswordResetTokenCreated = (userId) => {
       userData: {
         userId: userId,
       },
-    },
-  });
-};
-
-export const logUserLoggedOut = (userId) => {
-  logger.info({
-    message: 'User logged out successfully',
-    context: {
-      userId: userId,
     },
   });
 };

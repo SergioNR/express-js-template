@@ -21,7 +21,7 @@ export const AdminDashboardWrapper = () => {
 
 
 
-            } catch (error) {
+            } catch {
                 setLoading(false);
                 navigate('/auth/login');
             }

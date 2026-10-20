@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import apiClient from '../../config/API/axiosConfig.mjs'
-import { Container, Stack, Card, Title, Text, Group, Button, Loader, Center, Badge, SimpleGrid, List, Alert } from '@mantine/core'
+import { Container, Stack, Card, Title, Text, Group, Button, Loader, Center, SimpleGrid, Alert } from '@mantine/core'
 import { useSubscription } from '../../contexts/SubscriptionContext.jsx'
-import NoActiveSubscriptionBanner from '../../components/partials/NoActiveSubscriptionBanner.jsx'
 
 const UserBilling = () => {
   const { subscription, loading, error, hasActiveSubscription } = useSubscription()
@@ -39,7 +38,7 @@ const UserBilling = () => {
       const response = await apiClient.post(`/api/v1/billing/customer-portal`)
       const { customerPortalUrl } = response.data
       window.open(customerPortalUrl, '_blank')
-    } catch (err) {
+    } catch {
       setActionError('Se ha producido un error obteniendo el área de usuario. Por favor, inténtalo más tarde')
     }
   }

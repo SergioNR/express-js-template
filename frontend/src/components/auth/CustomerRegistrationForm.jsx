@@ -19,7 +19,6 @@ const CustomerRegistrationForm = () => {
 
 const [registerResponse, setRegisterResponse] = useState(null)
 const [registerError, setRegisterError] = useState(null)
-const [countdown, setCountdown] = useState(null)
     const navigate = useNavigate();
 
 
@@ -41,19 +40,7 @@ const handleRegister = async (e) => {
 
         setRegisterError(null)
 
-        setCountdown(3);
-            const timer = setInterval(() => {
-                setCountdown(prevCountdown => {
-                    if (prevCountdown <= 1) {
-                        clearInterval(timer);
-                        navigate('/auth/login');
-                        return 0;
-                    }
-                    return prevCountdown - 1;
-                });
-            }, 1000);
-
-        
+        setTimeout(() => navigate('/auth/login'), 3000);
         
     } catch (err) {
 

@@ -1,21 +1,18 @@
 import { useState, useEffect } from 'react'
 import apiClient from '../../config/API/axiosConfig.mjs'
 
-import CustomerCard from '../../components/auth/CustomerCard'
 import PasswordUpdateForm from '../../components/auth/PasswordUpdateForm'
 import {
-  Card,
-  Box,
-  Title,
-  Text,
-  Alert,
+    Card,
+    Box,
+    Text,
+    Alert,
 } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { AccountActionsForm } from './AccountActionsForm'
 
 const CustomerProfile = () => {
-    
-    const [user, setUser] = useState({})
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null)
 
@@ -23,10 +20,9 @@ const CustomerProfile = () => {
     useEffect(() => {
         const fetchUser = async () => {
             try {
-                const response = await apiClient.get(`/api/v1/user`)
+                await apiClient.get(`/api/v1/user`)
 
                 setLoading(false);
-                setUser(response.data.user)
 
 
             } catch (err) {
@@ -59,13 +55,11 @@ const CustomerProfile = () => {
     
     return (
         <Box sx={{ maxWidth: 600 }} mx="auto" mt="xl">
-            
-            {/* <CustomerCard user={user} /> */}
-            
+
             <PasswordUpdateForm />
-            
-            {/* <AccountActionsForm /> */}
-            
+
+            <AccountActionsForm />
+
         </Box>
     )
 }

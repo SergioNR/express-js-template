@@ -2,9 +2,7 @@ import { validationResult } from 'express-validator';
 
 const sensitiveFields = [
   'password',
-  'confirmPassword',
   'confirmNewPassword',
-  'token',
   'passwordResetToken',
   'email',
   'username',

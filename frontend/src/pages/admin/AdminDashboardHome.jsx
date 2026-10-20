@@ -5,7 +5,6 @@ import { ActionIcon, Anchor, Group, Table, Text } from '@mantine/core';
 
 const AdminDashboard = () => {
     const [users, setUsers] = useState([])
-    const [userCount, setUserCount] = useState(0)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
 
@@ -14,12 +13,11 @@ const AdminDashboard = () => {
             try {
                 const response = await apiClient.get(`/api/v1/admin/`)
                 setUsers(response.data.users)
-                setUserCount(response.data.users.length)
                 setLoading(false)
-            } catch (err) {
+            } catch {
 
                 setError('User is not authorized to view this page - please log in again')
-                
+
                 setLoading(false)
             }
         }

@@ -9,9 +9,8 @@ import {
   Container,
   Group,
   Paper,
-  Text,
-  Title,
   PasswordInput,
+  Title,
   Alert,
   Loader,
 } from '@mantine/core';
@@ -25,7 +24,6 @@ const RestorePasswordPage = () => {
     const [passwordUpdateResponse, setPasswordUpdateResponse] = useState(null);
     const [passwordResetTokenValidity, setPasswordResetTokenValidity] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [newPassword, setNewPassword] = useState('');
     const [confirmNewPassword, setConfirmNewPassword] = useState('');
     const [passwordMismatch, setPasswordMismatch] = useState(false);
@@ -40,9 +38,8 @@ const RestorePasswordPage = () => {
                 const response = await apiClient.get(`/api/v1/auth/password-reset?passwordResetToken=${passwordResetToken}`);
                 setPasswordResetTokenValidity(response.data);
                 setLoading(false);
-            } catch (error) {
-                console.error('Error checking password reset token validity:', error);
-                setError(error.message || 'Invalid or expired password reset token');
+            } catch {
+                console.error('Error checking password reset token validity:');
                 setLoading(false);
             }
         };
@@ -50,7 +47,6 @@ const RestorePasswordPage = () => {
         if (passwordResetToken) {
             checkPasswordResetTokenValidity();
         } else {
-            setError('No password reset token provided');
             setLoading(false);
         }
     }, [passwordResetToken]);
@@ -78,8 +74,7 @@ const RestorePasswordPage = () => {
 
             setPasswordUpdateResponse(response.data);
             setLoading(false);
-        } catch (error) {
-            setError(error.message || 'Failed to update password');
+        } catch {
             setLoading(false);
         }
     };

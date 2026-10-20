@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router';
-import { Anchor, Image, Burger } from '@mantine/core';
+import { Anchor, Burger } from '@mantine/core';
 import LogInButton from '../navBarElements/LogInButton.jsx';
 import RegisterButton from '../navBarElements/RegisterButton.jsx';
 import styles from './SiteNavBar.module.css';
@@ -10,11 +10,6 @@ const SiteNavBar = () => {
 
     return (
         <header className={styles.header}>
-            {/* <div className={styles.logoContainer}>
-                <NavLink to="/">
-                    <Image src="/logo.svg" alt="logo" width={40} height={40} />
-                </NavLink>
-            </div> */}
 
             <nav className={styles.navLinks}>
                 <Anchor component={NavLink} to="/" className={styles.link}>

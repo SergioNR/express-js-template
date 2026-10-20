@@ -25,6 +25,9 @@ const UserBilling = () => {
       if (err.status === 400) {
               return setActionError('El usuario ya tiene una suscripción existente')
             }
+      if ((err.status === 409 || err.status === 422) && err.response?.data?.message) {
+              return setActionError(err.response.data.message)
+            }
             return setActionError('Se ha producido un error generando el enlace de pago. Por favor, inténtalo más tarde');
           }
     }

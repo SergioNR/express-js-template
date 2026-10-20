@@ -40,10 +40,10 @@ export function LoginForm() {
       switch (loginResponse.data.user.role) {
         case "admin":
           return navigate('/admin');
-        case "customer":
+        case "user":
           return navigate('/dashboard');
         default:
-          return navigate('/');
+          return navigate('/dashboard');
       }
     } catch (error) {
       console.error(error);

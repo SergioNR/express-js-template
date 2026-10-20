@@ -1,4 +1,5 @@
 import swaggerJsdoc from 'swagger-jsdoc';
+import { SESSION_COOKIE_NAME } from './security.js';
 
 const swaggerOptions = {
   definition: {
@@ -27,7 +28,7 @@ const swaggerOptions = {
         sessionCookie: {
           type: 'apiKey',
           in: 'cookie',
-          name: 'connect.sid',
+          name: SESSION_COOKIE_NAME,
           description: 'Session cookie issued by POST /api/v1/auth/login. Authentication is passive — a valid cookie must be present on requests to secured endpoints.',
         },
       },
@@ -104,8 +105,8 @@ const swaggerOptions = {
             },
             password: {
               type: 'string',
-              minLength: 6,
-              maxLength: 32,
+              minLength: 8,
+              maxLength: 64,
             },
           },
         },
@@ -125,8 +126,8 @@ const swaggerOptions = {
           properties: {
             newPassword: {
               type: 'string',
-              minLength: 6,
-              maxLength: 32,
+              minLength: 8,
+              maxLength: 64,
             },
             confirmNewPassword: {
               type: 'string',
@@ -146,8 +147,8 @@ const swaggerOptions = {
             },
             newPassword: {
               type: 'string',
-              minLength: 6,
-              maxLength: 32,
+              minLength: 8,
+              maxLength: 64,
             },
           },
         },

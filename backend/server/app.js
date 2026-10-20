@@ -17,6 +17,9 @@ import { webhookRouter } from './webhooks/webhooksRouter.js';
 const app = express();
 const server = createServer(app);
 
+//* Trust the reverse proxy so req.ip / req.protocol reflect the client
+app.set('trust proxy', 1);
+
 //* Middleware for ExpressJS securization
 app.use(helmetMiddleware);
 app.use(corsMiddleware);
@@ -32,7 +35,7 @@ app.use('/webhooks', webhookRouter);
 app.use('/api', docsRouter);
 
 //* Middleware to create parse request (read req.body from form data & JSON) & parse query
-app.use(express.urlencoded());
+app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
 //* Middleware to store sessions in DB
@@ -49,7 +52,14 @@ app.use('/', indexRouter);
 app.use(globalErrorHandler);
 
 //* Start the server
-server.listen(process.env.PORT, () => {
+const PORT = Number.parseInt(process.env.PORT, 10);
+
+if (!Number.isInteger(PORT) || PORT <= 0) {
+  // eslint-disable-next-line no-console
+  console.warn('PORT environment variable is not set or invalid - defaulting to 3000');
+}
+
+server.listen(Number.isInteger(PORT) && PORT > 0 ? PORT : 3000, () => {
 // eslint-disable-next-line no-console
   console.log('Server running');
 });

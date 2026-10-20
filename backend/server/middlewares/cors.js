@@ -5,7 +5,7 @@ const origins = [
   'http://localhost:5173', // Vite dev server (from logs)
   'http://localhost:3000', // Common React dev server
   'http://localhost:8080', // Common dev ports
-];
+].filter(Boolean);
 
 const corsOptions = {
   origin: origins,

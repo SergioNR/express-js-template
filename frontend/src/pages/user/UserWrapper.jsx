@@ -1,10 +1,10 @@
-import { Outlet } from "react-router";
-import  NavbarSimple  from "../../components/partials/UserNavBar";
+import { Outlet, Link } from "react-router";
+import NavbarSimple from "../../components/partials/UserNavBar";
 import { useNavigate } from "react-router";
 import { useState, useEffect } from "react";
 import apiClient from "../../config/API/axiosConfig.mjs";
 import { usePostHog } from 'posthog-js/react'
-import { AppShell, Burger } from '@mantine/core';
+import { AppShell, Anchor, Burger, Group, Image, Text } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { SubscriptionProvider } from "../../contexts/SubscriptionContext.jsx";
 
@@ -17,7 +17,7 @@ const UserWrapper = () => {
     const [opened, { toggle }] = useDisclosure();
     const [userId, setUserId] = useState(null);
 
-    
+
     useEffect(() => {
         const checkSession = async () => {
             try {
@@ -25,7 +25,7 @@ const UserWrapper = () => {
                 setUserId(response.data.user.id)
                 setLoading(false);
 
-            } catch (error) {
+            } catch {
                 navigate('/auth/login');
             }
         };
@@ -34,13 +34,13 @@ const UserWrapper = () => {
     }, [navigate]);
 
 
-    useEffect( () => {
+    useEffect(() => {
 
       if (userId) {
         posthog?.identify(userId, {
         })
       }
-    }, [userId])
+    }, [userId, posthog])
 
 
   return (
@@ -55,12 +55,28 @@ const UserWrapper = () => {
         padding="md"
       >
         <AppShell.Header>
-          <Burger
-            opened={opened}
-            onClick={toggle}
-            hiddenFrom="sm"
-            size="sm"
-          />
+          <Group h="100%" px="md" justify="space-between" wrap="nowrap">
+            <Group gap="sm" wrap="nowrap">
+              <Burger
+                opened={opened}
+                onClick={toggle}
+                hiddenFrom="sm"
+                size="sm"
+              />
+              <Anchor component={Link} to="/dashboard" underline="never" inherit>
+                <Group gap="xs" wrap="nowrap">
+                  <Image src="/logo.svg" alt="logo" h={28} w={28} />
+                  <Text fw={600} size="lg" component="span">Panel de control</Text>
+                </Group>
+              </Anchor>
+            </Group>
+
+            <Group gap="lg" wrap="nowrap" visibleFrom="xs">
+              <Anchor component={Link} to="/" size="sm" c="dimmed">
+                Volver al sitio
+              </Anchor>
+            </Group>
+          </Group>
         </AppShell.Header>
 
         <AppShell.Navbar p="md">
@@ -83,7 +99,3 @@ const UserWrapper = () => {
 }
 
 export default UserWrapper;
-
-
-
-

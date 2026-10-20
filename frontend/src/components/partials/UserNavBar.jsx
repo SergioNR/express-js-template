@@ -1,5 +1,4 @@
 import { NavLink } from 'react-router'
-import { useState } from 'react';
 import {
   IconHomeFilled,
   IconUserCircle,
@@ -11,8 +10,6 @@ import LogOutButton from '../navBarElements/LogOutButton';
 
 const UserNavBar = () => {
 
-  const [active, setActive] = useState('Dashboard');
-
   const data = [
   { link: '/dashboard', label: 'Dashboard', icon: IconHomeFilled },
   { link: '/user/profile', label: 'Cambiar contraseña', icon: IconUserCircle },
@@ -20,7 +17,11 @@ const UserNavBar = () => {
 ];
 
   const links = data.map((item) => (
-    <NavLink to={item.link} key={item.label} className={classes.link} data-active={item.label === active || undefined} onClick={() => setActive(item.label)}>
+    <NavLink
+      to={item.link}
+      key={item.label}
+      className={({ isActive }) => `${classes.link}${isActive ? ` ${classes.activeLink}` : ''}`}
+    >
       <item.icon className={classes.linkIcon} stroke={1.5} />
       <span>{item.label}</span>
     </NavLink>
@@ -28,6 +29,10 @@ const UserNavBar = () => {
 
   return (
     <nav className={classes.navbar}>
+      <div className={classes.header}>
+        <span className={classes.sectionTitle}>Navegación</span>
+      </div>
+
       <div className={classes.navbarMain}>
         {links}
       </div>

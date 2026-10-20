@@ -1,0 +1,86 @@
+# Backend rules — Express.js API
+
+Rules describe how this codebase is written today. Follow them for all new and modified code.
+
+## Stack & runtime
+
+- Node.js >= 24, ESM only (`"type": "module"`), plain `.js` executed via `tsx`.
+- ESLint 10 flat config (`eslint.config.mjs`) extending `airbnb-base`: 4-space indent, single quotes, semicolons, trailing commas. Run `npx eslint .` from `backend/`.
+- TypeScript is used only for Prisma config (`prisma.config.ts`) and the generated client; server code stays `.js`.
+
+## Architecture — layer rules (strict)
+
+Request flow: `server/app.js` → middlewares → routers → controllers → models/integrations.
+
+- `server/API/v1/routes/` — route definitions only. Middleware chain per route: `authLimiter` (credential endpoints) → `checkSchema(...)` → `sanitizerResult` → controller. No business logic, no Prisma, no third-party calls in routers.
+- `server/controllers/` — request handlers. Own status codes and response bodies. Call models and integrations. Throw unexpected errors (Express 5 forwards async throws to the global error handler).
+- `server/models/` — ALL database access lives here (repository pattern), one file per resource. Naming: `<verb><Resource>InDb` (e.g. `getUserByEmail`, `deleteUserInDb`). Controllers never import `prisma` directly.
+- `server/integrations/` — third-party API calls only (`stripe/`, `brevo/`, `telegram/`), one folder per vendor. Never touch the database.
+- `server/middlewares/` — one middleware per file, named export matching the file name. Factories return the handler: `checkAuthentication()`, `checkPermissionByRole(role)`.
+- `server/utils/` — cross-cutting helpers (`userDeletionCleanup.js`) and `utils/validators/` with one express-validator schema file per request shape.
+- `server/config/` — shared singletons and constants (`prismaClient.js`, `stripe.js`, `logger.js`, `planPrices.js`, `security.js`). No request handling.
+- `server/cron/` — `CronJob` instances, started from `cron/jobsContainer.js` (registered in `app.js` via `startCronJobs()`). Errors inside the tick are caught and `logError`-ed, never thrown.
+- `server/webhooks/` — inbound webhooks; raw-body only (see Security).
+- `server/auth/` — Passport setup; strategies in `auth/strategies/`.
+
+## API conventions
+
+- All API routes are versioned under `/api/v1` and mounted in `server/API/apiRouter.js`. Health check lives in `server/routers/indexRouter.js`.
+- **Role enforcement happens at the router mounting level** in `apiRouter.js` (`checkAuthentication()` + `checkPermissionByRole(role)`), not per-route. Exception: `authRouter` gates its private routes mid-file with `authRouter.use(checkAuthentication())` after the public ones.
+- **Every route requires an `@openapi` JSDoc block directly above its definition.** swagger-jsdoc scans `server/routers/indexRouter.js`, `server/API/v1/routes/*.js`, `server/webhooks/webhooksRouter.js`. Reuse shared response schemas via `$ref: '#/components/schemas/...'` (defined in `server/config/swagger.js`); add new shared schemas there.
+- Response envelope is always `{ success: boolean, message: string, ...payload }`.
+- Every router ends with the `/*fallback` 404 handler (copy the exact shape from `userRouter.js`).
+- Status codes: 200 success · 201 created · 400 bad/expired input · 401 unauthenticated · 403 wrong role · 404 not found · 409 conflict (duplicate, self-delete, FK constraint) · 422 validation (`sanitizerResult`) · 429 rate limited · 500 internal only via thrown errors.
+- Map Prisma error codes where users interact: `P2002` (unique) → duplicate-safe response; `P2003` (FK) → 409. See `registerUser` and `deleteOneUserById` for the pattern.
+- Pagination is cursor-based (`limit` capped at 100 + `cursor` + `nextCursor` in the response), `created_at desc` ordering. See `getAllUsers`.
+
+## Security rules (non-negotiable — outcomes of past audits)
+
+- **Enumeration-safe auth**: `register` and `password-reset` return an identical response shape and status whether or not the account exists. Never leak account existence.
+- **Timing-equalized login**: nonexistent users are compared against `DUMMY_PASSWORD_HASH` (`auth/strategies/passportLocalStrategy.js`). Keep it.
+- **Fire-and-forget side effects**: emails (Brevo), PostHog events, and `last_login_at` updates must not change the response's shape or timing — the integration/model function swallows its own errors and is called without `await`.
+- **Stripe webhook**: raw body (`express.raw`) — never mount `express.json()` in front of `/webhooks`. DB writes inside the handler are `await`-ed so failures return 500 and Stripe retries.
+- **Redaction**: sensitive fields are redacted in two places — `sanitizerResult.js` (`sensitiveFields`) and `logger.js` pino `redact.paths`. Update both when adding a sensitive field. Never log passwords or reset tokens.
+- **Never expose internal Stripe ids**: client-facing subscription reads go through `getSubscriptionPublicDataInDb`.
+- **Passwords**: bcrypt with `BCRYPT_SALT_ROUNDS` (12) from `config/security.js`. Queries returning users must `omit: { password: true }` (only `getUserPassword` selects it).
+- **Query whitelist**: never pass `req.query`/`req.body` through to Prisma — whitelist explicit fields (see `getAllUsers` role filter).
+- **Admin self-protection**: admins cannot delete their own account via `/api/v1/admin` (409) — route them to the user endpoint.
+- **Required env vars fail fast at startup** (pattern: `SESSION_SECRET` check in `storeExpressSessions.js`).
+- New env vars must be added to `.env.example` and the README table in the same change.
+
+## Validation
+
+- One express-validator schema per request shape in `server/utils/validators/`, mounted as `checkSchema(...)` followed by `sanitizerResult` (rejects with 422 before any controller runs).
+- Login, register, and password-reset routes get `authLimiter` (10 req / 15 min). Global limiter (100 req / 15 min) applies everywhere except local dev and docs.
+
+## Sessions & auth
+
+- Passport local strategy; sessions stored in PostgreSQL (Prisma session store), cookie `app.sid` (`SESSION_COOKIE_NAME`), 24h, `secure` + `SameSite=None` outside `DEPLOY_ENVIRONMENT=localhost`.
+- Session rows carry `user_id` so sessions are revocable per user (`sessionModel.js`). Password reset and password update revoke sessions (`deleteUserSessions(userId, keepSessionId?)`).
+- Shared deletion side effects (session revoke, company/subscription cleanup) live in `server/utils/userDeletionCleanup.js`, used by both self- and admin-delete.
+
+## Database (Prisma 7)
+
+- Schema: `prisma/schema.prisma`. Models PascalCase, columns snake_case. Generated client outputs to `server/config/generated/` (gitignored + eslint-ignored) — run `npx prisma generate` after schema changes; never edit or commit generated files.
+- Runtime client uses the `pg` driver adapter (`server/config/prismaClient.js` → `PRISMA_POSTGRES_CONNECTION_STRING`); migrations use the direct URL (`prisma.config.ts` → `PRISMA_POSTGRES_DIRECT_URL`).
+- Schema changes require: migration (`npx prisma migrate dev --name <change>`), `prisma/seed.js` update if models change, `.env.example`/README if new vars.
+- Seed creates 2 companies + 4 users (`admin@acme.test`, `user@acme.test`, `admin@globex.test`, `user@globex.test`, password `Password123!`), each company with a 7-day trial subscription.
+- Historical quirk: the login/register request field for email is named `username` (validators, controllers, and OpenAPI schema all use it). Keep it consistent; do not rename casually.
+
+## Logging
+
+- Use `logInfo` / `logWarn` / `logError` from `config/loggerFunctions.js` (pino + Telegram). No `console.log` in server code (only `app.js` startup lines with `eslint-disable`).
+- Explanatory "why" comments use the `//*` prefix — follow it for rationale comments.
+
+## Testing
+
+- Jest, ESM mode (`NODE_OPTIONS='--experimental-vm-modules' jest`). Specs in `backend/tests/*.spec.js`, named `<unit>.spec.js`.
+- Always `import { jest } from '@jest/globals'`. Mock modules with `jest.unstable_mockModule(...)` + top-level `await import(...)` (see `userDeletionCleanup.spec.js`).
+- Unit tests are pure — mock the models/integrations; no database or network in tests.
+- Add a spec when introducing non-trivial logic (middleware, utils, controllers with branching).
+
+## Docker & deployment
+
+- Prod image: `Dockerfile` (node:26-alpine, non-root, `start.sh` runs `prisma migrate deploy` then `npm run start`).
+- Local: `docker compose up -d database` (Postgres only; the server service is intentionally commented out) → `npx prisma migrate deploy` → `npm run start:local`.
+- CI pushes images on `latest` / `next` branch pushes. `DEPLOY_ENVIRONMENT` (`localhost` | else) toggles rate limiters and cookie strictness.

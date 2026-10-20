@@ -166,7 +166,6 @@ describe('getOneUserById', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
       success: true,
-      message: 'User successfully retrieved - DB',
       user: { ...detail, activeSessionCount: 2 },
     });
     expect(JSON.stringify(res.json.mock.calls[0][0])).not.toContain('password');
@@ -275,7 +274,6 @@ describe('getOneCompanyById', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
       success: true,
-      message: 'Company successfully retrieved - DB',
       company: detail,
     });
     expect(JSON.stringify(res.json.mock.calls[0][0])).not.toContain('stripe_id');
@@ -307,7 +305,6 @@ describe('getAdminStats', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
       success: true,
-      message: 'Stats successfully retrieved - DB',
       stats: {
         totalUsers: 10,
         totalAdmins: 2,

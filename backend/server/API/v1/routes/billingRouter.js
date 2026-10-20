@@ -29,8 +29,6 @@ export const billingRouter = Router();
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 subscriptionData:
  *                   type: object
  *                   description: Subscription fields only - internal Stripe ids are never exposed
@@ -135,8 +133,6 @@ billingRouter.post('/', createCompanyBillingId);
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 checkoutSessionUrl:
  *                   type: string
  *                   format: uri
@@ -180,8 +176,6 @@ billingRouter.post('/checkout-session', checkSchema(checkoutSessionSchema), sani
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 customerPortalUrl:
  *                   type: string
  *                   format: uri

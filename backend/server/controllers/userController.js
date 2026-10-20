@@ -10,13 +10,11 @@ export const getUserProfile = async (req, res) => {
   if (!userProfile) {
     return res.status(404).json({
       success: false,
-      message: 'User not found',
     });
   }
 
   return res.status(200).json({
     success: true,
-    message: 'user profile retrieved successfully - DB',
     user: userProfile,
   });
 };
@@ -33,7 +31,6 @@ export const deleteUser = async (req, res) => {
 
       return res.status(200).json({
         success: true,
-        message: 'User deleted successfully',
       });
     });
   } catch (error) {

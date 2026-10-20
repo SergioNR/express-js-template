@@ -41,6 +41,7 @@ const swaggerOptions = {
             },
             message: {
               type: 'string',
+              description: 'Optional developer-facing text - present only when it adds information beyond the status and payload',
             },
           },
         },
@@ -53,6 +54,7 @@ const swaggerOptions = {
             },
             message: {
               type: 'string',
+              description: 'Optional developer-facing text - present only when it adds information beyond the status and payload (conflict reasons, token expiry, rate limiting, route-404 fallback)',
             },
           },
         },
@@ -62,9 +64,6 @@ const swaggerOptions = {
             success: {
               type: 'boolean',
               example: false,
-            },
-            message: {
-              type: 'string',
             },
             errors: {
               type: 'array',

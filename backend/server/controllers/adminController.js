@@ -59,7 +59,6 @@ export const getAllUsers = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Users successfully retrieved - DB',
     userCount: totalUserCount,
     users: users,
     nextCursor: nextCursor,
@@ -74,7 +73,6 @@ export const getOneUserById = async (req, res) => {
   if (userDetail === null) {
     return res.status(404).json({
       success: false,
-      message: 'User not found',
     });
   }
 
@@ -82,7 +80,6 @@ export const getOneUserById = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'User successfully retrieved - DB',
     user: {
       ...userDetail,
       activeSessionCount,
@@ -106,7 +103,6 @@ export const deleteOneUserById = async (req, res) => {
     if (!existingUser) {
       return res.status(404).json({
         success: false,
-        message: 'User deletion failed - User does not exist',
       });
     }
 
@@ -116,7 +112,6 @@ export const deleteOneUserById = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'User successfully deleted',
       userId: deletedUser.id,
     });
   } catch (error) {
@@ -155,7 +150,6 @@ export const getAllCompanies = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Companies successfully retrieved - DB',
     companyCount: totalCompanyCount,
     companies: companies,
     nextCursor: nextCursor,
@@ -170,13 +164,11 @@ export const getOneCompanyById = async (req, res) => {
   if (companyDetail === null) {
     return res.status(404).json({
       success: false,
-      message: 'Company not found',
     });
   }
 
   return res.status(200).json({
     success: true,
-    message: 'Company successfully retrieved - DB',
     company: companyDetail,
   });
 };
@@ -202,7 +194,6 @@ export const getAdminStats = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Stats successfully retrieved - DB',
     stats: {
       totalUsers: totalUserCount,
       totalAdmins: totalAdminCount,

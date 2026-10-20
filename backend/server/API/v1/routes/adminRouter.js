@@ -85,8 +85,6 @@ const companyListQueryValidation = [
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 userCount:
  *                   type: integer
  *                   description: Total number of users matching the filter
@@ -144,8 +142,6 @@ adminRouter.get('/users', userListQueryValidation, getAllUsers);
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 user:
  *                   type: object
  *                   properties:
@@ -215,8 +211,6 @@ adminRouter.get('/users/:userId', userIdParamValidation, getOneUserById);
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 userId:
  *                   type: string
  *       401:
@@ -294,8 +288,6 @@ adminRouter.delete('/users/:userId', userIdParamValidation, deleteOneUserById);
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 companyCount:
  *                   type: integer
  *                   description: Total number of companies matching the filter
@@ -353,8 +345,6 @@ adminRouter.get('/companies', companyListQueryValidation, getAllCompanies);
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 company:
  *                   type: object
  *                   properties:
@@ -418,8 +408,6 @@ adminRouter.get('/companies/:companyId', companyIdParamValidation, getOneCompany
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 stats:
  *                   type: object
  *                   properties:

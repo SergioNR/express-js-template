@@ -21,8 +21,6 @@ export const userRouter = Router();
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 user:
  *                   type: object
  *                   properties:

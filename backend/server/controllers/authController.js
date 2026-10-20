@@ -44,7 +44,6 @@ export const checkPasswordResetTokenValidity = async (req, res) => {
   if (!passwordResetTokenData) {
     return res.status(404).json({
       success: false,
-      message: 'Password reset token does not exist',
     });
   }
 
@@ -55,13 +54,12 @@ export const checkPasswordResetTokenValidity = async (req, res) => {
   if (new Date(tokenExpirationDate) < new Date()) {
     return res.status(400).json({
       success: false,
-      message: 'Token expired - Please request a new password reset link',
+      message: 'Password reset token expired',
     });
   }
 
   return res.status(200).json({
     success: true,
-    message: 'Password reset token is valid',
   });
 };
 
@@ -76,7 +74,6 @@ export const updateRecoveredUserPassword = async (req, res) => {
   if (!passwordResetTokenData) {
     return res.status(404).json({
       success: false,
-      message: 'Password reset token does not exist',
     });
   }
 
@@ -88,7 +85,7 @@ export const updateRecoveredUserPassword = async (req, res) => {
   if (new Date(tokenExpires) < new Date()) {
     return res.status(400).json({
       success: false,
-      message: 'Token expired - Please request a new password reset link',
+      message: 'Password reset token expired',
     });
   }
 
@@ -103,7 +100,6 @@ export const updateRecoveredUserPassword = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'User password updated successfully using password reset token',
   });
 };
 
@@ -111,7 +107,6 @@ export const checkSession = async (req, res) => {
   if (req.user) {
     return res.status(200).json({
       success: true,
-      message: 'Session is valid',
       user: {
         id: req.user.id,
       },
@@ -120,18 +115,17 @@ export const checkSession = async (req, res) => {
 
   return res.status(401).json({
     success: false,
-    message: 'Session is invalid',
   });
 };
 
-export const loginLocal = (req, res, next) => passport.authenticate('local', (err, user /* , info */) => {
+export const loginLocal = (req, res, next) => passport.authenticate('local', (err, user) => {
   if (err) {
     return next(err);
   }
 
   if (!user) { //* Will trigger if user does not exist
     return res.status(401).json({
-      message: 'The combination of email and password is incorrect',
+      success: false,
     });
   }
 
@@ -152,7 +146,6 @@ export const loginLocal = (req, res, next) => passport.authenticate('local', (er
 
     return res.status(200).json({
       success: true,
-      message: 'Login successful',
       user: {
         id: user.id,
         role: user.role,
@@ -178,7 +171,6 @@ export const registerUser = async (req, res) => {
     //* so the endpoint cannot be used to enumerate registered emails
     return res.status(201).json({
       success: true,
-      message: 'User created successfully',
     });
   }
 
@@ -190,7 +182,6 @@ export const registerUser = async (req, res) => {
     if (error.code === 'P2002') {
       return res.status(201).json({
         success: true,
-        message: 'User created successfully',
       });
     }
 
@@ -199,7 +190,6 @@ export const registerUser = async (req, res) => {
 
   return res.status(201).json({
     success: true,
-    message: 'User created successfully',
   });
 };
 
@@ -216,7 +206,6 @@ export const updateUserPassword = async (req, res) => {
   if (!currentHashedPasswordQuery) {
     return res.status(404).json({
       success: false,
-      message: 'User not found',
     });
   }
 
@@ -226,9 +215,11 @@ export const updateUserPassword = async (req, res) => {
   const isMatch = await bcrypt.compare(currentPassword, currentHashedPassword);
 
   if (!isMatch) {
+    //* Both 400s carry a stable code - the SPA maps it to user-facing copy
     return res.status(400).json({
       success: false,
       message: 'Current password is incorrect',
+      code: 'AUTH_CURRENT_PASSWORD_INCORRECT',
     });
   }
 
@@ -236,6 +227,7 @@ export const updateUserPassword = async (req, res) => {
     return res.status(400).json({
       success: false,
       message: 'New password must be different from the current password',
+      code: 'AUTH_PASSWORD_UNCHANGED',
     });
   }
 
@@ -250,7 +242,6 @@ export const updateUserPassword = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Password updated successfully',
     userId: updatedUser.id,
   });
 };
@@ -273,7 +264,6 @@ export const logoutUser = (req, res, next) => req.logout((err) => {
 
     return res.status(200).json({
       success: true,
-      message: 'User logged out successfully',
     });
   });
 });

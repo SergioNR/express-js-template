@@ -46,8 +46,6 @@ export const authRouter = Router();
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 user:
  *                   type: object
  *                   properties:
@@ -277,17 +275,25 @@ authRouter.post('/logout', logoutUser);
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 userId:
  *                   type: string
  *                   format: uuid
  *       400:
- *         description: Current password is incorrect
+ *         description: Current password is incorrect, or the new password is the same as the current one - disambiguated by `code`
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorMessage'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ErrorMessage'
+ *                 - type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       enum: [Current password is incorrect, New password must be different from the current password]
+ *                     code:
+ *                       type: string
+ *                       enum: [AUTH_CURRENT_PASSWORD_INCORRECT, AUTH_PASSWORD_UNCHANGED]
+ *                       description: Machine-readable reason distinguishing the two 400 cases
  *       404:
  *         description: User not found
  *         content:
@@ -322,8 +328,6 @@ authRouter.patch('/update-user-password', checkSchema(updatePasswordSchema), san
  *               properties:
  *                 success:
  *                   type: boolean
- *                 message:
- *                   type: string
  *                 user:
  *                   type: object
  *                   properties:

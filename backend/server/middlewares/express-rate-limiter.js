@@ -8,10 +8,6 @@ export const limiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers.
   // store: ... , // Redis, Memcached, etc. See below.
   skipFailedRequests: false, // Skip failed requests (e.g., due to authentication errors).
-  // message: { //* being returned on the handler
-  //   success: false,
-  //   message: 'Too many requests - please try again later',
-  // },
   handler: (req, res /* , next, options */) => {
     logRateLimited(req);
     res.status(429).json({

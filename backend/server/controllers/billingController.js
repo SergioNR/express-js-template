@@ -40,7 +40,6 @@ export const createCompanyBillingId = async (req, res) => {
 
   return res.status(201).json({
     success: true,
-    message: 'Billing id created successfully',
   });
 };
 
@@ -73,7 +72,6 @@ export const getBillingCustomerPortalUrl = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Customer portal URL retrieved successfully',
     customerPortalUrl: url,
   });
 };
@@ -120,7 +118,6 @@ export const getBillingCheckoutSessionUrl = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Billing checkout session generated successfully',
     checkoutSessionUrl: url,
   });
 };
@@ -140,7 +137,6 @@ export const getCompanySubscriptionData = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: 'Billing data retrieved successfully - DB',
     subscriptionData: subscriptionData,
   });
 };

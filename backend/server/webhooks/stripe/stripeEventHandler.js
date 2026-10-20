@@ -67,13 +67,11 @@ export const stripeEventHandler = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Event received and processed',
     });
   } catch (error) {
     logError('error in stripeEventHandler', error);
     return res.status(500).json({
       success: false,
-      message: 'Internal Server Error',
     });
   }
 };

@@ -1,20 +1,34 @@
 import { createStripeCustomerPortalSession } from '../integrations/stripe/customerPortalSession.js';
 import { createCompanyIdInStripe } from '../integrations/stripe/customerId.js';
 import { createStripeCheckoutSession } from '../integrations/stripe/checkoutSession.js';
-import { getSubscriptionDataInDb, storeBillingCompanyIdInDb } from '../models/subscriptionModel.js';
+import {
+  getSubscriptionDataInDb,
+  getSubscriptionPublicDataInDb,
+  storeBillingCompanyIdInDb,
+} from '../models/subscriptionModel.js';
 
-export const createCompanyBillingId = async (createdUser) => {
+export const createCompanyBillingId = async (req, res) => {
   const {
     email,
     company_id: companyId,
-  } = createdUser;
+  } = req.user;
 
-  const subcriptionData = await getSubscriptionDataInDb(companyId);
+  const subscriptionData = await getSubscriptionDataInDb(companyId);
 
-  const { stripe_id: companyStripeId } = subcriptionData;
+  if (!subscriptionData) {
+    return res.status(404).json({
+      success: false,
+      message: 'No subscription found for the company',
+    });
+  }
+
+  const { stripe_id: companyStripeId } = subscriptionData.Company;
 
   if (companyStripeId) {
-    throw new Error(`Company ${companyId} already has a billing Id`);
+    return res.status(409).json({
+      success: false,
+      message: 'Company already has a billing id',
+    });
   }
 
   const companyBillingId = await createCompanyIdInStripe(email, companyId);
@@ -23,6 +37,11 @@ export const createCompanyBillingId = async (createdUser) => {
     companyId,
     companyBillingId.id,
   );
+
+  return res.status(201).json({
+    success: true,
+    message: 'Billing id created successfully',
+  });
 };
 
 export const getBillingCustomerPortalUrl = async (req, res) => {
@@ -30,16 +49,30 @@ export const getBillingCustomerPortalUrl = async (req, res) => {
     company_id: companyId,
   } = req.user;
 
-  const subcriptionData = await getSubscriptionDataInDb(companyId);
+  const subscriptionData = await getSubscriptionDataInDb(companyId);
 
-  const { stripe_id: companyStripeId } = subcriptionData.Company;
+  if (!subscriptionData) {
+    return res.status(404).json({
+      success: false,
+      message: 'No subscription found for the company',
+    });
+  }
+
+  const companyStripeId = subscriptionData.Company?.stripe_id;
+
+  if (!companyStripeId) {
+    return res.status(409).json({
+      success: false,
+      message: 'Company has no billing id yet - start a checkout first',
+    });
+  }
 
   const customerPortalCreationQuery = await createStripeCustomerPortalSession(companyStripeId);
 
   const { url } = customerPortalCreationQuery;
 
   return res.status(200).json({
-    success: 'success',
+    success: true,
     message: 'Customer portal URL retrieved successfully',
     customerPortalUrl: url,
   });
@@ -47,15 +80,33 @@ export const getBillingCustomerPortalUrl = async (req, res) => {
 
 export const getBillingCheckoutSessionUrl = async (req, res) => {
   const {
+    email,
     company_id: companyId,
     id: userId,
   } = req.user;
 
-  const subcriptionData = await getSubscriptionDataInDb(companyId);
-
-  const { stripe_id: companyStripeId } = subcriptionData.Company;
-
   const { planName, planBillingCycle } = req.body;
+
+  const subscriptionData = await getSubscriptionDataInDb(companyId);
+
+  if (!subscriptionData) {
+    return res.status(404).json({
+      success: false,
+      message: 'No subscription found for the company',
+    });
+  }
+
+  let companyStripeId = subscriptionData.Company?.stripe_id;
+
+  //* Auto-create the Stripe customer on first checkout - removes the need for
+  //* a separate create-billing-id round trip on the client
+  if (!companyStripeId) {
+    const companyBillingId = await createCompanyIdInStripe(email, companyId);
+
+    companyStripeId = companyBillingId.id;
+
+    await storeBillingCompanyIdInDb(companyId, companyStripeId);
+  }
 
   const checkoutSession = await createStripeCheckoutSession(
     companyId,
@@ -77,11 +128,19 @@ export const getBillingCheckoutSessionUrl = async (req, res) => {
 export const getCompanySubscriptionData = async (req, res) => {
   const { company_id: companyId } = req.user;
 
-  const subcriptionData = await getSubscriptionDataInDb(companyId);
+  //* Public shape - the internal Stripe customer id is never exposed
+  const subscriptionData = await getSubscriptionPublicDataInDb(companyId);
+
+  if (!subscriptionData) {
+    return res.status(404).json({
+      success: false,
+      message: 'No subscription found for the company',
+    });
+  }
 
   return res.status(200).json({
     success: true,
     message: 'Billing data retrieved successfully - DB',
-    subscriptionData: subcriptionData,
+    subscriptionData: subscriptionData,
   });
 };

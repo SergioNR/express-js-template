@@ -1,10 +1,13 @@
 import { Router } from 'express';
+import { checkSchema } from 'express-validator';
 import {
   createCompanyBillingId,
   getBillingCustomerPortalUrl,
   getBillingCheckoutSessionUrl,
   getCompanySubscriptionData,
 } from '../../../controllers/billingController.js';
+import { sanitizerResult } from '../../../middlewares/sanitizerResult.js';
+import { checkoutSessionSchema } from '../../../utils/validators/checkoutSessionSchema.js';
 
 export const billingRouter = Router();
 
@@ -30,8 +33,15 @@ export const billingRouter = Router();
  *                   type: string
  *                 subscriptionData:
  *                   type: object
+ *                   description: Subscription fields only - internal Stripe ids are never exposed
  *       401:
  *         description: Not authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ *       404:
+ *         description: No subscription found for the company
  *         content:
  *           application/json:
  *             schema:
@@ -49,7 +59,7 @@ billingRouter.get('/', getCompanySubscriptionData);
  *     security:
  *       - sessionCookie: []
  *     responses:
- *       200:
+ *       201:
  *         description: Billing id created successfully
  *         content:
  *           application/json:
@@ -61,8 +71,14 @@ billingRouter.get('/', getCompanySubscriptionData);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
- *       500:
- *         description: Company already has a billing id or Stripe request failed
+ *       404:
+ *         description: No subscription found for the company
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ *       409:
+ *         description: Company already has a billing id
  *         content:
  *           application/json:
  *             schema:
@@ -87,9 +103,11 @@ billingRouter.post('/', createCompanyBillingId);
  *             properties:
  *               planName:
  *                 type: string
+ *                 enum: [basic, pro]
  *                 description: Name of the plan to subscribe to
  *               planBillingCycle:
  *                 type: string
+ *                 enum: [monthly, yearly]
  *                 description: Billing cycle of the plan
  *     responses:
  *       200:
@@ -112,14 +130,20 @@ billingRouter.post('/', createCompanyBillingId);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
- *       500:
- *         description: Checkout session could not be created
+ *       404:
+ *         description: No subscription found for the company
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
+ *       422:
+ *         description: Validation errors - unknown plan or billing cycle
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
  */
-billingRouter.post('/checkout-session', getBillingCheckoutSessionUrl);
+billingRouter.post('/checkout-session', checkSchema(checkoutSessionSchema), sanitizerResult, getBillingCheckoutSessionUrl);
 
 /**
  * @openapi
@@ -139,7 +163,7 @@ billingRouter.post('/checkout-session', getBillingCheckoutSessionUrl);
  *               type: object
  *               properties:
  *                 success:
- *                   type: string
+ *                   type: boolean
  *                 message:
  *                   type: string
  *                 customerPortalUrl:
@@ -151,8 +175,14 @@ billingRouter.post('/checkout-session', getBillingCheckoutSessionUrl);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
- *       500:
- *         description: Customer portal session could not be created
+ *       404:
+ *         description: No subscription found for the company
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ *       409:
+ *         description: Company has no billing id yet - start a checkout first
  *         content:
  *           application/json:
  *             schema:

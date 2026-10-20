@@ -1,4 +1,5 @@
 import { stripeInstance } from '../../config/stripe.js';
+import { getStripePriceId } from '../../config/planPrices.js';
 
 export const createStripeCheckoutSession = async (
   companyId,
@@ -11,7 +12,7 @@ export const createStripeCheckoutSession = async (
     success_url: `${process.env.FRONT_WEB_APP_ORIGIN_URL}/user/billing?status=paid`,
     line_items: [
       {
-        price: process.env.STRIPE_PRICE_ID,
+        price: getStripePriceId(planName, planBillingCycle),
         quantity: 1,
       },
     ],

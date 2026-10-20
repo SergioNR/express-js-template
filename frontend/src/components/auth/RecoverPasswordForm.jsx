@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { IconArrowLeft } from '@tabler/icons-react';
 import {
   Anchor,
@@ -15,52 +16,47 @@ import classes from './ForgotPassword.module.css';
 import { Link } from 'react-router';
 import apiClient from '../../config/API/axiosConfig.mjs';
 import { useState } from 'react';
+import Seo from '../Seo.jsx';
 
-
- const ForgotPasswordForm = () => {
-    
+const ForgotPasswordForm = () => {
+  const { t } = useTranslation();
   const [recoverPasswordResponse, setRecoverPasswordResponse] = useState(null);
   const [recoverPasswordError, setRecoverPasswordError] = useState(null);
 
-    const recoverPasswordRequest = async (e) => {
-        
-        e.preventDefault();
+  const recoverPasswordRequest = async (e) => {
+    e.preventDefault();
 
-        const data = {
-            email: e.target.email.value
-        }
+    const data = {
+      email: e.target.email.value,
+    };
 
-        try {
-            const response = await apiClient.post(`/api/v1/auth/password-reset`, data);
-            setRecoverPasswordResponse(response.data);
-            setRecoverPasswordError(null);
+    try {
+      const response = await apiClient.post('/api/v1/auth/password-reset', data);
+      setRecoverPasswordResponse(response.data);
+      setRecoverPasswordError(null);
+    } catch (error) {
+      setRecoverPasswordError({ success: false, message: t('auth.recover.error') });
+      console.error('Error al recuperar la contraseña:', error);
+      setRecoverPasswordResponse(null);
+    }
+  };
 
-        } catch (error) {
-
-            setRecoverPasswordError({ success: false, message: "Error al recuperar la contraseña." });
-            console.error("Error al recuperar la contraseña:", error);
-            setRecoverPasswordResponse(null);
-        }
-    } 
-  
-  
-    return (
+  return (
     <Container size={460} my={30}>
-
-        
+      <Seo title={t('seo.pages.recover')} />
 
       <Title className={classes.title} ta="center">
-        ¿Has olvidado tu contraseña?
+        {t('auth.recover.title')}
       </Title>
       <Text c="dimmed" fz="sm" ta="center">
-        Introduce tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña
+        {t('auth.recover.subtitle')}
       </Text>
 
       {recoverPasswordResponse && (
-                          <Paper shadow="xs" p={10} mt={20} radius="sm" style={{ backgroundColor: '#ccffcc' }}>
-                            Pronto recibirás un enlace para restablecer tu contraseña
-                          </Paper>
-                        )}
+        <Paper shadow="xs" p={10} mt={20} radius="sm" style={{ backgroundColor: '#ccffcc' }}>
+          {t('auth.recover.success')}
+        </Paper>
+      )}
 
       {recoverPasswordError && recoverPasswordError.success === false && (
         <Paper shadow="xs" p={10} mt={20} radius="sm" style={{ backgroundColor: '#ffcccc' }}>
@@ -70,21 +66,25 @@ import { useState } from 'react';
 
       <Paper withBorder shadow="md" p={30} radius="md" mt="xl">
         <form onSubmit={recoverPasswordRequest} method="post">
-        <TextInput name="email" label="Correo electrónico" placeholder="tu@email.com" required />
-        <Group justify="space-between" mt="lg" className={classes.controls}>
-          <Anchor c="dimmed" component={Link} to="/auth/login" size="sm" className={classes.control}>
-            <Center inline>
-              <IconArrowLeft size={12} stroke={1.5} />
-              <Box ml={5}>Volver a la página de inicio de sesión</Box>
-            </Center>
-                
-          </Anchor>
-          <Button type="submit" className={classes.control}>Restablecer contraseña</Button>
-        </Group>
+          <TextInput
+            name="email"
+            label={t('auth.fields.email')}
+            placeholder={t('auth.fields.emailPlaceholder')}
+            required
+          />
+          <Group justify="space-between" mt="lg" className={classes.controls}>
+            <Anchor c="dimmed" component={Link} to="/auth/login" size="sm" className={classes.control}>
+              <Center inline>
+                <IconArrowLeft size={12} stroke={1.5} />
+                <Box ml={5}>{t('auth.backToLoginSmall')}</Box>
+              </Center>
+            </Anchor>
+            <Button type="submit" className={classes.control}>{t('auth.recover.submit')}</Button>
+          </Group>
         </form>
       </Paper>
     </Container>
   );
-}
+};
 
 export default ForgotPasswordForm;

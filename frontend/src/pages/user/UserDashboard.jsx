@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useTranslation, Trans } from 'react-i18next';
 import PropTypes from 'prop-types';
 import {
   Alert,
@@ -36,6 +37,7 @@ import {
 import apiClient from '../../config/API/axiosConfig.mjs';
 import { useSubscription } from '../../contexts/SubscriptionContext.jsx';
 import NoActiveSubscriptionBanner from '../../components/partials/NoActiveSubscriptionBanner.jsx';
+import Seo from '../../components/Seo.jsx';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -115,10 +117,16 @@ QuickAction.propTypes = {
 };
 
 const UserDashboard = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { subscription, hasActiveSubscription, loading: subscriptionLoading } = useSubscription();
   const [user, setUser] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
+  const [now, setNow] = useState(null);
+
+  useEffect(() => {
+    setNow(Date.now());
+  }, []);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -136,31 +144,35 @@ const UserDashboard = () => {
   }, []);
 
   const daysRemaining = useMemo(() => {
-    if (!subscription?.expires_at) return null;
+    if (!subscription?.expires_at || now === null) return null;
     return Math.max(
       0,
-      Math.ceil((new Date(subscription.expires_at).getTime() - Date.now()) / DAY_MS)
+      Math.ceil((new Date(subscription.expires_at).getTime() - now) / DAY_MS)
     );
-  }, [subscription]);
+  }, [subscription, now]);
 
   const periodProgress = useMemo(() => {
     const start = subscription?.created_at ? new Date(subscription.created_at).getTime() : null;
     const end = subscription?.expires_at ? new Date(subscription.expires_at).getTime() : null;
-    if (!start || !end || end <= start) return null;
-    return Math.min(100, Math.max(0, ((Date.now() - start) / (end - start)) * 100));
-  }, [subscription]);
+    if (now === null || !start || !end || end <= start) return null;
+    return Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
+  }, [subscription, now]);
 
   const loading = userLoading || subscriptionLoading;
 
   return (
     <Stack gap="lg">
+      <Seo title={t('seo.pages.dashboard')} />
       <NoActiveSubscriptionBanner />
 
       <Group justify="space-between" align="flex-start" wrap="wrap">
         <Box>
-          <Title order={2}>Panel de control</Title>
+          <Title order={2}>{t('user.panelTitle')}</Title>
           <Text c="dimmed" mt={4}>
-            {user?.email ? `Sesión iniciada como ${user.email}` : 'Tu área personal'} ·{' '}
+            {user?.email
+              ? t('user.dashboard.sessionAs', { email: user.email })
+              : t('user.dashboard.personalArea')}{' '}
+            ·{' '}
             {new Date().toLocaleDateString('es-ES', {
               weekday: 'long',
               day: 'numeric',
@@ -175,26 +187,26 @@ const UserDashboard = () => {
           onClick={() => navigate('/user/billing')}
           visibleFrom="xs"
         >
-          Gestionar suscripción
+          {t('user.dashboard.manageSubscription')}
         </Button>
       </Group>
 
       <SimpleGrid cols={{ base: 1, xs: 2, md: 4 }}>
-        <StatCard label="Suscripción" icon={<IconCreditCard size={20} stroke={1.5} />}>
+        <StatCard label={t('user.dashboard.stats.subscription')} icon={<IconCreditCard size={20} stroke={1.5} />}>
           {loading ? (
             <Skeleton height={28} width="60%" />
           ) : hasActiveSubscription ? (
             <Badge color="teal" variant="light" size="lg">
-              Activa
+              {t('billing.statusActive')}
             </Badge>
           ) : (
             <Badge color="red" variant="light" size="lg">
-              Inactiva
+              {t('billing.statusInactive')}
             </Badge>
           )}
         </StatCard>
 
-        <StatCard label="Días restantes" icon={<IconCalendarClock size={20} stroke={1.5} />}>
+        <StatCard label={t('user.dashboard.stats.daysRemaining')} icon={<IconCalendarClock size={20} stroke={1.5} />}>
           {loading ? (
             <Skeleton height={28} width="40%" />
           ) : hasActiveSubscription && daysRemaining !== null ? (
@@ -203,17 +215,17 @@ const UserDashboard = () => {
                 {daysRemaining}
               </Text>
               <Text c="dimmed" size="sm">
-                hasta el {formatDate(subscription.expires_at)}
+                {t('user.dashboard.stats.untilDate', { date: formatDate(subscription.expires_at) })}
               </Text>
             </Group>
           ) : (
             <Text c="dimmed" size="sm">
-              Sin suscripción activa
+              {t('user.dashboard.stats.noActiveSubscription')}
             </Text>
           )}
         </StatCard>
 
-        <StatCard label="Último acceso" icon={<IconHistory size={20} stroke={1.5} />}>
+        <StatCard label={t('user.dashboard.stats.lastLogin')} icon={<IconHistory size={20} stroke={1.5} />}>
           {loading ? (
             <Skeleton height={28} width="70%" />
           ) : (
@@ -223,7 +235,7 @@ const UserDashboard = () => {
           )}
         </StatCard>
 
-        <StatCard label="Miembro desde" icon={<IconCalendarUp size={20} stroke={1.5} />}>
+        <StatCard label={t('user.dashboard.stats.memberSince')} icon={<IconCalendarUp size={20} stroke={1.5} />}>
           {loading ? (
             <Skeleton height={28} width="70%" />
           ) : (
@@ -236,11 +248,11 @@ const UserDashboard = () => {
 
       <SimpleGrid cols={{ base: 1, md: 2 }}>
         <Card withBorder radius="md" p="lg">
-          <Title order={4}>Estado de tu plan</Title>
+          <Title order={4}>{t('user.dashboard.plan.title')}</Title>
           <Text c="dimmed" size="sm" mt={4} mb="lg">
             {hasActiveSubscription
-              ? 'Tu suscripción está activa. Consulta el progreso del periodo actual.'
-              : 'Activa un plan para desbloquear todas las funciones de la plataforma.'}
+              ? t('user.dashboard.plan.activeDescription')
+              : t('user.dashboard.plan.inactiveDescription')}
           </Text>
 
           {loading ? (
@@ -265,7 +277,7 @@ const UserDashboard = () => {
               <Divider />
               <Group justify="space-between">
                 <Text c="dimmed" size="sm">
-                  Inicio del periodo
+                  {t('user.dashboard.plan.periodStart')}
                 </Text>
                 <Text size="sm" fw={500}>
                   {formatDate(subscription.created_at)}
@@ -273,7 +285,7 @@ const UserDashboard = () => {
               </Group>
               <Group justify="space-between">
                 <Text c="dimmed" size="sm">
-                  Renovación / fin del periodo
+                  {t('user.dashboard.plan.periodEnd')}
                 </Text>
                 <Text size="sm" fw={500}>
                   {formatDate(subscription.expires_at)} ({formatRelativeDays(subscription.expires_at)})
@@ -286,10 +298,10 @@ const UserDashboard = () => {
                 <IconCircleX size={26} stroke={1.5} />
               </ThemeIcon>
               <Text c="dimmed" size="sm" ta="center" maw={320}>
-                No tienes ninguna suscripción activa en este momento.
+                {t('user.dashboard.plan.noSubscription')}
               </Text>
               <Button onClick={() => navigate('/user/billing')} leftSection={<IconReceipt2 size={16} />}>
-                Ver planes disponibles
+                {t('user.dashboard.plan.viewPlans')}
               </Button>
             </Stack>
           )}
@@ -297,12 +309,12 @@ const UserDashboard = () => {
 
         <Stack gap="lg">
           <Card withBorder radius="md" p="lg">
-            <Title order={4}>Accesos rápidos</Title>
+            <Title order={4}>{t('user.dashboard.quick.title')}</Title>
             <Divider my="md" />
             <QuickAction
               icon={<IconReceipt2 size={20} stroke={1.5} />}
-              title="Planes y facturación"
-              description="Gestiona tu suscripción, pagos y facturas"
+              title={t('user.dashboard.quick.billing.title')}
+              description={t('user.dashboard.quick.billing.description')}
               action={
                 <Anchor size="sm" onClick={() => navigate('/user/billing')}>
                   <IconExternalLink size={16} />
@@ -311,8 +323,8 @@ const UserDashboard = () => {
             />
             <QuickAction
               icon={<IconKey size={20} stroke={1.5} />}
-              title="Seguridad de la cuenta"
-              description="Actualiza tu contraseña y revisa el acceso"
+              title={t('user.dashboard.quick.security.title')}
+              description={t('user.dashboard.quick.security.description')}
               action={
                 <Anchor size="sm" onClick={() => navigate('/user/profile')}>
                   <IconExternalLink size={16} />
@@ -321,15 +333,19 @@ const UserDashboard = () => {
             />
             <QuickAction
               icon={<IconClockHour3 size={20} stroke={1.5} />}
-              title="Renovación automática"
+              title={t('user.dashboard.quick.renewal.title')}
               description={
                 hasActiveSubscription
-                  ? `Se renovará ${formatRelativeDays(subscription.expires_at)}`
-                  : 'Disponible al activar un plan'
+                  ? t('user.dashboard.quick.renewal.renewsOn', {
+                      date: formatRelativeDays(subscription.expires_at),
+                    })
+                  : t('user.dashboard.quick.renewal.unavailable')
               }
               action={
                 <Badge size="sm" variant="light" color={hasActiveSubscription ? 'teal' : 'gray'}>
-                  {hasActiveSubscription ? 'Activada' : 'Inactiva'}
+                  {hasActiveSubscription
+                    ? t('user.dashboard.quick.renewal.enabled')
+                    : t('user.dashboard.quick.renewal.disabled')}
                 </Badge>
               }
             />
@@ -337,7 +353,7 @@ const UserDashboard = () => {
 
           <Card withBorder radius="md" p="lg">
             <Group justify="space-between" mb="md">
-              <Title order={4}>Actividad reciente</Title>
+              <Title order={4}>{t('user.dashboard.activity.title')}</Title>
               <ThemeIcon variant="light" size="sm" radius="sm">
                 <IconActivity size={16} stroke={1.5} />
               </ThemeIcon>
@@ -349,7 +365,7 @@ const UserDashboard = () => {
             >
               <Timeline.Item
                 bullet={<IconCalendarUp size={12} stroke={1.5} />}
-                title="Cuenta creada"
+                title={t('user.dashboard.activity.accountCreated')}
               >
                 <Text c="dimmed" size="xs">
                   {formatDate(user?.created_at)}
@@ -357,7 +373,7 @@ const UserDashboard = () => {
               </Timeline.Item>
               <Timeline.Item
                 bullet={<IconHistory size={12} stroke={1.5} />}
-                title="Último inicio de sesión"
+                title={t('user.dashboard.activity.lastLogin')}
               >
                 <Text c="dimmed" size="xs">
                   {formatDateTime(user?.last_login_at)}
@@ -366,12 +382,14 @@ const UserDashboard = () => {
               <Timeline.Item
                 bullet={<IconCircleCheck size={12} stroke={1.5} />}
                 color={hasActiveSubscription ? 'teal' : 'gray'}
-                title={hasActiveSubscription ? 'Suscripción activa' : 'Sin suscripción'}
+                title={hasActiveSubscription
+                  ? t('user.dashboard.activity.subscriptionActive')
+                  : t('user.dashboard.activity.noSubscription')}
               >
                 <Text c="dimmed" size="xs">
                   {hasActiveSubscription
-                    ? `Vence el ${formatDate(subscription.expires_at)}`
-                    : 'Activa un plan cuando quieras'}
+                    ? t('user.dashboard.activity.expiresOn', { date: formatDate(subscription.expires_at) })
+                    : t('user.dashboard.activity.activateAnytime')}
                 </Text>
               </Timeline.Item>
             </Timeline>
@@ -381,8 +399,11 @@ const UserDashboard = () => {
 
       {!loading && !hasActiveSubscription && (
         <Alert color="gray" variant="light" icon={<IconCreditCard size={16} />}>
-          Necesitas una suscripción activa para utilizar la plataforma.{' '}
-          <Anchor onClick={() => navigate('/user/billing')}>Elige tu plan aquí</Anchor>.
+          <Trans
+            i18nKey="user.dashboard.subscriptionAlert"
+            t={t}
+            components={[<Anchor key="choose-plan" onClick={() => navigate('/user/billing')} />]}
+          />
         </Alert>
       )}
     </Stack>

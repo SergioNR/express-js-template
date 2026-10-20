@@ -1,21 +1,25 @@
 import { Container, Stack, Title, Text, Group } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 import RegisterButton from '../../../components/navBarElements/RegisterButton';
 
+const MainHero = () => {
+  const { t } = useTranslation();
 
-const MainHero = () => (
-  <Container size="lg" py="xl">
-    <Stack align="center" gap="xl">
-      <Title order={1} ta="center">
-        Tu producto, listo para destacar
-      </Title>
-      <Text size="lg" ta="center" c="dimmed">
-        Describe aquí tu propuesta de valor: qué problema resuelve tu producto y por qué tus clientes deberían probarlo.
-      </Text>
-      <Group>
-        <RegisterButton />
-      </Group>
-    </Stack>
-  </Container>
-);
+  return (
+    <Container size="lg" py="xl">
+      <Stack align="center" gap="xl">
+        <Title order={1} ta="center">
+          {t('index.hero.title')}
+        </Title>
+        <Text size="lg" ta="center" c="dimmed">
+          {t('index.hero.subtitle')}
+        </Text>
+        <Group>
+          <RegisterButton />
+        </Group>
+      </Stack>
+    </Container>
+  );
+};
 
 export default MainHero;

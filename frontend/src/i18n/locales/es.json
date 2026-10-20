@@ -1,0 +1,498 @@
+{
+  "common": {
+    "siteName": "Your App",
+    "error": "Error",
+    "success": "Correcto",
+    "logoAlt": "logo"
+  },
+  "nav": {
+    "home": "Inicio",
+    "pricing": "Precio",
+    "faq": "Preguntas frecuentes",
+    "login": "Iniciar sesión",
+    "register": "Pruébalo gratis",
+    "registerLink": "Registrarse",
+    "logout": "Cerrar sesión",
+    "user": {
+      "navigation": "Navegación",
+      "dashboard": "Dashboard",
+      "profile": "Cambiar contraseña",
+      "plans": "Planes"
+    }
+  },
+  "footer": {
+    "ariaLabel": "Pie de página del sitio",
+    "logoAlt": "Logotipo de la empresa",
+    "tagline": "Una descripción corta de tu producto: qué hace, para quién es y por qué merece la pena probarlo.",
+    "columns": {
+      "product": "Producto",
+      "resources": "Recursos",
+      "legal": "Legal"
+    },
+    "links": {
+      "pricing": "Precio",
+      "faq": "Preguntas frecuentes",
+      "terms": "Términos y condiciones",
+      "contact": "Contacto"
+    },
+    "copyright": "© {{year}} {{siteName}}. Todos los derechos reservados.",
+    "admin": {
+      "title": "Pie de página de administración",
+      "columnOne": ["Elemento 3", "Elemento 4"],
+      "columnTwo": ["Elemento 5", "Elemento 6", "Elemento 7", "Elemento 8"],
+      "columnThree": ["Elemento 9", "Elemento 10", "Elemento 11", "Elemento 12"]
+    }
+  },
+  "auth": {
+    "fields": {
+      "email": "Correo electrónico",
+      "emailPlaceholder": "tu@email.com",
+      "emailPlaceholderAlt": "tu@ejemplo.com",
+      "password": "Contraseña",
+      "passwordPlaceholder": "Tu contraseña"
+    },
+    "backToLoginSmall": "Volver a la página de inicio de sesión",
+    "login": {
+      "title": "¡Bienvenido de nuevo!",
+      "noAccount": "¿Aún no tienes una cuenta?",
+      "createAccount": "Crear cuenta",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "submit": "Iniciar sesión",
+      "participantTitle": "Inicio de sesión de participante",
+      "participantBody": "El inicio de sesión de participante aún no está disponible. Por favor, contacta con soporte para más información.",
+      "errors": {
+        "invalidCredentials": "La combinación de email y contraseña es incorrecta",
+        "internal": "Error interno, por favor inténtalo de nuevo más tarde"
+      }
+    },
+    "register": {
+      "title": "¡Estamos encantados de verte por aqui!",
+      "hasAccount": "¿Ya tienes una cuenta?",
+      "loginLink": "Iniciar sesión",
+      "submit": "Crear cuenta",
+      "success": "Usuario creado correctamente - Redirigiendo al inicio de sesión",
+      "terms": "Al registrarte, aceptas estar de acuerdo con los <1>términos y condiciones</1>",
+      "errors": {
+        "invalid": "Por favor, proporcione un correo electrónico y contraseña válidos",
+        "internal": "Error interno, por favor intentálo en unos minutos"
+      }
+    },
+    "recover": {
+      "title": "¿Has olvidado tu contraseña?",
+      "subtitle": "Introduce tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña",
+      "success": "Pronto recibirás un enlace para restablecer tu contraseña",
+      "error": "Error al recuperar la contraseña.",
+      "submit": "Restablecer contraseña"
+    },
+    "restore": {
+      "title": "Restablecer contraseña",
+      "newPassword": "Nueva contraseña",
+      "newPasswordPlaceholder": "Introduce tu nueva contraseña",
+      "confirmNewPassword": "Confirmar nueva contraseña",
+      "confirmNewPasswordPlaceholder": "Confirma tu nueva contraseña",
+      "passwordMismatch": "Las contraseñas no coinciden",
+      "submit": "Actualizar contraseña",
+      "backToLogin": "Volver al inicio de sesión",
+      "invalidLinkTitle": "Enlace inválido",
+      "invalidLinkBody": "El enlace para restablecer la contraseña es inválido o ha expirado. Por favor, solicita un nuevo enlace.",
+      "requestNewLink": "Solicitar nuevo enlace"
+    },
+    "passwordUpdate": {
+      "title": "Cambiar contraseña",
+      "submit": "Cambiar contraseña",
+      "success": "La contraseña ha sido modificada con éxito",
+      "username": "nombre de usuario",
+      "usernamePlaceholder": "Introduce tu nombre de usuario",
+      "currentPassword": "Contraseña actual",
+      "currentPasswordPlaceholder": "Introduce tu contraseña actual",
+      "newPassword": "Nueva contraseña",
+      "newPasswordPlaceholder": "Introduce tu nueva contraseña",
+      "errors": {
+        "unexpected": "Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo."
+      }
+    }
+  },
+  "index": {
+    "hero": {
+      "title": "Tu producto, listo para destacar",
+      "subtitle": "Describe aquí tu propuesta de valor: qué problema resuelve tu producto y por qué tus clientes deberían probarlo."
+    },
+    "howItWorks": {
+      "title": "Cómo funciona",
+      "steps": {
+        "create": {
+          "title": "1. Crea tu cuenta",
+          "description": "Regístrate en menos de un minuto y empieza a explorar la plataforma sin compromiso."
+        },
+        "configure": {
+          "title": "2. Configura tu espacio de trabajo",
+          "description": "Adapta la plataforma a las necesidades de tu proyecto y de tu equipo."
+        },
+        "start": {
+          "title": "3. Empieza a obtener valor desde el primer día",
+          "description": "Todo lo que necesitas para trabajar de forma sencilla, rápida y colaborativa."
+        }
+      }
+    },
+    "dashboardExample": {
+      "title": "Una captura de tu producto",
+      "subtitle": "Sustituye este panel por una imagen o un vídeo que muestre tu producto en funcionamiento",
+      "placeholder": "Captura del producto (placeholder)"
+    },
+    "features": {
+      "title": "Características",
+      "items": {
+        "quickStart": {
+          "title": "Empieza en minutos",
+          "description": "Ponlo en marcha sin configuración compleja y sin necesidad de conocimientos técnicos"
+        },
+        "multiDevice": {
+          "title": "Accede desde cualquier dispositivo",
+          "description": "Diseñado para funcionar igual de bien en escritorio, tablet y móvil"
+        },
+        "collaboration": {
+          "title": "Colabora con tu equipo",
+          "description": "Comparte información y trabaja de forma conjunta en un mismo espacio"
+        },
+        "integrations": {
+          "title": "Integraciones con tus herramientas",
+          "description": "Conecta la plataforma con las herramientas que ya utilizas a diario"
+        },
+        "security": {
+          "title": "Seguridad y privacidad",
+          "description": "Datos protegidos y tratados conforme a la normativa europea de protección de datos"
+        },
+        "export": {
+          "title": "Exporta tus datos",
+          "description": "Descarga tu información cuando lo necesites y llévala a donde quieras"
+        }
+      }
+    },
+    "faq": {
+      "title": "Preguntas frecuentes",
+      "items": {
+        "signup": {
+          "q": "¿Cómo me doy de alta?",
+          "a": "Crea una cuenta desde el botón de registro en menos de un minuto. Solo necesitas un correo electrónico y una contraseña."
+        },
+        "pricing": {
+          "q": "¿Cuánto cuesta?",
+          "a": "Puedes consultar todos los detalles de nuestro plan en la página de <0>precios</0>."
+        },
+        "cancel": {
+          "q": "¿Puedo cancelar mi suscripción en cualquier momento?",
+          "a": "Sí. Puedes gestionar o cancelar tu suscripción en cualquier momento desde el portal de facturación de tu área de usuario."
+        },
+        "installation": {
+          "q": "¿Necesito instalar algo?",
+          "a": "No. La plataforma funciona directamente desde tu navegador, sin instalaciones ni descargas."
+        },
+        "security": {
+          "q": "¿Mis datos están seguros?",
+          "a": "Sí. Aplicamos medidas de seguridad técnicas y organizativas y tratamos los datos conforme a la normativa europea de protección de datos."
+        },
+        "moreQuestions": {
+          "q": "Tengo más preguntas, ¿cómo puedo contactaros?",
+          "a": "Escríbenos a <0>hello@yourapp.com</0> y estaremos encantados de ayudarte."
+        }
+      }
+    },
+    "pricing": {
+      "title": "Planes y precios",
+      "subtitle": "Un único plan simple para empezar hoy mismo. Sin complicaciones, cancela cuando quieras."
+    },
+    "terms": {
+      "title": "Términos y Condiciones de Uso",
+      "sections": {
+        "object": {
+          "title": "1. Objeto",
+          "paragraphs": [
+            "Los presentes Términos y Condiciones regulan el acceso y uso de la plataforma (en adelante, «la Plataforma»). Sustituye este texto por las condiciones legales de tu servicio.",
+            "Al registrarse y utilizar la Plataforma, el usuario acepta plenamente y sin reservas estos Términos y Condiciones."
+          ]
+        },
+        "registration": {
+          "title": "2. Registro y cuentas de usuario",
+          "items": [
+            "Los usuarios deben crear una cuenta para poder acceder a la Plataforma.",
+            "Cada usuario es responsable de la veracidad de los datos proporcionados y de la seguridad de sus credenciales de acceso."
+          ]
+        },
+        "privacy": {
+          "title": "3. Privacidad y protección de datos",
+          "items": [
+            "Los datos personales se recopilarán y procesarán de acuerdo con la normativa de protección de datos aplicable (como el Reglamento General de Protección de Datos – RGPD).",
+            "Los usuarios podrán ejercer sus derechos de acceso, rectificación, supresión y portabilidad mediante contacto con el administrador de la Plataforma.",
+            "La Plataforma aplica medidas de seguridad técnicas y organizativas para proteger la confidencialidad e integridad de los datos."
+          ]
+        },
+        "cookies": {
+          "title": "4. Política de cookies y tecnologías de seguimiento",
+          "paragraphs": [
+            "La Plataforma utiliza cookies y tecnologías similares para mejorar la experiencia de usuario, analizar la actividad y proteger la seguridad del servicio."
+          ]
+        },
+        "liability": {
+          "title": "5. Limitación de responsabilidad",
+          "items": [
+            "La Plataforma podrá suspender o cancelar cuentas que hagan un uso indebido, ilegal o fraudulento del servicio.",
+            "El uso de la Plataforma se ofrece «tal cual», sin garantías de disponibilidad ininterrumpida ni de idoneidad para un propósito específico."
+          ]
+        },
+        "support": {
+          "title": "6. Niveles de servicio y soporte",
+          "paragraphs": [
+            "La Plataforma proporciona soporte técnico básico a través de correo electrónico (support@yourapp.com). Los tiempos de respuesta habituales son de hasta 72 horas laborables."
+          ]
+        },
+        "changes": {
+          "title": "7. Modificaciones",
+          "paragraphs": [
+            "La Plataforma se reserva el derecho a modificar en cualquier momento los presentes Términos y Condiciones. Las modificaciones entrarán en vigor desde su publicación en el sitio web."
+          ]
+        },
+        "law": {
+          "title": "8. Legislación aplicable",
+          "paragraphs": [
+            "Estos Términos y Condiciones se rigen por la legislación vigente aplicable. Cualquier conflicto derivado de su interpretación o ejecución será resuelto ante los tribunales competentes."
+          ]
+        }
+      }
+    }
+  },
+  "user": {
+    "panelTitle": "Panel de control",
+    "backToSite": "Volver al sitio",
+    "noSubscriptionBanner": {
+      "title": "Suscripción inactiva",
+      "body": "No tienes una suscripción activa. Activa un plan para continuar usando la plataforma.",
+      "cta": "Elegir plan"
+    },
+    "dashboard": {
+      "sessionAs": "Sesión iniciada como {{email}}",
+      "personalArea": "Tu área personal",
+      "manageSubscription": "Gestionar suscripción",
+      "stats": {
+        "subscription": "Suscripción",
+        "daysRemaining": "Días restantes",
+        "untilDate": "hasta el {{date}}",
+        "noActiveSubscription": "Sin suscripción activa",
+        "lastLogin": "Último acceso",
+        "memberSince": "Miembro desde"
+      },
+      "plan": {
+        "title": "Estado de tu plan",
+        "activeDescription": "Tu suscripción está activa. Consulta el progreso del periodo actual.",
+        "inactiveDescription": "Activa un plan para desbloquear todas las funciones de la plataforma.",
+        "periodStart": "Inicio del periodo",
+        "periodEnd": "Renovación / fin del periodo",
+        "noSubscription": "No tienes ninguna suscripción activa en este momento.",
+        "viewPlans": "Ver planes disponibles"
+      },
+      "quick": {
+        "title": "Accesos rápidos",
+        "billing": {
+          "title": "Planes y facturación",
+          "description": "Gestiona tu suscripción, pagos y facturas"
+        },
+        "security": {
+          "title": "Seguridad de la cuenta",
+          "description": "Actualiza tu contraseña y revisa el acceso"
+        },
+        "renewal": {
+          "title": "Renovación automática",
+          "renewsOn": "Se renovará {{date}}",
+          "unavailable": "Disponible al activar un plan",
+          "enabled": "Activada",
+          "disabled": "Inactiva"
+        }
+      },
+      "activity": {
+        "title": "Actividad reciente",
+        "accountCreated": "Cuenta creada",
+        "lastLogin": "Último inicio de sesión",
+        "subscriptionActive": "Suscripción activa",
+        "noSubscription": "Sin suscripción",
+        "expiresOn": "Vence el {{date}}",
+        "activateAnytime": "Activa un plan cuando quieras"
+      },
+      "subscriptionAlert": "Necesitas una suscripción activa para utilizar la plataforma. <0>Elige tu plan aquí</0>."
+    },
+    "accountActions": {
+      "title": "Acciones de la cuenta",
+      "description": "Gestiona las opciones y preferencias de tu cuenta",
+      "delete": "Eliminar mi cuenta",
+      "deleteError": "No se pudo eliminar tu cuenta. Por favor, inténtalo de nuevo."
+    }
+  },
+  "billing": {
+    "status": "Estado de la suscripción:",
+    "statusActive": "Activa",
+    "statusInactive": "Inactiva",
+    "expiresAt": "Finaliza el:",
+    "monthly": {
+      "title": "Suscripción Mensual",
+      "price": "€29/mes",
+      "vatIncluded": "IVA incluido",
+      "saveHint": "Ahorra 17%",
+      "description": "Utiliza la plataforma sin límites.",
+      "alreadySubscribed": "Ya tienes una suscripción activa",
+      "choose": "Elegir mensual"
+    },
+    "invoices": {
+      "title": "Historial de facturas",
+      "description": "Encuentra tus facturas y gestiona los métodos de pago y la suscripción.",
+      "openPortal": "Abrir portal del cliente",
+      "portalDisabled": "Disponible después de iniciar tu primera suscripción"
+    },
+    "errors": {
+      "existingSubscription": "El usuario ya tiene una suscripción existente",
+      "checkout": "Se ha producido un error generando el enlace de pago. Por favor, inténtalo más tarde",
+      "portal": "Se ha producido un error obteniendo el área de usuario. Por favor, inténtalo más tarde"
+    }
+  },
+  "admin": {
+    "areaTitle": "Panel de administración",
+    "backToSite": "Volver al sitio",
+    "nav": {
+      "overview": "Resumen",
+      "users": "Usuarios",
+      "companies": "Empresas",
+      "menu": "Menú de navegación"
+    },
+    "roles": {
+      "user": "Usuario",
+      "admin": "Administrador"
+    },
+    "fields": {
+      "email": "Email",
+      "role": "Rol",
+      "status": "Estado",
+      "companyName": "Empresa",
+      "subscription": "Suscripción",
+      "createdAt": "Fecha de registro",
+      "updatedAt": "Última actualización",
+      "lastLogin": "Último acceso",
+      "expiresAt": "Vence el",
+      "activeSessions": "Sesiones activas",
+      "noSubscription": "Sin suscripción.",
+      "unnamedCompany": "Empresa sin nombre",
+      "stripe": "Stripe",
+      "stripeLinked": "Vinculada",
+      "stripeNotLinked": "No vinculada"
+    },
+    "loadError": "No se pudo cargar la información. Inténtalo de nuevo más tarde.",
+    "backToUsers": "Volver a usuarios",
+    "backToCompanies": "Volver a empresas",
+    "overview": {
+      "title": "Resumen",
+      "stats": {
+        "users": "Usuarios",
+        "usersDetail": "{{newUsers}} nuevos en 7 días · {{admins}} administradores",
+        "companies": "Empresas",
+        "activeSubscriptions": "Suscripciones activas",
+        "subscriptionsDetail": "de {{total}} en total",
+        "activeSessions": "Sesiones activas"
+      },
+      "recentUsers": {
+        "title": "Últimos usuarios registrados",
+        "viewAll": "Ver todos",
+        "empty": "Todavía no hay usuarios registrados.",
+        "registeredAt": "Registrado el {{date}}"
+      }
+    },
+    "users": {
+      "title": "Usuarios",
+      "count_one": "{{count}} usuario",
+      "count_other": "{{count}} usuarios",
+      "searchPlaceholder": "Buscar por email…",
+      "roleFilterPlaceholder": "Todos los roles",
+      "columns": {
+        "email": "Email",
+        "role": "Rol",
+        "company": "Empresa",
+        "lastLogin": "Último acceso",
+        "createdAt": "Registro"
+      },
+      "empty": "No hay usuarios que coincidan con la búsqueda.",
+      "loadMore": "Cargar más",
+      "loadMoreError": "No se pudieron cargar más usuarios.",
+      "deleteAction": "Eliminar a {{email}}",
+      "deletedToast": "Usuario {{email}} eliminado correctamente.",
+      "deleteError": "No se pudo eliminar el usuario. Inténtalo de nuevo.",
+      "deleteConflict": "No se puede eliminar esta cuenta desde aquí. Si es tu propia cuenta, usa tu perfil.",
+      "deleteNotFound": "El usuario ya no existe.",
+      "deleteModal": {
+        "title": "Eliminar usuario",
+        "description": "¿Seguro que quieres eliminar la cuenta de {{email}}? Esta acción no se puede deshacer.",
+        "adminWarning": "Vas a eliminar una cuenta de administrador.",
+        "cancel": "Cancelar",
+        "confirm": "Eliminar"
+      }
+    },
+    "userDetail": {
+      "notFound": "El usuario no existe o ha sido eliminado.",
+      "account": "Cuenta",
+      "company": "Empresa",
+      "noCompany": "El usuario no tiene empresa asociada."
+    },
+    "companies": {
+      "title": "Empresas",
+      "count_one": "{{count}} empresa",
+      "count_other": "{{count}} empresas",
+      "searchPlaceholder": "Buscar por nombre…",
+      "columns": {
+        "name": "Empresa",
+        "users": "Usuarios",
+        "subscription": "Suscripción",
+        "createdAt": "Creada"
+      },
+      "empty": "No hay empresas que coincidan con la búsqueda.",
+      "loadMore": "Cargar más",
+      "loadMoreError": "No se pudieron cargar más empresas."
+    },
+    "companyDetail": {
+      "notFound": "La empresa no existe o ha sido eliminada.",
+      "info": "Datos de la empresa",
+      "userCount": "Usuarios",
+      "users": "Usuarios de la empresa",
+      "noUsers": "Esta empresa todavía no tiene usuarios."
+    }
+  },
+  "loading": {
+    "default": "Cargando...",
+    "billing": "Cargando información de facturación...",
+    "user": "Cargando usuario..."
+  },
+  "errors": {
+    "logoutFailed": "No se pudo cerrar la sesión. Por favor, inténtalo de nuevo."
+  },
+  "seo": {
+    "defaultTitle": "Your App",
+    "defaultDescription": "Una descripción corta de tu producto: qué hace, para quién es y por qué merece la pena probarlo.",
+    "homeTitle": "Tu producto, listo para destacar",
+    "faqDescription": "Respuestas a las preguntas más frecuentes sobre la plataforma, los planes y la facturación.",
+    "termsDescription": "Términos y condiciones de uso de la plataforma, incluida la política de privacidad y protección de datos.",
+    "pages": {
+      "login": "Iniciar sesión",
+      "register": "Crear cuenta",
+      "recover": "Recuperar contraseña",
+      "restore": "Restablecer contraseña",
+      "dashboard": "Panel de control",
+      "profile": "Perfil",
+      "billing": "Facturación",
+      "admin": "Administración",
+      "notFound": "Página no encontrada"
+    }
+  },
+  "notFound": {
+    "title": "Te has adentrado en un lugar secreto.",
+    "description": "Desafortunadamente, esto es solo una página 404. Puede que hayas escrito mal la dirección o que la página se haya movido a otra URL.",
+    "backHome": "Volver a la página de inicio"
+  },
+  "errorBoundary": {
+    "title": "Algo ha ido mal",
+    "description": "Se ha producido un error inesperado y no se pudo mostrar esta página. Puedes intentar recargarla.",
+    "reload": "Recargar"
+  }
+}

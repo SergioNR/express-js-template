@@ -1,13 +1,16 @@
 import { Title, Text, AspectRatio, Stack, Box } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 
 const DashboardExample = () => {
+  const { t } = useTranslation();
+
   return (
     <Stack align="center" gap="xl">
       <Title order={2} ta="center" w="100%" maw="1140px">
-        Una captura de tu producto
+        {t('index.dashboardExample.title')}
       </Title>
       <Text size="lg" ta="center" c="dimmed" w="100%" maw="1140px">
-        Sustituye este panel por una imagen o un vídeo que muestre tu producto en funcionamiento
+        {t('index.dashboardExample.subtitle')}
       </Text>
 
       <AspectRatio ratio={16 / 9} mt="md" w="100%" maw="1500px">
@@ -22,7 +25,7 @@ const DashboardExample = () => {
             justifyContent: 'center',
           }}
         >
-          <Text c="dimmed">Captura del producto (placeholder)</Text>
+          <Text c="dimmed">{t('index.dashboardExample.placeholder')}</Text>
         </Box>
       </AspectRatio>
     </Stack>

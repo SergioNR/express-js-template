@@ -1,8 +1,10 @@
 import { Alert, Button, Group, Text } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 import { useSubscription } from '../../contexts/SubscriptionContext.jsx';
 import { useNavigate } from 'react-router';
 
 const NoActiveSubscriptionBanner = () => {
+  const { t } = useTranslation();
   const { hasActiveSubscription, loading, error } = useSubscription();
   const navigate = useNavigate();
 
@@ -11,11 +13,11 @@ const NoActiveSubscriptionBanner = () => {
   }
 
   return (
-    <Alert color="gray" variant="light" title="Suscripción inactiva" mb="lg">
+    <Alert color="gray" variant="light" title={t('user.noSubscriptionBanner.title')} mb="lg">
       <Group justify="space-between" align="center" wrap="nowrap">
-        <Text>No tienes una suscripción activa. Activa un plan para continuar usando la plataforma.</Text>
+        <Text>{t('user.noSubscriptionBanner.body')}</Text>
         <Button size="xs" variant="filled" onClick={() => navigate('/user/billing')}>
-          Elegir plan
+          {t('user.noSubscriptionBanner.cta')}
         </Button>
       </Group>
     </Alert>

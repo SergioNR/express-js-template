@@ -1,35 +1,85 @@
-import { NavLink } from 'react-router'
-import LogOutButton from '../navBarElements/LogOutButton'
+import { useState } from 'react';
+import { NavLink } from 'react-router';
+import { useTranslation } from 'react-i18next';
+import { Anchor, Burger } from '@mantine/core';
+import LogOutButton from '../navBarElements/LogOutButton';
+import styles from './AdminNavBar.module.css';
+
+const NAV_LINKS = [
+  { to: '/admin', key: 'admin.nav.overview', end: true },
+  { to: '/admin/users', key: 'admin.nav.users', end: false },
+  { to: '/admin/companies', key: 'admin.nav.companies', end: false },
+];
 
 const AdminNavBar = () => {
-    return (
-        <div className="navBarWrapper">
+  const { t } = useTranslation();
+  const [mobileMenuOpened, setMobileMenuOpened] = useState(false);
 
-            <div className="logoContainer">
-                <NavLink to="/">
-                    <img src="/logo.svg" alt="logo" />
-                </NavLink>
-            </div>
+  return (
+    <header className={styles.header}>
 
-        
-            <nav className='navBar'>
-                <ul className='navBarUl'>
-                    <li>
-                        <NavLink to="/admin">admin home</NavLink>
-                    </li>
-                </ul>
-            </nav>
+      <Anchor component={NavLink} to="/admin" underline="never" className={styles.brand}>
+        <img src="/logo.svg" alt={t('common.logoAlt')} className={styles.brandLogo} />
+        <span className={styles.brandTitle}>{t('admin.areaTitle')}</span>
+      </Anchor>
 
+      <nav className={styles.navLinks}>
+        {NAV_LINKS.map(({ to, key, end }) => (
+          <Anchor
+            key={key}
+            component={NavLink}
+            to={to}
+            end={end}
+            underline="never"
+            className={styles.link}
+          >
+            {t(key)}
+          </Anchor>
+        ))}
+      </nav>
 
-            <div className='buttonWrapper'>
-                <NavLink to="/login">Login</NavLink>
-                <NavLink to="/register">register</NavLink>
+      <div className={styles.actions}>
+        <Anchor component={NavLink} to="/" className={styles.backToSite}>
+          {t('admin.backToSite')}
+        </Anchor>
+        <LogOutButton />
+      </div>
 
+      <Burger
+        opened={mobileMenuOpened}
+        onClick={() => setMobileMenuOpened((opened) => !opened)}
+        className={styles.burger}
+        size="sm"
+        aria-label={t('admin.nav.menu')}
+      />
 
-                <LogOutButton /> {/* Add LogoutButton component here */}
-            </div>
+      <nav className={`${styles.mobileNav} ${mobileMenuOpened ? styles.mobileNavOpen : ''}`}>
+        {NAV_LINKS.map(({ to, key }) => (
+          <Anchor
+            key={key}
+            component={NavLink}
+            to={to}
+            underline="never"
+            className={styles.link}
+            onClick={() => setMobileMenuOpened(false)}
+          >
+            {t(key)}
+          </Anchor>
+        ))}
+        <div className={styles.mobileActions}>
+          <Anchor
+            component={NavLink}
+            to="/"
+            className={styles.backToSite}
+            onClick={() => setMobileMenuOpened(false)}
+          >
+            {t('admin.backToSite')}
+          </Anchor>
+          <LogOutButton />
         </div>
-    )
+      </nav>
+    </header>
+  );
 };
 
 export default AdminNavBar;

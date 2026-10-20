@@ -1,67 +1,62 @@
-import { useState, useEffect } from 'react'
-import apiClient from '../../config/API/axiosConfig.mjs'
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import apiClient from '../../config/API/axiosConfig.mjs';
 
-import PasswordUpdateForm from '../../components/auth/PasswordUpdateForm'
+import PasswordUpdateForm from '../../components/auth/PasswordUpdateForm';
 import {
-    Card,
-    Box,
-    Text,
-    Alert,
+  Box,
+  Alert,
 } from '@mantine/core';
 import { IconAlertCircle } from '@tabler/icons-react';
-import { AccountActionsForm } from './AccountActionsForm'
+import PageLoader from '../../components/PageLoader.jsx';
+import Seo from '../../components/Seo.jsx';
+import { AccountActionsForm } from './AccountActionsForm';
 
 const CustomerProfile = () => {
+  const { t } = useTranslation();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null)
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        await apiClient.get(`/api/v1/user`);
 
+        setLoading(false);
+      } catch (err) {
+        setError(err.message);
+        setLoading(false);
+      }
+    };
 
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                await apiClient.get(`/api/v1/user`)
+    fetchUser();
+  }, []);
 
-                setLoading(false);
-
-
-            } catch (err) {
-                setError(err.message)
-                setLoading(false)
-            }
-        }
-
-        fetchUser();
-    }, [])
-
-        
-
-    
-    if (loading) return (
-        <Box sx={{ maxWidth: 600 }} mx="auto" mt="xl">
-            <Card shadow="sm" padding="lg" radius="md" withBorder>
-                <Text>Cargando usuario...</Text>
-            </Card>
-        </Box>
-    );
-    
-    if (error) return (
-        <Box sx={{ maxWidth: 600 }} mx="auto" mt="xl">
-            <Alert icon={<IconAlertCircle size="1rem" />} title="Error" color="red">
-                {error}
-            </Alert>
-        </Box>
-    );
-    
+  if (loading) {
     return (
-        <Box sx={{ maxWidth: 600 }} mx="auto" mt="xl">
+      <Box mx="auto" mt="xl">
+        <Seo title={t('seo.pages.profile')} />
+        <PageLoader label={t('loading.user')} />
+      </Box>
+    );
+  }
 
-            <PasswordUpdateForm />
+  if (error) return (
+    <Box maw={600} mx="auto" mt="xl">
+      <Seo title={t('seo.pages.profile')} />
+      <Alert icon={<IconAlertCircle size="1rem" />} title={t('common.error')} color="red">
+        {error}
+      </Alert>
+    </Box>
+  );
 
-            <AccountActionsForm />
-
-        </Box>
-    )
-}
+  return (
+    <Box maw={600} mx="auto" mt="xl">
+      <Seo title={t('seo.pages.profile')} />
+      <PasswordUpdateForm />
+      <AccountActionsForm />
+    </Box>
+  );
+};
 
 export default CustomerProfile;

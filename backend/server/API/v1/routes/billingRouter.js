@@ -34,6 +34,22 @@ export const billingRouter = Router();
  *                 subscriptionData:
  *                   type: object
  *                   description: Subscription fields only - internal Stripe ids are never exposed
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     expires_at:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *                     updated_at:
+ *                       type: string
+ *                       format: date-time
+ *                     has_billing_id:
+ *                       type: boolean
+ *                       description: Whether the company has a Stripe customer id - false until the first checkout session is started
  *       401:
  *         description: Not authenticated
  *         content:

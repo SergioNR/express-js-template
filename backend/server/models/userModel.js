@@ -310,6 +310,33 @@ export const deleteUserWithCompanyDataInDb = async (userId, options = {}) => {
 
     const { company_id: userCompanyId } = user;
 
+    //* Superadmins belong to no company: no lock, no owner checks and no
+    //* company cleanup (`company_id: null` would match every superadmin)
+    if (!userCompanyId) {
+      const deletedUser = await tx.user.delete({
+        where: {
+          id: userId,
+        },
+        omit: {
+          password: true,
+        },
+      });
+
+      await tx.session.deleteMany({
+        where: {
+          user_id: userId,
+        },
+      });
+
+      return {
+        status: 'deleted',
+        deletedUser,
+        companyDeleted: false,
+        subscription: null,
+        fileKeys: [],
+      };
+    }
+
     await lockCompanyForUpdateInDb(tx, userCompanyId);
 
     //* Role rows are read after the lock so they reflect committed changes

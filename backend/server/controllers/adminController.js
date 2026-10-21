@@ -87,7 +87,7 @@ export const deleteOneUserById = async (req, res) => {
 
   if (userId === req.user.id) {
     return res.status(409).json({
-      message: 'Admins cannot delete their own account from the admin endpoint - use the user endpoint instead',
+      message: 'Superadmins cannot delete their own account from the admin endpoint - use the user endpoint instead',
     });
   }
 
@@ -168,7 +168,7 @@ export const getOneCompanyById = async (req, res) => {
 export const getAdminStats = async (req, res) => {
   const [
     totalUserCount,
-    totalAdminCount,
+    totalSuperadminCount,
     newUsersLastWeekCount,
     totalCompanyCount,
     totalSubscriptionCount,
@@ -176,7 +176,7 @@ export const getAdminStats = async (req, res) => {
     activeSessionCount,
   ] = await Promise.all([
     countUsersInDb(),
-    countUsersInDb({ role: 'admin' }),
+    countUsersInDb({ role: 'superadmin' }),
     countUsersInDb({ created_at: { gte: new Date(Date.now() - WEEK_IN_MS) } }),
     countCompaniesInDb(),
     countTotalSubscriptionsInDb(),
@@ -187,7 +187,7 @@ export const getAdminStats = async (req, res) => {
   return res.status(200).json({
     stats: {
       totalUsers: totalUserCount,
-      totalAdmins: totalAdminCount,
+      totalSuperadmins: totalSuperadminCount,
       newUsersLastWeek: newUsersLastWeekCount,
       totalCompanies: totalCompanyCount,
       totalSubscriptions: totalSubscriptionCount,

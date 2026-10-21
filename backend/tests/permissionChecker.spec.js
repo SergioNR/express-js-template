@@ -22,7 +22,7 @@ describe('checkPermissionByRole', () => {
   });
 
   it('returns 403 when the role does not match', () => {
-    const middleware = checkPermissionByRole('admin');
+    const middleware = checkPermissionByRole('superadmin');
     const res = createMockRes();
     const next = jest.fn();
 
@@ -43,12 +43,12 @@ describe('checkPermissionByRole', () => {
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it('calls next() for admins regardless of the required role', () => {
+  it('calls next() for superadmins regardless of the required role', () => {
     const middleware = checkPermissionByRole('user');
     const res = createMockRes();
     const next = jest.fn();
 
-    middleware({ user: { role: 'admin' } }, res, next);
+    middleware({ user: { role: 'superadmin' } }, res, next);
 
     expect(next).toHaveBeenCalled();
     expect(res.status).not.toHaveBeenCalled();

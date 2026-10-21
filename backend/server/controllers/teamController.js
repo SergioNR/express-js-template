@@ -13,8 +13,6 @@ import {
   rotateTeamInviteTokenInDb,
 } from '../models/teamInvitesModel.js';
 import {
-  getAllPermissionNames,
-  getAllRolesWithPermissions,
   getUserCompanyPermissions,
   getUserCompanyRoleNames,
   getRoleByName,
@@ -49,26 +47,17 @@ export const getTeamData = async (req, res) => {
   const {
     company_id: companyId,
     id: userId,
-    role: callerRole,
   } = req.user;
 
-  const [companyMembers, companyInvites, allRoles] = await Promise.all([
+  //* Callers only see the controls their own company roles allow
+  const [companyMembers, companyInvites, callerPermissions, callerRoleNames] = await Promise.all([
     getCompanyMembersInDb(companyId),
     getCompanyPendingInvitesInDb(companyId),
-    getAllRolesWithPermissions(),
+    getUserCompanyPermissions(userId),
+    getUserCompanyRoleNames(userId),
   ]);
 
-  const allRoleNames = allRoles.map((role) => role.name).sort();
-
-  //* Superusers see every control (they bypass permission checks), regular
-  //* members only see what their own company roles allow
-  const callerPermissions = callerRole === 'admin'
-    ? await getAllPermissionNames()
-    : await getUserCompanyPermissions(userId);
-
-  const assignableRoles = callerRole === 'admin'
-    ? allRoleNames
-    : rolesGrantableBy(await getUserCompanyRoleNames(userId));
+  const assignableRoles = rolesGrantableBy(callerRoleNames);
 
   return res.status(200).json({
     members: companyMembers.map(toMemberShape),
@@ -85,7 +74,6 @@ export const createTeamInvite = async (req, res) => {
     company_id: companyId,
     email: inviterEmail,
     id: inviterId,
-    role: callerRole,
   } = req.user;
 
   const existingUser = await getUserByEmail(email);
@@ -112,16 +100,14 @@ export const createTeamInvite = async (req, res) => {
     });
   }
 
-  if (callerRole !== 'admin') {
-    //* Non-superusers can only grant roles they hold themselves (directly or
-    //* through the role hierarchy)
-    const callerRoleNames = await getUserCompanyRoleNames(inviterId);
+  //* Callers can only grant roles they hold themselves (directly or through
+  //* the role hierarchy)
+  const callerRoleNames = await getUserCompanyRoleNames(inviterId);
 
-    if (!canGrantRole(callerRoleNames, roleName)) {
-      return res.status(403).json({
-        message: 'You can only invite users to roles you hold yourself',
-      });
-    }
+  if (!canGrantRole(callerRoleNames, roleName)) {
+    return res.status(403).json({
+      message: 'You can only invite users to roles you hold yourself',
+    });
   }
 
   let createdInvite;
@@ -238,24 +224,14 @@ export const revokeTeamInvite = async (req, res) => {
   return res.status(200).json({});
 };
 
-//* Non-superusers may only manage members whose every current role they
-//* could grant themselves - an admin can never demote or remove an owner.
-//* Returns the role names the caller may act on (undefined = unrestricted)
-const getManageableRoleNames = async (callerId, callerRole) => {
-  if (callerRole === 'admin') {
-    return undefined;
-  }
+//* Callers may only manage members whose every current role they could grant
+//* themselves - a company admin can never demote or remove an owner.
+//* Returns the role names the caller may act on
+const getManageableRoleNames = async (callerId) => rolesGrantableBy(await getUserCompanyRoleNames(callerId));
 
-  return rolesGrantableBy(await getUserCompanyRoleNames(callerId));
-};
-
-const outranksCaller = (targetMember, manageableRoleNames) => {
-  if (!manageableRoleNames) {
-    return false;
-  }
-
-  return targetMember.UserRoles.some((userRole) => !manageableRoleNames.includes(userRole.Role.name));
-};
+const outranksCaller = (targetMember, manageableRoleNames) => targetMember.UserRoles.some(
+  (userRole) => !manageableRoleNames.includes(userRole.Role.name),
+);
 
 export const removeTeamMember = async (req, res) => {
   const { userId } = req.params;
@@ -263,7 +239,6 @@ export const removeTeamMember = async (req, res) => {
   const {
     company_id: companyId,
     id: callerId,
-    role: callerRole,
   } = req.user;
 
   if (userId === callerId) {
@@ -280,13 +255,13 @@ export const removeTeamMember = async (req, res) => {
     });
   }
 
-  if (targetMember.role === 'admin') {
+  if (targetMember.role === 'superadmin') {
     return res.status(409).json({
-      message: 'Platform admins cannot be managed from the team endpoint',
+      message: 'Superadmins cannot be managed from the team endpoint',
     });
   }
 
-  const manageableRoleNames = await getManageableRoleNames(callerId, callerRole);
+  const manageableRoleNames = await getManageableRoleNames(callerId);
 
   if (outranksCaller(targetMember, manageableRoleNames)) {
     return res.status(403).json({
@@ -332,7 +307,6 @@ export const updateTeamMemberRole = async (req, res) => {
   const {
     company_id: companyId,
     id: callerId,
-    role: callerRole,
   } = req.user;
 
   if (userId === callerId) {
@@ -349,9 +323,9 @@ export const updateTeamMemberRole = async (req, res) => {
     });
   }
 
-  if (targetMember.role === 'admin') {
+  if (targetMember.role === 'superadmin') {
     return res.status(409).json({
-      message: 'Platform admins cannot be managed from the team endpoint',
+      message: 'Superadmins cannot be managed from the team endpoint',
     });
   }
 
@@ -363,7 +337,7 @@ export const updateTeamMemberRole = async (req, res) => {
     });
   }
 
-  const manageableRoleNames = await getManageableRoleNames(callerId, callerRole);
+  const manageableRoleNames = await getManageableRoleNames(callerId);
 
   if (manageableRoleNames && !manageableRoleNames.includes(roleName)) {
     return res.status(403).json({

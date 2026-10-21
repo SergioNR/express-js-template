@@ -85,7 +85,7 @@ describe('getAllUsers', () => {
     await getAllUsers(
       {
         query: {
-          role: 'admin', search: 'acme@test.com', hackerParam: 'DROP TABLE', limit: '10',
+          role: 'superadmin', search: 'acme@test.com', hackerParam: 'DROP TABLE', limit: '10',
         },
       },
       res,
@@ -93,7 +93,7 @@ describe('getAllUsers', () => {
 
     expect(getAllUsersInDb).toHaveBeenCalledWith(
       {
-        role: 'admin',
+        role: 'superadmin',
         email: { contains: 'acme@test.com', mode: 'insensitive' },
       },
       { limit: 10, cursor: undefined },
@@ -301,7 +301,7 @@ describe('getAdminStats', () => {
 
   it('composes all counters into the stats envelope', async () => {
     countUsersInDb.mockImplementation(async (filters = {}) => {
-      if (filters.role === 'admin') return 2;
+      if (filters.role === 'superadmin') return 2;
       if (filters.created_at) return 3;
       return 10;
     });
@@ -319,7 +319,7 @@ describe('getAdminStats', () => {
     expect(res.json).toHaveBeenCalledWith({
       stats: {
         totalUsers: 10,
-        totalAdmins: 2,
+        totalSuperadmins: 2,
         newUsersLastWeek: 3,
         totalCompanies: 4,
         totalSubscriptions: 5,

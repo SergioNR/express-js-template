@@ -41,7 +41,7 @@ export function LoginForm() {
       const loginResponse = await apiClient.post('/api/v1/auth/login', data);
 
       switch (loginResponse.data.user.role) {
-        case 'admin':
+        case 'superadmin':
           return navigate('/admin');
         case 'user':
           return navigate('/dashboard');

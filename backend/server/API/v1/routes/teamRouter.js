@@ -44,7 +44,7 @@ const updateMemberRoleValidation = [
  *   get:
  *     tags: [Team]
  *     summary: Get the members and pending invites of the caller's company
- *     description: Returns the company members (with their company roles), the pending invites, the caller's effective permissions and the roles the caller can assign. Requires the `team.view` company permission (global admins bypass permission checks).
+ *     description: Returns the company members (with their company roles), the pending invites, the caller's effective permissions and the roles the caller can assign. Requires the `team.view` company permission.
  *     security:
  *       - sessionCookie: []
  *     responses:
@@ -68,7 +68,7 @@ const updateMemberRoleValidation = [
  *                         format: email
  *                       role:
  *                         type: string
- *                         enum: [user, admin]
+ *                         enum: [user, superadmin]
  *                       created_at:
  *                         type: string
  *                         format: date-time
@@ -124,7 +124,7 @@ teamRouter.get('/', checkCompanyPermission('team.view'), getTeamData);
  *   post:
  *     tags: [Team]
  *     summary: Invite a new member to the caller's company by email
- *     description: Creates a team invite (valid for 7 days) and emails the invite link. The secret invite token only travels inside the email - it is never part of any API response (only its sha256 digest is stored); `id` is the public handle for resend/revoke. Requires the `team.invite` company permission; the inviter must hold the invited role themselves unless they are a global admin. The endpoint is authenticated, so a registered email is answered with an explicit 409.
+ *     description: Creates a team invite (valid for 7 days) and emails the invite link. The secret invite token only travels inside the email - it is never part of any API response (only its sha256 digest is stored); `id` is the public handle for resend/revoke. Requires the `team.invite` company permission; the inviter must hold the invited role themselves. The endpoint is authenticated, so a registered email is answered with an explicit 409.
  *     security:
  *       - sessionCookie: []
  *     requestBody:
@@ -320,7 +320,7 @@ teamRouter.delete('/invites/:inviteId', checkCompanyPermission('team.invite'), i
  *   delete:
  *     tags: [Team]
  *     summary: Remove a member from the caller's company
- *     description: Deletes the member's account, revokes their active sessions and runs company cleanup when they were the last member. Requires the `team.remove` company permission; unless they are a global admin, the caller must be able to grant every role the member currently holds (an admin cannot remove an owner). Self-removal, removing a global admin and removing the last company owner are rejected with 409. The last-owner check and the deletion run atomically. Only members of the caller's company can be removed.
+ *     description: Deletes the member's account, revokes their active sessions and runs company cleanup when they were the last member. Requires the `team.remove` company permission; the caller must be able to grant every role the member currently holds (an admin cannot remove an owner). Self-removal, removing a superadmin and removing the last company owner are rejected with 409. The last-owner check and the deletion run atomically. Only members of the caller's company can be removed.
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -361,7 +361,7 @@ teamRouter.delete('/invites/:inviteId', checkCompanyPermission('team.invite'), i
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  *       409:
- *         description: Self-removal, target is a global admin, or target is the last company owner
+ *         description: Self-removal, target is a superadmin, or target is the last company owner
  *         content:
  *           application/json:
  *             schema:
@@ -381,7 +381,7 @@ teamRouter.delete('/members/:userId', checkCompanyPermission('team.remove'), use
  *   patch:
  *     tags: [Team]
  *     summary: Change a member's company role
- *     description: Replaces the member's company role with the given one. Requires the `team.manage_roles` company permission; unless they are a global admin, the caller must hold the target role themselves and be able to grant every role the member currently holds (an admin cannot demote an owner). The last-owner check and the write run atomically. Self-change, changing a global admin's role and demoting the last company owner are rejected with 409. Only members of the caller's company can be changed.
+ *     description: Replaces the member's company role with the given one. Requires the `team.manage_roles` company permission; the caller must hold the target role themselves and be able to grant every role the member currently holds (an admin cannot demote an owner). The last-owner check and the write run atomically. Self-change, changing a superadmin's role and demoting the last company owner are rejected with 409. Only members of the caller's company can be changed.
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -417,7 +417,7 @@ teamRouter.delete('/members/:userId', checkCompanyPermission('team.remove'), use
  *                       format: email
  *                     role:
  *                       type: string
- *                       enum: [user, admin]
+ *                       enum: [user, superadmin]
  *                     companyRoles:
  *                       type: array
  *                       items:
@@ -441,7 +441,7 @@ teamRouter.delete('/members/:userId', checkCompanyPermission('team.remove'), use
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  *       409:
- *         description: Self-change, target is a global admin, or demoting the last company owner
+ *         description: Self-change, target is a superadmin, or demoting the last company owner
  *         content:
  *           application/json:
  *             schema:

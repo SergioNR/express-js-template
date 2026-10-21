@@ -51,7 +51,7 @@ const companyListQueryValidation = [
  *         required: false
  *         schema:
  *           type: string
- *           enum: [user, admin]
+ *           enum: [user, superadmin]
  *         description: Optional filter by role. Any other query parameter is ignored.
  *       - in: query
  *         name: search
@@ -147,7 +147,7 @@ adminRouter.get('/users', userListQueryValidation, getAllUsers);
  *                       type: string
  *                     role:
  *                       type: string
- *                       enum: [user, admin]
+ *                       enum: [user, superadmin]
  *                     company_id:
  *                       type: string
  *                     company:
@@ -188,7 +188,7 @@ adminRouter.get('/users/:userId', userIdParamValidation, getOneUserById);
  *   delete:
  *     tags: [Admin]
  *     summary: Delete a user by id (admin only)
- *     description: Same transactional deletion as the self-delete endpoint (sessions revoked, company data removed when the user was its last member, Stripe/S3 cleanup after the commit). Platform admins are not bound by the last-owner rule.
+ *     description: Same transactional deletion as the self-delete endpoint (sessions revoked, company data removed when the user was its last member, Stripe/S3 cleanup after the commit). Superadmins are not bound by the last-owner rule.
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -386,7 +386,7 @@ adminRouter.get('/companies/:companyId', companyIdParamValidation, getOneCompany
  *   get:
  *     tags: [Admin]
  *     summary: Platform counters for the admin overview (admin only)
- *     description: Returns aggregated counts - users (total, admins, new in the last 7 days), companies, subscriptions (total and active) and active sessions. A subscription is active when its `expires_at` is in the future.
+ *     description: Returns aggregated counts - users (total, superadmins, new in the last 7 days), companies, subscriptions (total and active) and active sessions. A subscription is active when its `expires_at` is in the future.
  *     security:
  *       - sessionCookie: []
  *     responses:
@@ -402,7 +402,7 @@ adminRouter.get('/companies/:companyId', companyIdParamValidation, getOneCompany
  *                   properties:
  *                     totalUsers:
  *                       type: integer
- *                     totalAdmins:
+ *                     totalSuperadmins:
  *                       type: integer
  *                     newUsersLastWeek:
  *                       type: integer

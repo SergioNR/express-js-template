@@ -94,7 +94,7 @@ const AdminOverview = () => {
               <Text c="dimmed" size="xs">
                 {t('admin.overview.stats.usersDetail', {
                   newUsers: stats.newUsersLastWeek,
-                  admins: stats.totalAdmins,
+                  superadmins: stats.totalSuperadmins,
                 })}
               </Text>
             </Stack>

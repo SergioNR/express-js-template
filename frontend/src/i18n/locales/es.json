@@ -422,7 +422,7 @@
     },
     "roles": {
       "user": "Usuario",
-      "admin": "Administrador"
+      "superadmin": "Superadministrador"
     },
     "fields": {
       "email": "Email",
@@ -448,7 +448,7 @@
       "title": "Resumen",
       "stats": {
         "users": "Usuarios",
-        "usersDetail": "{{newUsers}} nuevos en 7 días · {{admins}} administradores",
+        "usersDetail": "{{newUsers}} nuevos en 7 días · {{superadmins}} superadministradores",
         "companies": "Empresas",
         "activeSubscriptions": "Suscripciones activas",
         "subscriptionsDetail": "de {{total}} en total",
@@ -485,7 +485,7 @@
       "deleteModal": {
         "title": "Eliminar usuario",
         "description": "¿Seguro que quieres eliminar la cuenta de {{email}}? Esta acción no se puede deshacer.",
-        "adminWarning": "Vas a eliminar una cuenta de administrador.",
+        "adminWarning": "Vas a eliminar una cuenta de superadministrador.",
         "cancel": "Cancelar",
         "confirm": "Eliminar"
       }

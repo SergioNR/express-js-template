@@ -30,7 +30,7 @@ export const userRouter = Router();
  *                       format: email
  *                     role:
  *                       type: string
- *                       enum: [user, admin]
+ *                       enum: [user, superadmin]
  *                     company_id:
  *                       type: string
  *                       format: uuid

@@ -47,7 +47,7 @@ Request flow: `server/app.js` → middlewares → routers → controllers → mo
 - **Never expose internal Stripe ids**: client-facing subscription reads go through `getSubscriptionPublicDataInDb`.
 - **Passwords**: bcrypt with `BCRYPT_SALT_ROUNDS` (12) from `config/security.js`. Queries returning users must `omit: { password: true }` (only `getUserPassword` selects it).
 - **Query whitelist**: never pass `req.query`/`req.body` through to Prisma — whitelist explicit fields (see `getAllUsers` role filter).
-- **Admin self-protection**: admins cannot delete their own account via `/api/v1/admin` (409) — route them to the user endpoint.
+- **Admin self-protection**: superadmins cannot delete their own account via `/api/v1/admin` (409) — route them to the user endpoint.
 - **Required env vars fail fast at startup** via `requireEnv(name, reason)` from `config/requiredEnv.js` — throws outside localhost, only warns on `DEPLOY_ENVIRONMENT=localhost` so local dev boots with any key unset. `TRUST_PROXY` and `FRONT_WEB_APP_ORIGIN_URL` are required outside localhost; never hard-code `trust proxy`.
 - New env vars must be added to `.env.example` and the README table in the same change.
 
@@ -59,6 +59,10 @@ Request flow: `server/app.js` → middlewares → routers → controllers → mo
 
 ## Sessions & auth
 
+- **Two independent role layers — never mix them.**
+  - Platform role `User.role` (`UserRoles` enum): `user` for every tenant account, `superadmin` for SaaS-provider staff. Gates routers via `checkPermissionByRole` (superadmin passes every gate) and unlocks `/api/v1/admin`.
+  - Company role (`Role` / `UserRole`): `company_owner` > `company_admin` > `company_member`, hierarchy in `utils/companyRoleHierarchy.js`. Company permissions come **only** from company roles — `checkCompanyPermission` and the team controller give superadmins no bypass.
+  - Superadmins have `company_id = null` and no company roles. Billing, team and files routers are mounted behind `checkCompanyMembership()` (403 `COMPANY_MEMBERSHIP_REQUIRED`). Code reading `req.user.company_id` must never run for a user without a company; never query `where: { company_id: null }` (it matches every superadmin).
 - Passport local strategy; sessions stored in PostgreSQL (Prisma session store), cookie `app.sid` (`SESSION_COOKIE_NAME`), 24h, `secure` + `SameSite=None` outside `DEPLOY_ENVIRONMENT=localhost`.
 - Session rows carry `user_id` so sessions are revocable per user (`sessionModel.js`). Password reset and password update revoke sessions (`deleteUserSessions(userId, keepSessionId?)`).
 - Shared deletion side effects (session revoke, company/subscription cleanup) live in `server/utils/userDeletionCleanup.js`, used by both self- and admin-delete.
@@ -68,7 +72,7 @@ Request flow: `server/app.js` → middlewares → routers → controllers → mo
 - Schema: `prisma/schema.prisma`. Models PascalCase, columns snake_case. Generated client outputs to `server/config/generated/` (gitignored + eslint-ignored) — run `npx prisma generate` after schema changes; never edit or commit generated files.
 - Runtime client uses the `pg` driver adapter (`server/config/prismaClient.js` → `PRISMA_POSTGRES_CONNECTION_STRING`); migrations use the direct URL (`prisma.config.ts` → `PRISMA_POSTGRES_DIRECT_URL`).
 - Schema changes require: migration (`npx prisma migrate dev --name <change>`), `prisma/seed.js` update if models change, `.env.example`/README if new vars.
-- Seed creates 2 companies (each with a 7-day trial subscription) + 3 users, password `Password123!`: tenant `Acme Corp` with `owner@acme.test` (`company_owner`) and `user@acme.test` (`company_member`), both global `user`; internal `Platform` company with the platform admin `admin@platform.test` (global `admin`).
+- Seed creates 1 company (`Acme Corp`, 7-day trial subscription) + 3 users, password `Password123!`: `admin@acme.test` (platform `user`, `company_admin`), `user@acme.test` (platform `user`, `company_member`) and `superadmin@platform.test` (platform `superadmin`, no company, no company role).
 - Onboarding: `POST /auth/register` (`username`, `password`, optional `companyName` — kept optional for older clients) creates the company, its trial and the user in one nested write; the registrant is the company's first user and gets `company_owner`. Everyone else joins through team invites.
 - Historical quirk: the login/register request field for email is named `username` (validators, controllers, and OpenAPI schema all use it). Keep it consistent; do not rename casually.
 

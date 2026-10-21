@@ -58,7 +58,7 @@ export const authRouter = Router();
  *                       format: uuid
  *                     role:
  *                       type: string
- *                       enum: [user, admin]
+ *                       enum: [user, superadmin]
  *       401:
  *         description: Incorrect email or password
  *         content:
@@ -432,7 +432,7 @@ authRouter.patch('/update-user-password', checkSchema(updatePasswordSchema), san
  *   get:
  *     tags: [Auth]
  *     summary: Check whether the current session is valid
- *     description: Returns the logged-in user id and global role when the session cookie is valid.
+ *     description: Returns the logged-in user id and platform role (`user` / `superadmin`) when the session cookie is valid.
  *     security:
  *       - sessionCookie: []
  *     responses:
@@ -451,7 +451,7 @@ authRouter.patch('/update-user-password', checkSchema(updatePasswordSchema), san
  *                       format: uuid
  *                     role:
  *                       type: string
- *                       enum: [user, admin]
+ *                       enum: [user, superadmin]
  *       401:
  *         description: Session is invalid
  *         content:

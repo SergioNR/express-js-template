@@ -12,7 +12,7 @@ import { checkoutSessionSchema } from '../../../utils/validators/checkoutSession
 
 export const billingRouter = Router();
 
-//* Authentication and the global role happen at the apiRouter mounting level.
+//* Authentication, the platform role and company membership are checked at the apiRouter mounting level.
 //* Reading the subscription status is open to every company member; anything
 //* that creates Stripe objects requires the `billing.manage` company permission
 const requireBillingManage = checkCompanyPermission('billing.manage');
@@ -74,7 +74,7 @@ billingRouter.get('/', getCompanySubscriptionData);
  *   post:
  *     tags: [Billing]
  *     summary: Create a Stripe customer for the user's company
- *     description: Creates a Stripe customer id for the logged-in user's company and stores it. Fails if the company already has a billing id. Requires the `billing.manage` company permission (global admins bypass permission checks).
+ *     description: Creates a Stripe customer id for the logged-in user's company and stores it. Fails if the company already has a billing id. Requires the `billing.manage` company permission.
  *     security:
  *       - sessionCookie: []
  *     responses:
@@ -111,7 +111,7 @@ billingRouter.post('/', requireBillingManage, createCompanyBillingId);
  *   post:
  *     tags: [Billing]
  *     summary: Create a Stripe checkout session
- *     description: Creates a Stripe checkout session for the user's company and returns its URL for redirecting the user. The Stripe customer is created on first use. Refused while the company has an active Stripe subscription. Requires the `billing.manage` company permission (global admins bypass permission checks).
+ *     description: Creates a Stripe checkout session for the user's company and returns its URL for redirecting the user. The Stripe customer is created on first use. Refused while the company has an active Stripe subscription. Requires the `billing.manage` company permission.
  *     security:
  *       - sessionCookie: []
  *     requestBody:
@@ -178,7 +178,7 @@ billingRouter.post('/checkout-session', requireBillingManage, checkSchema(checko
  *   post:
  *     tags: [Billing]
  *     summary: Create a Stripe customer portal session
- *     description: Creates a Stripe customer portal session for the user's company and returns its URL for managing the subscription. Works whenever the company has a Stripe customer, including after the subscription ended. Requires the `billing.manage` company permission (global admins bypass permission checks).
+ *     description: Creates a Stripe customer portal session for the user's company and returns its URL for managing the subscription. Works whenever the company has a Stripe customer, including after the subscription ended. Requires the `billing.manage` company permission.
  *     security:
  *       - sessionCookie: []
  *     responses:

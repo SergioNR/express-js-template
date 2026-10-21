@@ -5,7 +5,9 @@ export const checkPermissionByRole = (role) => (req, res, next) => {
     return res.status(401).json({});
   }
 
-  if (req.user.role === 'admin' || req.user.role === role) {
+  //* Superadmins (SaaS-provider staff) pass every platform-role gate -
+  //* company-scoped routers additionally require checkCompanyMembership()
+  if (req.user.role === 'superadmin' || req.user.role === role) {
     return next();
   }
 

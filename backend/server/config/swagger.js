@@ -163,7 +163,7 @@ const swaggerOptions = {
             roleName: {
               type: 'string',
               enum: ['company_owner', 'company_admin', 'company_member'],
-              description: 'Company role the invitee will receive. The inviter must hold it themselves unless they are a global admin.',
+              description: 'Company role the invitee will receive. The inviter must hold it themselves.',
             },
           },
         },

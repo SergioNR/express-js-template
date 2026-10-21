@@ -52,8 +52,13 @@ jobs:
         working-directory: frontend
         run: npx eslint .
 
+      # vite.config.js refuses to build without VITE_SITE_BASE_URL; this build
+      # only proves the bundle compiles, so placeholder origins are enough
       - name: Frontend - build
         working-directory: frontend
+        env:
+          VITE_SITE_BASE_URL: https://ci.invalid
+          VITE_API_BASE_URL: https://api.ci.invalid
         run: npm run build
 
   backend:

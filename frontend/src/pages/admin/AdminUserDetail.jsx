@@ -43,23 +43,46 @@ const AdminUserDetail = () => {
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    //* Navigating between detail pages reuses this component - reset state and
+    //* abort the previous request so a late response never renders for the new id
+    const controller = new AbortController();
+
+    setUser(null);
+    setLoading(true);
+    setNotFound(false);
+    setError(false);
+
     const fetchUser = async () => {
       try {
-        const response = await apiClient.get(`/api/v1/admin/users/${userId}`);
+        const response = await apiClient.get(`/api/v1/admin/users/${userId}`, {
+          signal: controller.signal,
+        });
+
+        if (controller.signal.aborted) {
+          return;
+        }
 
         setUser(response.data.user);
       } catch (err) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
         if (err?.response?.status === 404) {
           setNotFound(true);
         } else {
           setError(true);
         }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchUser();
+
+    return () => controller.abort();
   }, [userId]);
 
   if (loading) {

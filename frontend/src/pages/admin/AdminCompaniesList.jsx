@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import {
@@ -40,32 +40,53 @@ const AdminCompaniesList = () => {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const fetchCompanies = useCallback(async (cursor) => {
+  const fetchCompanies = useCallback(async ({ cursor, signal } = {}) => {
     const response = await apiClient.get('/api/v1/admin/companies', {
       params: {
         limit: PAGE_SIZE,
         ...(search ? { search } : {}),
         ...(cursor ? { cursor } : {}),
       },
+      signal,
     });
 
     return response.data;
   }, [search]);
 
+  //* Every first-page load (filter change, refresh) bumps the request id and
+  //* aborts the previous request, so late responses for stale filters - first
+  //* pages or load-more pages - are discarded instead of mixed into the list
+  const requestIdRef = useRef(0);
+  const abortRef = useRef(null);
+
   const loadFirstPage = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const requestId = ++requestIdRef.current;
+
     setLoading(true);
     setError(false);
+    setNextCursor(null);
 
     try {
-      const data = await fetchCompanies();
+      const data = await fetchCompanies({ signal: controller.signal });
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
 
       setCompanies(data.companies);
       setCompanyCount(data.companyCount);
       setNextCursor(data.nextCursor ?? null);
     } catch {
-      setError(true);
+      if (requestId === requestIdRef.current) {
+        setError(true);
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [fetchCompanies]);
 
@@ -73,15 +94,28 @@ const AdminCompaniesList = () => {
     loadFirstPage();
   }, [loadFirstPage]);
 
+  useEffect(() => () => abortRef.current?.abort(), []);
+
   const loadMore = async () => {
+    const requestId = requestIdRef.current;
+    const signal = abortRef.current?.signal;
+
     setLoadingMore(true);
 
     try {
-      const data = await fetchCompanies(nextCursor);
+      const data = await fetchCompanies({ cursor: nextCursor, signal });
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
 
       setCompanies((previousCompanies) => [...previousCompanies, ...data.companies]);
       setNextCursor(data.nextCursor ?? null);
     } catch {
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
       notifyError(t('admin.companies.loadMoreError'));
     } finally {
       setLoadingMore(false);
@@ -164,7 +198,7 @@ const AdminCompaniesList = () => {
             </Text>
           )}
 
-          {nextCursor && (
+          {nextCursor && !loading && (
             <Group justify="center">
               <Button variant="light" onClick={loadMore} loading={loadingMore}>
                 {t('admin.companies.loadMore')}

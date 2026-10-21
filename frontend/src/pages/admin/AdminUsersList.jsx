@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import {
@@ -46,7 +46,7 @@ const AdminUsersList = () => {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const fetchUsers = useCallback(async (cursor) => {
+  const fetchUsers = useCallback(async ({ cursor, signal } = {}) => {
     const response = await apiClient.get('/api/v1/admin/users', {
       params: {
         limit: PAGE_SIZE,
@@ -54,25 +54,46 @@ const AdminUsersList = () => {
         ...(role ? { role } : {}),
         ...(cursor ? { cursor } : {}),
       },
+      signal,
     });
 
     return response.data;
   }, [search, role]);
 
+  //* Every first-page load (filter change, refresh) bumps the request id and
+  //* aborts the previous request, so late responses for stale filters - first
+  //* pages or load-more pages - are discarded instead of mixed into the list
+  const requestIdRef = useRef(0);
+  const abortRef = useRef(null);
+
   const loadFirstPage = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const requestId = ++requestIdRef.current;
+
     setLoading(true);
     setError(false);
+    setNextCursor(null);
 
     try {
-      const data = await fetchUsers();
+      const data = await fetchUsers({ signal: controller.signal });
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
 
       setUsers(data.users);
       setUserCount(data.userCount);
       setNextCursor(data.nextCursor ?? null);
     } catch {
-      setError(true);
+      if (requestId === requestIdRef.current) {
+        setError(true);
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [fetchUsers]);
 
@@ -80,15 +101,28 @@ const AdminUsersList = () => {
     loadFirstPage();
   }, [loadFirstPage]);
 
+  useEffect(() => () => abortRef.current?.abort(), []);
+
   const loadMore = async () => {
+    const requestId = requestIdRef.current;
+    const signal = abortRef.current?.signal;
+
     setLoadingMore(true);
 
     try {
-      const data = await fetchUsers(nextCursor);
+      const data = await fetchUsers({ cursor: nextCursor, signal });
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
 
       setUsers((previousUsers) => [...previousUsers, ...data.users]);
       setNextCursor(data.nextCursor ?? null);
     } catch {
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
       notifyError(t('admin.users.loadMoreError'));
     } finally {
       setLoadingMore(false);
@@ -233,7 +267,7 @@ const AdminUsersList = () => {
             </Text>
           )}
 
-          {nextCursor && (
+          {nextCursor && !loading && (
             <Group justify="center">
               <Button variant="light" onClick={loadMore} loading={loadingMore}>
                 {t('admin.users.loadMore')}

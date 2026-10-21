@@ -39,9 +39,6 @@ const AdminNavBar = () => {
       </nav>
 
       <div className={styles.actions}>
-        <Anchor component={NavLink} to="/" className={styles.backToSite}>
-          {t('admin.backToSite')}
-        </Anchor>
         <LogOutButton />
       </div>
 
@@ -67,14 +64,6 @@ const AdminNavBar = () => {
           </Anchor>
         ))}
         <div className={styles.mobileActions}>
-          <Anchor
-            component={NavLink}
-            to="/"
-            className={styles.backToSite}
-            onClick={() => setMobileMenuOpened(false)}
-          >
-            {t('admin.backToSite')}
-          </Anchor>
           <LogOutButton />
         </div>
       </nav>

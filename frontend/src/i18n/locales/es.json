@@ -413,7 +413,6 @@
   },
   "admin": {
     "areaTitle": "Panel de administración",
-    "backToSite": "Volver al sitio",
     "nav": {
       "overview": "Resumen",
       "users": "Usuarios",

@@ -28,19 +28,25 @@ app.set('trust proxy', trustProxySetting);
 //* Middleware for ExpressJS securization
 app.use(helmetMiddleware);
 app.use(corsMiddleware);
-app.use(cookieParserMiddleware);
-if (process.env.DEPLOY_ENVIRONMENT !== 'localhost') app.use(slowLimiter);
-if (process.env.DEPLOY_ENVIRONMENT !== 'localhost') app.use(limiter);
 
-//* Webhooks router
+//* Webhooks router - mounted before the rate limiters (Stripe retries must not
+//* be throttled), before the Origin check (Stripe sends no Origin header) and
+//* before express.json() (signature verification needs the raw body)
 app.use('/webhooks', webhookRouter);
 
 //* API documentation (Swagger UI + raw OpenAPI spec) - mounted before rate limiters
 //* so the documentation static assets are not throttled in production
 app.use('/api', docsRouter);
 
+//* Global limiter first so requests over budget are rejected immediately
+//* instead of being held by the slow-down delay
+if (process.env.DEPLOY_ENVIRONMENT !== 'localhost') app.use(limiter);
+if (process.env.DEPLOY_ENVIRONMENT !== 'localhost') app.use(slowLimiter);
+
 //* CSRF protection - state-changing requests must come from an allowed origin
 app.use(checkOrigin());
+
+app.use(cookieParserMiddleware);
 
 //* Only JSON bodies are accepted on the API (no urlencoded/form parsing, so
 //* cross-site HTML forms cannot submit to it)

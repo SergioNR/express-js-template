@@ -50,7 +50,8 @@ LockedTooltip.propTypes = {
 export function Team() {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  //* null | 'load' | 'membership'
+  const [error, setError] = useState(null);
   const [members, setMembers] = useState([]);
   const [invites, setInvites] = useState([]);
   const [callerPermissions, setCallerPermissions] = useState([]);
@@ -71,7 +72,7 @@ export function Team() {
 
   const loadTeam = useCallback(async () => {
     setLoading(true);
-    setError(false);
+    setError(null);
 
     try {
       const response = await apiClient.get('/api/v1/team');
@@ -80,8 +81,13 @@ export function Team() {
       setInvites(response.data.invites);
       setCallerPermissions(response.data.callerPermissions);
       setAssignableRoles(response.data.assignableRoles);
-    } catch {
-      setError(true);
+    } catch (err) {
+      const status = err?.response?.status;
+      const code = err?.response?.data?.code;
+
+      //* Users without a company membership (shouldn't reach this page - the
+      //* wrapper redirects superadmins) get a specific message
+      setError(status === 403 && code === 'COMPANY_MEMBERSHIP_REQUIRED' ? 'membership' : 'load');
     } finally {
       setLoading(false);
     }
@@ -214,43 +220,51 @@ export function Team() {
     }
   };
 
-  const memberRows = members.map((member) => (
-    <Table.Tr key={member.id}>
-      <Table.Td>
-        <Text fz="sm">{member.email}</Text>
-      </Table.Td>
-      <Table.Td>
-        <Group gap={4}>
-          {member.companyRoles.map((roleName) => (
-            <Badge
-              key={roleName}
-              color={roleName === 'company_owner' ? 'violet' : roleName === 'company_admin' ? 'indigo' : 'gray'}
-              variant="light"
-            >
-              {roleLabel(t, roleName)}
-            </Badge>
-          ))}
-        </Group>
-      </Table.Td>
-      <Table.Td>
-        <Text fz="sm">{formatDateTime(member.created_at)}</Text>
-      </Table.Td>
-      <Table.Td>
-        <Group gap="sm" justify="flex-end" wrap="nowrap">
-          {member.role !== 'superadmin' && (
-            <LockedTooltip locked={!canManageRoles} label={t('team.locked.manageRoles')}>
+  const memberRows = members.map((member) => {
+    //* The Select can only represent a single role that the caller is allowed
+    //* to assign; other members (multi-role, or a role above the caller's
+    //* reach such as the owner) keep their badge and a locked Select
+    const currentRole = member.companyRoles.length === 1 ? member.companyRoles[0] : null;
+    const roleNotAssignable = !currentRole || !assignableRoles.includes(currentRole);
+    const roleLocked = !canManageRoles || roleNotAssignable;
+    const roleLockLabel = !canManageRoles
+      ? t('team.locked.manageRoles')
+      : t('team.locked.roleNotAssignable');
+
+    return (
+      <Table.Tr key={member.id}>
+        <Table.Td>
+          <Text fz="sm">{member.email}</Text>
+        </Table.Td>
+        <Table.Td>
+          <Group gap={4}>
+            {member.companyRoles.map((roleName) => (
+              <Badge
+                key={roleName}
+                color={roleName === 'company_owner' ? 'violet' : roleName === 'company_admin' ? 'indigo' : 'gray'}
+                variant="light"
+              >
+                {roleLabel(t, roleName)}
+              </Badge>
+            ))}
+          </Group>
+        </Table.Td>
+        <Table.Td>
+          <Text fz="sm">{formatDateTime(member.created_at)}</Text>
+        </Table.Td>
+        <Table.Td>
+          <Group gap="sm" justify="flex-end" wrap="nowrap">
+            <LockedTooltip locked={roleLocked} label={roleLockLabel}>
               <Select
                 size="xs"
                 w={160}
-                disabled={!canManageRoles || assignableRoleOptions.length === 0}
+                disabled={roleLocked}
                 data={assignableRoleOptions}
-                value={member.companyRoles.length === 1 ? member.companyRoles[0] : null}
+                value={roleNotAssignable ? null : currentRole}
                 onChange={(roleName) => changeMemberRole(member.id, roleName)}
                 aria-label={t('team.members.roleChange', { email: member.email })}
               />
             </LockedTooltip>
-          )}
-          {member.role !== 'superadmin' && (
             <LockedTooltip locked={!canRemove} label={t('team.locked.remove')}>
               <ActionIcon
                 variant="subtle"
@@ -262,11 +276,11 @@ export function Team() {
                 <IconTrash size={16} stroke={1.5} />
               </ActionIcon>
             </LockedTooltip>
-          )}
-        </Group>
-      </Table.Td>
-    </Table.Tr>
-  ));
+          </Group>
+        </Table.Td>
+      </Table.Tr>
+    );
+  });
 
   const inviteRows = invites.map((invite) => {
     const expired = now !== null && new Date(invite.token_expires).getTime() < now;
@@ -340,7 +354,7 @@ export function Team() {
 
       {error ? (
         <Alert color="red" variant="light">
-          {t('team.errors.loadError')}
+          {error === 'membership' ? t('team.errors.membershipRequired') : t('team.errors.loadError')}
         </Alert>
       ) : (
         <>

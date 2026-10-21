@@ -15,6 +15,7 @@
     "logout": "Cerrar sesión",
     "user": {
       "navigation": "Navegación",
+      "menu": "Menú de navegación",
       "dashboard": "Dashboard",
       "profile": "Cambiar contraseña",
       "plans": "Planes",
@@ -308,7 +309,6 @@
   },
   "user": {
     "panelTitle": "Panel de control",
-    "backToSite": "Volver al sitio",
     "noSubscriptionBanner": {
       "title": "Suscripción inactiva",
       "body": "No tienes una suscripción activa. Activa un plan para continuar usando la plataforma.",

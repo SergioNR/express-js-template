@@ -1,5 +1,5 @@
 import { Outlet, Link } from 'react-router';
-import NavbarSimple from '../../components/partials/UserNavBar';
+import UserNavBar from '../../components/partials/UserNavBar';
 import { useNavigate } from 'react-router';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +15,7 @@ const UserWrapper = () => {
   const posthog = usePostHog();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [opened, { toggle }] = useDisclosure();
+  const [opened, { toggle, close }] = useDisclosure();
   const [userId, setUserId] = useState(null);
 
   useEffect(() => {
@@ -67,13 +67,14 @@ const UserWrapper = () => {
         padding="md"
       >
         <AppShell.Header>
-          <Group h="100%" px="md" justify="space-between" wrap="nowrap">
+          <Group h="100%" px="md" wrap="nowrap">
             <Group gap="sm" wrap="nowrap">
               <Burger
                 opened={opened}
                 onClick={toggle}
                 hiddenFrom="sm"
                 size="sm"
+                aria-label={t('nav.user.menu')}
               />
               <Anchor component={Link} to="/dashboard" underline="never" inherit>
                 <Group gap="xs" wrap="nowrap">
@@ -82,17 +83,11 @@ const UserWrapper = () => {
                 </Group>
               </Anchor>
             </Group>
-
-            <Group gap="lg" wrap="nowrap" visibleFrom="xs">
-              <Anchor component={Link} to="/" size="sm" c="dimmed">
-                {t('user.backToSite')}
-              </Anchor>
-            </Group>
           </Group>
         </AppShell.Header>
 
         <AppShell.Navbar p="md">
-          <NavbarSimple />
+          <UserNavBar onNavigate={close} />
         </AppShell.Navbar>
 
         <AppShell.Main>

@@ -1,5 +1,7 @@
 import { NavLink } from 'react-router';
+import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
+import { AppShell, Text } from '@mantine/core';
 import {
   IconHomeFilled,
   IconUserCircle,
@@ -9,7 +11,9 @@ import {
 import classes from './NavbarSimple.module.css';
 import LogOutButton from '../navBarElements/LogOutButton';
 
-const UserNavBar = () => {
+//* Rendered inside <AppShell.Navbar>, which already provides the <nav>
+//* landmark, width, padding and border
+const UserNavBar = ({ onNavigate }) => {
   const { t } = useTranslation();
 
   const data = [
@@ -23,6 +27,7 @@ const UserNavBar = () => {
     <NavLink
       to={item.link}
       key={item.label}
+      onClick={onNavigate}
       className={({ isActive }) => `${classes.link}${isActive ? ` ${classes.activeLink}` : ''}`}
     >
       <item.icon className={classes.linkIcon} stroke={1.5} />
@@ -31,20 +36,26 @@ const UserNavBar = () => {
   ));
 
   return (
-    <nav className={classes.navbar}>
-      <div className={classes.header}>
-        <span className={classes.sectionTitle}>{t('nav.user.navigation')}</span>
-      </div>
+    <>
+      <AppShell.Section>
+        <Text size="xs" fw={700} tt="uppercase" c="dimmed" pb="md">
+          {t('nav.user.navigation')}
+        </Text>
+      </AppShell.Section>
 
-      <div className={classes.navbarMain}>
+      <AppShell.Section grow>
         {links}
-      </div>
+      </AppShell.Section>
 
-      <div className={classes.footer}>
+      <AppShell.Section pt="md">
         <LogOutButton />
-      </div>
-    </nav>
+      </AppShell.Section>
+    </>
   );
+};
+
+UserNavBar.propTypes = {
+  onNavigate: PropTypes.func,
 };
 
 export default UserNavBar;

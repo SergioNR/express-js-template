@@ -88,29 +88,19 @@ export const countPendingFilesInDb = async (companyId) => {
   return pendingCount;
 };
 
-//* Used by the company-deletion cleanup: the keys are collected before the
-//* company delete cascades the File rows away, so the objects can be removed
-//* from the bucket afterwards
-export const getFileKeysForCompanyInDb = async (companyId) => {
-  const getFileKeysQuery = await prisma.file.findMany({
-    where: {
-      company_id: companyId,
-    },
-    select: {
-      s3_key: true,
-    },
-  });
-
-  return getFileKeysQuery.map((file) => file.s3_key);
-};
-
 //* Conditional transition so a row the cleanup job removed concurrently is
-//* never resurrected. Returns the updated row, or null when it was not pending
-export const markFileReadyInDb = async (fileId) => {
+//* never resurrected, and a row old enough for the cleanup job to be deleting
+//* its object right now (created at or before `createdAfter`) is never
+//* flipped to ready. Returns the updated row, or null when no pending row
+//* young enough matched
+export const markFileReadyInDb = async (fileId, createdAfter) => {
   const updateResult = await prisma.file.updateMany({
     where: {
       id: fileId,
       status: 'pending',
+      created_at: {
+        gt: createdAfter,
+      },
     },
     data: {
       status: 'ready',
@@ -126,18 +116,4 @@ export const markFileReadyInDb = async (fileId) => {
       id: fileId,
     },
   });
-};
-
-//* Deletes pending rows older than the cutoff in a single statement and
-//* returns their keys, so the bucket objects of exactly those rows can be
-//* removed afterwards (a row confirmed meanwhile is untouched). Prisma
-//* stores UTC wall time in timestamp(3) columns, hence the ISO -> timestamp cast
-export const deleteStalePendingFilesInDb = async (createdBefore) => {
-  const deletedRows = await prisma.$queryRaw`
-    DELETE FROM "File"
-    WHERE "status" = 'pending' AND "created_at" < ${createdBefore.toISOString()}::timestamp
-    RETURNING "s3_key"
-  `;
-
-  return deletedRows.map((row) => row.s3_key);
 };

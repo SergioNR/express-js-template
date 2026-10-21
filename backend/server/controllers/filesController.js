@@ -13,6 +13,7 @@ import { presignGetObject } from '../integrations/s3/presignGetObject.js';
 import { deleteS3Objects } from '../integrations/s3/deleteS3Objects.js';
 import { buildFileS3Key, sanitizeFilename } from '../utils/s3Key.js';
 import { MAX_PENDING_UPLOADS_PER_COMPANY } from '../config/s3.js';
+import { PENDING_FILE_CONFIRM_MAX_AGE_MS } from '../config/pendingFileUploads.js';
 import { logWarn } from '../config/loggerFunctions.js';
 
 //* The catalog row is the source of truth and is already gone when this runs:
@@ -25,6 +26,11 @@ const deleteS3ObjectBestEffort = async (s3Key) => {
     logWarn(`Bucket object ${s3Key} could not be deleted after its catalog row was removed`, new Error('S3 delete failed'));
   }
 };
+
+const uploadExpiredResponse = (res) => res.status(409).json({
+  message: 'The upload is too old to be confirmed - upload the file again',
+  code: 'FILE_UPLOAD_EXPIRED',
+});
 
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
@@ -110,6 +116,15 @@ export const confirmFileUpload = async (req, res) => {
     });
   }
 
+  //* Rows past the confirm window may already be losing their object to the
+  //* cleanup job (see config/pendingFileUploads.js) - fast path, the
+  //* conditional update below is the real guard
+  const confirmableAfter = new Date(Date.now() - PENDING_FILE_CONFIRM_MAX_AGE_MS);
+
+  if (new Date(file.created_at) <= confirmableAfter) {
+    return uploadExpiredResponse(res);
+  }
+
   const storedObject = await headS3Object(file.s3_key);
 
   if (!storedObject) {
@@ -135,13 +150,27 @@ export const confirmFileUpload = async (req, res) => {
     });
   }
 
-  const readyFile = await markFileReadyInDb(file.id);
+  const readyFile = await markFileReadyInDb(file.id, confirmableAfter);
 
   if (!readyFile) {
-    //* Removed by the pending-upload cleanup between the lookup and the update
-    return res.status(404).json({
-      message: 'File does not exist',
-    });
+    //* No longer a young-enough pending row: a concurrent confirm won (answer
+    //* like a retry), the row was deleted meanwhile, or it crossed the
+    //* confirm window during the HEAD request
+    const currentFile = await getFileByIdInDb(file.id, companyId);
+
+    if (!currentFile) {
+      return res.status(404).json({
+        message: 'File does not exist',
+      });
+    }
+
+    if (currentFile.status === 'ready') {
+      return res.status(200).json({
+        file: toFileShape(currentFile),
+      });
+    }
+
+    return uploadExpiredResponse(res);
   }
 
   return res.status(200).json({

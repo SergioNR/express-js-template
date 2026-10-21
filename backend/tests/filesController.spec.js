@@ -6,7 +6,6 @@ jest.unstable_mockModule('../server/models/filesModel.js', () => ({
   getFilesInDb: jest.fn(),
   getFileByIdInDb: jest.fn(),
   deleteFileInDb: jest.fn(),
-  getFileKeysForCompanyInDb: jest.fn(),
   markFileReadyInDb: jest.fn(),
 }));
 
@@ -54,6 +53,10 @@ const { presignGetObject } = await import('../server/integrations/s3/presignGetO
 const { presignPutObject } = await import('../server/integrations/s3/presignPutObject.js');
 const { deleteS3Objects } = await import('../server/integrations/s3/deleteS3Objects.js');
 const { logWarn } = await import('../server/config/loggerFunctions.js');
+const {
+  PENDING_FILE_CONFIRM_MAX_AGE_MS,
+  PENDING_FILE_MAX_AGE_MS,
+} = await import('../server/config/pendingFileUploads.js');
 
 const mockRes = () => {
   const res = {
@@ -176,7 +179,8 @@ describe('createFileUpload', () => {
 });
 
 describe('confirmFileUpload', () => {
-  const pendingFile = () => fileRecord({ status: 'pending' });
+  //* Created just now - well inside the confirm window
+  const pendingFile = (overrides = {}) => fileRecord({ status: 'pending', created_at: new Date().toISOString(), ...overrides });
 
   const confirm = async () => {
     const res = mockRes();
@@ -254,19 +258,64 @@ describe('confirmFileUpload', () => {
 
     const res = await confirm();
 
-    expect(markFileReadyInDb).toHaveBeenCalledWith('file-1');
+    const [, confirmableAfter] = markFileReadyInDb.mock.calls[0];
+    expect(markFileReadyInDb).toHaveBeenCalledWith('file-1', expect.any(Date));
+    //* Only rows younger than the confirm window may flip to ready
+    expect(Date.now() - confirmableAfter.getTime()).toBeGreaterThanOrEqual(PENDING_FILE_CONFIRM_MAX_AGE_MS - 1000);
+    expect(Date.now() - confirmableAfter.getTime()).toBeLessThan(PENDING_FILE_MAX_AGE_MS);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ file: expect.objectContaining({ id: 'file-1', status: 'ready' }) });
   });
 
-  it('answers 404 when the cleanup job removed the row in between', async () => {
-    getFileByIdInDb.mockResolvedValue(pendingFile());
+  it('answers 409 FILE_UPLOAD_EXPIRED without touching the bucket for a row past the confirm window', async () => {
+    getFileByIdInDb.mockResolvedValue(pendingFile({
+      created_at: new Date(Date.now() - PENDING_FILE_CONFIRM_MAX_AGE_MS - 1000).toISOString(),
+    }));
+
+    const res = await confirm();
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'FILE_UPLOAD_EXPIRED' }));
+    expect(headS3Object).not.toHaveBeenCalled();
+    expect(markFileReadyInDb).not.toHaveBeenCalled();
+  });
+
+  it('answers 409 FILE_UPLOAD_EXPIRED when the conditional update finds the row still pending but too old', async () => {
+    getFileByIdInDb
+      .mockResolvedValueOnce(pendingFile())
+      .mockResolvedValueOnce(pendingFile());
+    headS3Object.mockResolvedValue({ contentLength: 1234, contentType: 'application/pdf' });
+    markFileReadyInDb.mockResolvedValue(null);
+
+    const res = await confirm();
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'FILE_UPLOAD_EXPIRED' }));
+  });
+
+  it('answers 404 when the row was removed in between', async () => {
+    getFileByIdInDb
+      .mockResolvedValueOnce(pendingFile())
+      .mockResolvedValueOnce(null);
     headS3Object.mockResolvedValue({ contentLength: 1234, contentType: 'application/pdf' });
     markFileReadyInDb.mockResolvedValue(null);
 
     const res = await confirm();
 
     expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('answers 200 like a retry when a concurrent confirm already made the file ready', async () => {
+    getFileByIdInDb
+      .mockResolvedValueOnce(pendingFile())
+      .mockResolvedValueOnce(fileRecord({ status: 'ready' }));
+    headS3Object.mockResolvedValue({ contentLength: 1234, contentType: 'application/pdf' });
+    markFileReadyInDb.mockResolvedValue(null);
+
+    const res = await confirm();
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ file: expect.objectContaining({ status: 'ready' }) });
   });
 });
 

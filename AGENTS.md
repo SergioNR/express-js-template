@@ -9,8 +9,8 @@ Full-stack template monorepo: Express.js 5 API (`backend/`) + React/Vite/Mantine
 | `backend/` | Express API — auth, billing, PostgreSQL/Prisma, Docker |
 | `frontend/` | React SPA — public site, auth, user/admin areas |
 | `.github/workflows/` | Docker build & push on `latest`/`next` |
-| `.github/PULL_REQUEST_TEMPLATE/` | PR templates by change type |
-| `.kilo/plans/` | Kilo plan history — do not hand-edit |
+| `.github/pull_request_template.md` | Default PR template (checklist); typed variants in `.github/PULL_REQUEST_TEMPLATE/` |
+| `.kilo/plans/` | Kilo plan history — gitignored, local only, do not hand-edit |
 
 ## Always
 

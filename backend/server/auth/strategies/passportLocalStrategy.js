@@ -13,13 +13,13 @@ export const localStrategy = new LocalStrategy(async (userEmail, password, done)
 
     if (!user) {
       await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
-      return done(null, false, { message: 'The combination of email and password is incorrect' });
+      return done(null, false);
     }
 
     const passwordMatches = await bcrypt.compare(password, user.password);
 
     if (!passwordMatches) {
-      return done(null, false, { message: 'The combination of email and password is incorrect' });
+      return done(null, false);
     }
 
     return done(null, user);

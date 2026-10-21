@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 
 jest.unstable_mockModule('../server/models/sessionModel.js', () => ({
-  deleteUserSessions: jest.fn().mockResolvedValue({ success: true, deletedCount: 1 }),
+  deleteUserSessions: jest.fn().mockResolvedValue({ deletedCount: 1 }),
 }));
 
 jest.unstable_mockModule('../server/models/userModel.js', () => ({

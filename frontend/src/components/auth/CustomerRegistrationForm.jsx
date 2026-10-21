@@ -33,10 +33,7 @@ const CustomerRegistrationForm = () => {
     try {
       await apiClient.post('/api/v1/auth/register', data);
 
-      setRegisterResponse({
-        success: true,
-        message: t('auth.register.success'),
-      });
+      setRegisterResponse({ message: t('auth.register.success') });
 
       setRegisterError(null);
 
@@ -45,16 +42,10 @@ const CustomerRegistrationForm = () => {
       setRegisterResponse(null);
 
       if (err.status === 422) {
-        return setRegisterError({
-          success: false,
-          message: t('auth.register.errors.invalid'),
-        });
+        return setRegisterError({ message: t('auth.register.errors.invalid') });
       }
 
-      return setRegisterError({
-        success: false,
-        message: t('auth.register.errors.internal'),
-      });
+      return setRegisterError({ message: t('auth.register.errors.internal') });
     }
   };
 
@@ -78,7 +69,7 @@ const CustomerRegistrationForm = () => {
           </Paper>
         )}
 
-        {registerError && registerError.success === false && (
+        {registerError && (
           <Paper shadow="xs" p={10} mt={20} radius="sm" style={{ backgroundColor: '#ffcccc' }}>
             {registerError.message}
           </Paper>

@@ -8,13 +8,8 @@ export const sendTelegramMessage = async (chatId, message) => {
       parse_mode: 'HTML',
     });
 
-    return {
-      success: true,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      message: error.message,
-    };
+    return true;
+  } catch {
+    return false;
   }
 };

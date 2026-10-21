@@ -19,6 +19,7 @@ const swaggerOptions = {
       { name: 'Health', description: 'Server health check' },
       { name: 'Auth', description: 'Authentication and password management' },
       { name: 'User', description: 'Logged-in user profile management' },
+      { name: 'Team', description: 'Company team and invite management' },
       { name: 'Billing', description: 'Stripe subscription billing' },
       { name: 'Admin', description: 'Admin-only user management' },
       { name: 'Webhooks', description: 'Inbound third-party webhooks' },
@@ -36,36 +37,24 @@ const swaggerOptions = {
         SuccessMessage: {
           type: 'object',
           properties: {
-            success: {
-              type: 'boolean',
-            },
             message: {
               type: 'string',
+              description: 'Optional developer-facing text - present only when it adds information beyond the status and payload',
             },
           },
         },
         ErrorMessage: {
           type: 'object',
           properties: {
-            success: {
-              type: 'boolean',
-              example: false,
-            },
             message: {
               type: 'string',
+              description: 'Optional developer-facing text - present only when it adds information beyond the status and payload (conflict reasons, token expiry, rate limiting, route-404 fallback)',
             },
           },
         },
         ValidationError: {
           type: 'object',
           properties: {
-            success: {
-              type: 'boolean',
-              example: false,
-            },
-            message: {
-              type: 'string',
-            },
             errors: {
               type: 'array',
               items: {
@@ -146,6 +135,47 @@ const swaggerOptions = {
               type: 'string',
             },
             newPassword: {
+              type: 'string',
+              minLength: 8,
+              maxLength: 64,
+            },
+          },
+        },
+        TeamInviteRequest: {
+          type: 'object',
+          required: ['email', 'roleName'],
+          properties: {
+            email: {
+              type: 'string',
+              format: 'email',
+              maxLength: 254,
+            },
+            roleName: {
+              type: 'string',
+              enum: ['company_owner', 'company_admin', 'company_member'],
+              description: 'Company role the invitee will receive. The inviter must hold it themselves unless they are a global admin.',
+            },
+          },
+        },
+        UpdateMemberRoleRequest: {
+          type: 'object',
+          required: ['roleName'],
+          properties: {
+            roleName: {
+              type: 'string',
+              enum: ['company_owner', 'company_admin', 'company_member'],
+            },
+          },
+        },
+        AcceptInviteRequest: {
+          type: 'object',
+          required: ['inviteToken', 'password'],
+          properties: {
+            inviteToken: {
+              type: 'string',
+              format: 'uuid',
+            },
+            password: {
               type: 'string',
               minLength: 8,
               maxLength: 64,

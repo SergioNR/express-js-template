@@ -26,7 +26,7 @@ Rules describe how this codebase is written today. Follow them for all new and m
 
 - All requests go through the shared `apiClient` (`src/config/API/axiosConfig.mjs`): `withCredentials`, 10s timeout, `VITE_API_BASE_URL` base. Never use `fetch` directly, never create other axios instances.
 - Paths always include the version prefix (`/api/v1/...`).
-- Handle API errors by status with user-facing Spanish messages (see `LoginForm.jsx`).
+- Handle API errors by status with user-facing Spanish messages (see `LoginForm.jsx`). Never render `error.response.data.message` or axios `err.message`; map status + `code` → `t()` — enforced by `no-restricted-syntax` in `eslint.config.js`.
 
 ## UI conventions
 

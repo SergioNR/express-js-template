@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import {
   IconHomeFilled,
   IconUserCircle,
-  IconCreditCardFilled
+  IconCreditCardFilled,
+  IconUsersGroup
 } from '@tabler/icons-react';
 import classes from './NavbarSimple.module.css';
 import LogOutButton from '../navBarElements/LogOutButton';
@@ -15,6 +16,7 @@ const UserNavBar = () => {
     { link: '/dashboard', label: t('nav.user.dashboard'), icon: IconHomeFilled },
     { link: '/user/profile', label: t('nav.user.profile'), icon: IconUserCircle },
     { link: '/user/billing', label: t('nav.user.plans'), icon: IconCreditCardFilled },
+    { link: '/user/team', label: t('nav.user.team'), icon: IconUsersGroup },
   ];
 
   const links = data.map((item) => (

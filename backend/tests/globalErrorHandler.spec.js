@@ -49,7 +49,6 @@ describe('globalErrorHandler', () => {
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({
-      success: false,
       name: 'Internal Server Error',
       message: 'An error occurred, please try again later',
     });

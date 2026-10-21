@@ -11,6 +11,7 @@ import {
   updateUserLastLoginDate,
 } from '../models/userModel.js';
 import { createPasswordResetToken, getPasswordResetTokenData, deletePasswordResetTokens } from '../models/passwordResetTokensModel.js';
+import { getTeamInviteByToken, deleteTeamInviteByTokenSafe } from '../models/teamInvitesModel.js';
 import { deleteUserSessions, linkSessionToUser } from '../models/sessionModel.js';
 import { sendResetPasswordTokenToUser } from '../integrations/brevo/transactionalEmails/sendResetPasswordTokenToUser.js';
 import { sendExistingAccountNoticeToUser } from '../integrations/brevo/transactionalEmails/sendExistingAccountNoticeToUser.js';
@@ -31,7 +32,6 @@ export const requestPasswordResetToken = async (req, res) => {
   //* Not checking / notifying for user existence to prevent security leaks
 
   return res.status(200).json({
-    success: true,
     message: 'If this email exists, a reset link will be sent',
   });
 };
@@ -42,10 +42,7 @@ export const checkPasswordResetTokenValidity = async (req, res) => {
   const passwordResetTokenData = await getPasswordResetTokenData(passwordResetToken);
 
   if (!passwordResetTokenData) {
-    return res.status(404).json({
-      success: false,
-      message: 'Password reset token does not exist',
-    });
+    return res.status(404).json({});
   }
 
   const {
@@ -54,15 +51,11 @@ export const checkPasswordResetTokenValidity = async (req, res) => {
 
   if (new Date(tokenExpirationDate) < new Date()) {
     return res.status(400).json({
-      success: false,
-      message: 'Token expired - Please request a new password reset link',
+      message: 'Password reset token expired',
     });
   }
 
-  return res.status(200).json({
-    success: true,
-    message: 'Password reset token is valid',
-  });
+  return res.status(200).json({});
 };
 
 export const updateRecoveredUserPassword = async (req, res) => {
@@ -74,10 +67,7 @@ export const updateRecoveredUserPassword = async (req, res) => {
   const passwordResetTokenData = await getPasswordResetTokenData(passwordResetToken);
 
   if (!passwordResetTokenData) {
-    return res.status(404).json({
-      success: false,
-      message: 'Password reset token does not exist',
-    });
+    return res.status(404).json({});
   }
 
   const {
@@ -87,8 +77,7 @@ export const updateRecoveredUserPassword = async (req, res) => {
 
   if (new Date(tokenExpires) < new Date()) {
     return res.status(400).json({
-      success: false,
-      message: 'Token expired - Please request a new password reset link',
+      message: 'Password reset token expired',
     });
   }
 
@@ -101,38 +90,116 @@ export const updateRecoveredUserPassword = async (req, res) => {
   //* Revoke every active session of the user - the old credential is no longer valid
   await deleteUserSessions(userId);
 
+  return res.status(200).json({});
+};
+
+export const checkTeamInviteValidity = async (req, res) => {
+  const { inviteToken } = req.query;
+
+  const inviteData = await getTeamInviteByToken(inviteToken);
+
+  if (!inviteData) {
+    return res.status(404).json({
+      message: 'Team invite does not exist',
+    });
+  }
+
+  const { token_expires: tokenExpirationDate } = inviteData;
+
+  if (new Date(tokenExpirationDate) < new Date()) {
+    return res.status(400).json({
+      message: 'Invite expired - Please ask a team admin for a new invite',
+    });
+  }
+
   return res.status(200).json({
-    success: true,
-    message: 'User password updated successfully using password reset token',
+    email: inviteData.email,
+    companyName: inviteData.Company?.name,
+    roleName: inviteData.Role.name,
   });
+};
+
+export const acceptTeamInvite = async (req, res) => {
+  const {
+    inviteToken,
+    password,
+  } = req.body;
+
+  const inviteData = await getTeamInviteByToken(inviteToken);
+
+  if (!inviteData) {
+    return res.status(404).json({
+      message: 'Team invite does not exist',
+    });
+  }
+
+  const { token_expires: tokenExpires } = inviteData;
+
+  if (new Date(tokenExpires) < new Date()) {
+    return res.status(400).json({
+      message: 'Invite expired - Please ask a team admin for a new invite',
+    });
+  }
+
+  const existingUser = await getUserByEmail(inviteData.email);
+
+  if (existingUser) {
+    //* The invitee registered on their own in the meantime - the invite is void
+    await deleteTeamInviteByTokenSafe(inviteToken);
+
+    return res.status(409).json({
+      message: 'Email is already registered - Please log in instead',
+    });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+
+  try {
+    await createUserInDB({
+      username: inviteData.email,
+      password: hashedPassword,
+      companyId: inviteData.company_id,
+      roleId: inviteData.role_id,
+    });
+  } catch (error) {
+    //* Concurrent self-registration with the same email can beat the check
+    //* above - the unique constraint resolves the race
+    if (error.code === 'P2002') {
+      await deleteTeamInviteByTokenSafe(inviteToken);
+
+      return res.status(409).json({
+        message: 'Email is already registered - Please log in instead',
+      });
+    }
+
+    throw error;
+  }
+
+  await deleteTeamInviteByTokenSafe(inviteToken);
+
+  //* No auto-login here - consistent with the register endpoint
+  return res.status(201).json({});
 };
 
 export const checkSession = async (req, res) => {
   if (req.user) {
     return res.status(200).json({
-      success: true,
-      message: 'Session is valid',
       user: {
         id: req.user.id,
       },
     });
   }
 
-  return res.status(401).json({
-    success: false,
-    message: 'Session is invalid',
-  });
+  return res.status(401).json({});
 };
 
-export const loginLocal = (req, res, next) => passport.authenticate('local', (err, user /* , info */) => {
+export const loginLocal = (req, res, next) => passport.authenticate('local', (err, user) => {
   if (err) {
     return next(err);
   }
 
   if (!user) { //* Will trigger if user does not exist
-    return res.status(401).json({
-      message: 'The combination of email and password is incorrect',
-    });
+    return res.status(401).json({});
   }
 
   // Log the user in and establish a session
@@ -151,8 +218,6 @@ export const loginLocal = (req, res, next) => passport.authenticate('local', (er
     await linkSessionToUser(req.sessionID, user.id);
 
     return res.status(200).json({
-      success: true,
-      message: 'Login successful',
       user: {
         id: user.id,
         role: user.role,
@@ -176,10 +241,7 @@ export const registerUser = async (req, res) => {
 
     //* Responding with the same shape & status as a successful creation
     //* so the endpoint cannot be used to enumerate registered emails
-    return res.status(201).json({
-      success: true,
-      message: 'User created successfully',
-    });
+    return res.status(201).json({});
   }
 
   try {
@@ -188,19 +250,13 @@ export const registerUser = async (req, res) => {
     //* Concurrent registrations can beat the existence check - the unique
     //* constraint resolves the race, respond with the same enumeration-safe 201
     if (error.code === 'P2002') {
-      return res.status(201).json({
-        success: true,
-        message: 'User created successfully',
-      });
+      return res.status(201).json({});
     }
 
     throw error;
   }
 
-  return res.status(201).json({
-    success: true,
-    message: 'User created successfully',
-  });
+  return res.status(201).json({});
 };
 
 export const updateUserPassword = async (req, res) => {
@@ -214,10 +270,7 @@ export const updateUserPassword = async (req, res) => {
   const currentHashedPasswordQuery = await getUserPassword(userId);
 
   if (!currentHashedPasswordQuery) {
-    return res.status(404).json({
-      success: false,
-      message: 'User not found',
-    });
+    return res.status(404).json({});
   }
 
   const { password: currentHashedPassword } = currentHashedPasswordQuery;
@@ -226,16 +279,17 @@ export const updateUserPassword = async (req, res) => {
   const isMatch = await bcrypt.compare(currentPassword, currentHashedPassword);
 
   if (!isMatch) {
+    //* Both 400s carry a stable code - the SPA maps it to user-facing copy
     return res.status(400).json({
-      success: false,
       message: 'Current password is incorrect',
+      code: 'AUTH_CURRENT_PASSWORD_INCORRECT',
     });
   }
 
   if (currentPassword === newPassword) {
     return res.status(400).json({
-      success: false,
       message: 'New password must be different from the current password',
+      code: 'AUTH_PASSWORD_UNCHANGED',
     });
   }
 
@@ -249,8 +303,6 @@ export const updateUserPassword = async (req, res) => {
   await deleteUserSessions(userId, req.sessionID);
 
   return res.status(200).json({
-    success: true,
-    message: 'Password updated successfully',
     userId: updatedUser.id,
   });
 };
@@ -271,9 +323,6 @@ export const logoutUser = (req, res, next) => req.logout((err) => {
     // Clear cookie on client side
     res.clearCookie(SESSION_COOKIE_NAME);
 
-    return res.status(200).json({
-      success: true,
-      message: 'User logged out successfully',
-    });
+    return res.status(200).json({});
   });
 });

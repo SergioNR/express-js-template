@@ -19,6 +19,8 @@ import AdminCompanyDetail from './pages/admin/AdminCompanyDetail.jsx';
 import CustomerProfile from './pages/user/CustomerProfile.jsx';
 import UserWrapper from './pages/user/UserWrapper.jsx';
 import UserDashboard from './pages/user/UserDashboard.jsx';
+import Team from './pages/user/Team.jsx';
+import AcceptInvitePage from './pages/auth/AcceptInvitePage.jsx';
 import RecoverPasswordPage from './pages/auth/RecoverPasswordPage.jsx';
 import FAQ from './pages/index/sections/FAQ.jsx';
 import AuthWrapper from './pages/auth/AuthWrapper.jsx';
@@ -73,6 +75,7 @@ createRoot(document.getElementById('root')).render(
                 <Route index element={<UserDashboard />} />
                 <Route path='profile' element={<CustomerProfile />} />
                 <Route path="billing" element={<UserBilling />} />
+                <Route path='team' element={<Team />} />
               </Route>
 
               <Route path="/dashboard" element={<UserWrapper />}>
@@ -85,6 +88,7 @@ createRoot(document.getElementById('root')).render(
                 <Route path="register" element={<Register />} />
                 <Route path='recover-password' element={<RecoverPasswordPage />} />
                 <Route path='restore-password' element={<RestorePasswordPage />} />
+                <Route path='accept-invite' element={<AcceptInvitePage />} />
               </Route>
 
               <Route path="/*" element={<PageNotFound />} />

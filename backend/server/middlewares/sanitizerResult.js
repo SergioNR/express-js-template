@@ -8,6 +8,7 @@ const sensitiveFields = [
   'username',
   'newPassword',
   'currentPassword',
+  'inviteToken',
 ];
 
 const sanitizeValidationError = (error) => {
@@ -31,8 +32,6 @@ export const sanitizerResult = (req, res, next) => {
     //* Requests with validation errors are rejected here so no controller
     //* can accidentally continue processing invalid input
     return res.status(422).json({
-      success: false,
-      message: 'Request could not be completed due to validation errors',
       errors: sanitizedErrors,
     });
   }

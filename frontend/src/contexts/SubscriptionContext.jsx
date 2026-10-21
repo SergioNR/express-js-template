@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import PropTypes from 'prop-types';
 import apiClient from '../config/API/axiosConfig.mjs';
 
@@ -13,6 +14,7 @@ export const useSubscription = () => {
 };
 
 export const SubscriptionProvider = ({ children }) => {
+  const { t } = useTranslation();
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,12 +27,12 @@ export const SubscriptionProvider = ({ children }) => {
       const subscriptionData = response.data?.subscriptionData || {};
 
       setSubscription(subscriptionData);
-    } catch (err) {
-      setError(err?.message ?? 'No se pudo obtener la información de la suscripción');
+    } catch {
+      setError(t('billing.errors.load'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
 
   useEffect(() => {

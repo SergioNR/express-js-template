@@ -102,7 +102,7 @@ describe('getAllUsers', () => {
     );
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true, userCount: 0, users: [] }),
+      expect.objectContaining({ userCount: 0, users: [] }),
     );
   });
 
@@ -165,8 +165,6 @@ describe('getOneUserById', () => {
     expect(countActiveSessionsByUserInDb).toHaveBeenCalledWith('user-1');
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
-      success: true,
-      message: 'User successfully retrieved - DB',
       user: { ...detail, activeSessionCount: 2 },
     });
     expect(JSON.stringify(res.json.mock.calls[0][0])).not.toContain('password');
@@ -207,7 +205,7 @@ describe('deleteOneUserById', () => {
     expect(cleanupAfterUserDeletion).toHaveBeenCalledWith({ id: 'user-1', company_id: 'company-1' });
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true, userId: 'user-1' }),
+      expect.objectContaining({ userId: 'user-1' }),
     );
   });
 
@@ -240,7 +238,7 @@ describe('getAllCompanies', () => {
     );
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true, companyCount: 0, companies: [] }),
+      expect.objectContaining({ companyCount: 0, companies: [] }),
     );
   });
 });
@@ -274,8 +272,6 @@ describe('getOneCompanyById', () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
-      success: true,
-      message: 'Company successfully retrieved - DB',
       company: detail,
     });
     expect(JSON.stringify(res.json.mock.calls[0][0])).not.toContain('stripe_id');
@@ -306,8 +302,6 @@ describe('getAdminStats', () => {
     expect(countActiveSubscriptionsInDb).toHaveBeenCalledTimes(1);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
-      success: true,
-      message: 'Stats successfully retrieved - DB',
       stats: {
         totalUsers: 10,
         totalAdmins: 2,

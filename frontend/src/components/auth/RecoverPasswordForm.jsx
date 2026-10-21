@@ -35,7 +35,7 @@ const ForgotPasswordForm = () => {
       setRecoverPasswordResponse(response.data);
       setRecoverPasswordError(null);
     } catch (error) {
-      setRecoverPasswordError({ success: false, message: t('auth.recover.error') });
+      setRecoverPasswordError({ message: t('auth.recover.error') });
       console.error('Error al recuperar la contraseña:', error);
       setRecoverPasswordResponse(null);
     }
@@ -58,7 +58,7 @@ const ForgotPasswordForm = () => {
         </Paper>
       )}
 
-      {recoverPasswordError && recoverPasswordError.success === false && (
+      {recoverPasswordError && (
         <Paper shadow="xs" p={10} mt={20} radius="sm" style={{ backgroundColor: '#ffcccc' }}>
           {recoverPasswordError.message}
         </Paper>

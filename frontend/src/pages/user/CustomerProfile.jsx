@@ -23,14 +23,14 @@ const CustomerProfile = () => {
         await apiClient.get(`/api/v1/user`);
 
         setLoading(false);
-      } catch (err) {
-        setError(err.message);
+      } catch {
+        setError(t('user.profile.loadError'));
         setLoading(false);
       }
     };
 
     fetchUser();
-  }, []);
+  }, [t]);
 
   if (loading) {
     return (

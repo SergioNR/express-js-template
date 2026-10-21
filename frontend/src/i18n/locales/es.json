@@ -17,7 +17,8 @@
       "navigation": "Navegación",
       "dashboard": "Dashboard",
       "profile": "Cambiar contraseña",
-      "plans": "Planes"
+      "plans": "Planes",
+      "team": "Equipo"
     }
   },
   "footer": {
@@ -92,6 +93,7 @@
       "confirmNewPasswordPlaceholder": "Confirma tu nueva contraseña",
       "passwordMismatch": "Las contraseñas no coinciden",
       "submit": "Actualizar contraseña",
+      "success": "Tu contraseña ha sido actualizada correctamente",
       "backToLogin": "Volver al inicio de sesión",
       "invalidLinkTitle": "Enlace inválido",
       "invalidLinkBody": "El enlace para restablecer la contraseña es inválido o ha expirado. Por favor, solicita un nuevo enlace.",
@@ -108,7 +110,29 @@
       "newPassword": "Nueva contraseña",
       "newPasswordPlaceholder": "Introduce tu nueva contraseña",
       "errors": {
+        "currentPassword": "La contraseña actual es incorrecta",
+        "samePassword": "La nueva contraseña debe ser diferente de la contraseña actual",
+        "invalid": "Los datos introducidos no son válidos. Por favor, inténtalo de nuevo.",
         "unexpected": "Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo."
+      }
+    },
+    "acceptInvite": {
+      "title": "Unirse al equipo",
+      "email": "Email invitado",
+      "company": "Empresa",
+      "role": "Rol",
+      "password": "Contraseña",
+      "passwordPlaceholder": "Crea tu contraseña",
+      "passwordHint": "Mínimo 8 caracteres, con al menos una mayúscula, una minúscula y un número.",
+      "submit": "Crear cuenta y unirme",
+      "success": "Cuenta creada correctamente. Ya puedes iniciar sesión.",
+      "invalidLinkTitle": "Invitación inválida",
+      "invalidLinkBody": "La invitación no existe o ha caducado. Pide al equipo que te envíe una nueva.",
+      "backToLogin": "Volver al inicio de sesión",
+      "errors": {
+        "expired": "La invitación ha caducado. Pide una nueva invitación.",
+        "registered": "Ese email ya tiene una cuenta. Inicia sesión.",
+        "generic": "No se pudo aceptar la invitación. Inténtalo de nuevo."
       }
     }
   },
@@ -263,6 +287,9 @@
   "user": {
     "panelTitle": "Panel de control",
     "backToSite": "Volver al sitio",
+    "profile": {
+      "loadError": "No se pudo cargar tu perfil. Por favor, inténtalo de nuevo más tarde."
+    },
     "noSubscriptionBanner": {
       "title": "Suscripción inactiva",
       "body": "No tienes una suscripción activa. Activa un plan para continuar usando la plataforma.",
@@ -347,6 +374,8 @@
     },
     "errors": {
       "existingSubscription": "El usuario ya tiene una suscripción existente",
+      "invalid": "Los datos de la solicitud no son válidos. Por favor, inténtalo de nuevo.",
+      "load": "No se pudo obtener la información de la suscripción",
       "checkout": "Se ha producido un error generando el enlace de pago. Por favor, inténtalo más tarde",
       "portal": "Se ha producido un error obteniendo el área de usuario. Por favor, inténtalo más tarde"
     }
@@ -482,7 +511,9 @@
       "profile": "Perfil",
       "billing": "Facturación",
       "admin": "Administración",
-      "notFound": "Página no encontrada"
+      "notFound": "Página no encontrada",
+      "team": "Equipo",
+      "acceptInvite": "Aceptar invitación"
     }
   },
   "notFound": {
@@ -494,5 +525,65 @@
     "title": "Algo ha ido mal",
     "description": "Se ha producido un error inesperado y no se pudo mostrar esta página. Puedes intentar recargarla.",
     "reload": "Recargar"
+  },
+  "team": {
+    "title": "Equipo",
+    "inviteButton": "Invitar al equipo",
+    "roles": {
+      "company_owner": "Propietario",
+      "company_admin": "Administrador",
+      "company_member": "Miembro"
+    },
+    "members": {
+      "title": "Miembros",
+      "empty": "Todavía no hay miembros en la empresa.",
+      "columns": {
+        "email": "Email",
+        "role": "Rol",
+        "joined": "Miembro desde"
+      },
+      "roleChange": "Cambiar el rol de {{email}}",
+      "removeAction": "Eliminar a {{email}}",
+      "removedToast": "Miembro {{email}} eliminado",
+      "roleUpdatedToast": "Rol actualizado correctamente",
+      "removeModal": {
+        "title": "Eliminar miembro",
+        "description": "Se eliminará la cuenta de {{email}} y se cerrarán todas sus sesiones. Esta acción no se puede deshacer.",
+        "cancel": "Cancelar",
+        "confirm": "Eliminar miembro"
+      }
+    },
+    "invites": {
+      "title": "Invitaciones pendientes",
+      "empty": "No hay invitaciones pendientes.",
+      "expiredBadge": "Caducada",
+      "sentToast": "Invitación enviada",
+      "resentToast": "Invitación reenviada",
+      "revokedToast": "Invitación revocada",
+      "resend": "Reenviar invitación a {{email}}",
+      "revoke": "Revocar invitación de {{email}}",
+      "columns": {
+        "email": "Email",
+        "role": "Rol",
+        "expires": "Caduca"
+      }
+    },
+    "inviteModal": {
+      "title": "Invitar al equipo",
+      "email": "Email",
+      "emailPlaceholder": "correo@empresa.com",
+      "role": "Rol",
+      "rolePlaceholder": "Selecciona un rol",
+      "submit": "Enviar invitación",
+      "cancel": "Cancelar"
+    },
+    "errors": {
+      "loadError": "No se pudo cargar la información del equipo. Inténtalo de nuevo.",
+      "inviteConflict": "Ese email ya está registrado o ya tiene una invitación pendiente.",
+      "removeConflict": "No se puede eliminar a este miembro.",
+      "roleConflict": "No se puede cambiar el rol de este miembro.",
+      "forbidden": "No tienes permisos para realizar esta acción.",
+      "generic": "Ha ocurrido un error. Inténtalo de nuevo."
+    }
   }
 }

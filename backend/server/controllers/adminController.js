@@ -58,8 +58,6 @@ export const getAllUsers = async (req, res) => {
   const totalUserCount = await countUsersInDb(filters);
 
   return res.status(200).json({
-    success: true,
-    message: 'Users successfully retrieved - DB',
     userCount: totalUserCount,
     users: users,
     nextCursor: nextCursor,
@@ -72,17 +70,12 @@ export const getOneUserById = async (req, res) => {
   const userDetail = await getUserDetailInDb(userId);
 
   if (userDetail === null) {
-    return res.status(404).json({
-      success: false,
-      message: 'User not found',
-    });
+    return res.status(404).json({});
   }
 
   const activeSessionCount = await countActiveSessionsByUserInDb(userId);
 
   return res.status(200).json({
-    success: true,
-    message: 'User successfully retrieved - DB',
     user: {
       ...userDetail,
       activeSessionCount,
@@ -95,7 +88,6 @@ export const deleteOneUserById = async (req, res) => {
 
   if (userId === req.user.id) {
     return res.status(409).json({
-      success: false,
       message: 'Admins cannot delete their own account from the admin endpoint - use the user endpoint instead',
     });
   }
@@ -104,10 +96,7 @@ export const deleteOneUserById = async (req, res) => {
     const existingUser = await getUserById(userId);
 
     if (!existingUser) {
-      return res.status(404).json({
-        success: false,
-        message: 'User deletion failed - User does not exist',
-      });
+      return res.status(404).json({});
     }
 
     const deletedUser = await deleteUserInDb(userId);
@@ -115,14 +104,11 @@ export const deleteOneUserById = async (req, res) => {
     await cleanupAfterUserDeletion(deletedUser);
 
     return res.status(200).json({
-      success: true,
-      message: 'User successfully deleted',
       userId: deletedUser.id,
     });
   } catch (error) {
     if (error.code === 'P2003') {
       return res.status(409).json({
-        success: false,
         message: 'User deletion failed - Related DB entries exist',
       });
     }
@@ -154,8 +140,6 @@ export const getAllCompanies = async (req, res) => {
   const totalCompanyCount = await countCompaniesInDb(filters);
 
   return res.status(200).json({
-    success: true,
-    message: 'Companies successfully retrieved - DB',
     companyCount: totalCompanyCount,
     companies: companies,
     nextCursor: nextCursor,
@@ -168,15 +152,10 @@ export const getOneCompanyById = async (req, res) => {
   const companyDetail = await getCompanyDetailInDb(companyId);
 
   if (companyDetail === null) {
-    return res.status(404).json({
-      success: false,
-      message: 'Company not found',
-    });
+    return res.status(404).json({});
   }
 
   return res.status(200).json({
-    success: true,
-    message: 'Company successfully retrieved - DB',
     company: companyDetail,
   });
 };
@@ -201,8 +180,6 @@ export const getAdminStats = async (req, res) => {
   ]);
 
   return res.status(200).json({
-    success: true,
-    message: 'Stats successfully retrieved - DB',
     stats: {
       totalUsers: totalUserCount,
       totalAdmins: totalAdminCount,

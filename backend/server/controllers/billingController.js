@@ -17,7 +17,6 @@ export const createCompanyBillingId = async (req, res) => {
 
   if (!subscriptionData) {
     return res.status(404).json({
-      success: false,
       message: 'No subscription found for the company',
     });
   }
@@ -26,7 +25,6 @@ export const createCompanyBillingId = async (req, res) => {
 
   if (companyStripeId) {
     return res.status(409).json({
-      success: false,
       message: 'Company already has a billing id',
     });
   }
@@ -38,10 +36,7 @@ export const createCompanyBillingId = async (req, res) => {
     companyBillingId.id,
   );
 
-  return res.status(201).json({
-    success: true,
-    message: 'Billing id created successfully',
-  });
+  return res.status(201).json({});
 };
 
 export const getBillingCustomerPortalUrl = async (req, res) => {
@@ -53,7 +48,6 @@ export const getBillingCustomerPortalUrl = async (req, res) => {
 
   if (!subscriptionData) {
     return res.status(404).json({
-      success: false,
       message: 'No subscription found for the company',
     });
   }
@@ -62,7 +56,6 @@ export const getBillingCustomerPortalUrl = async (req, res) => {
 
   if (!companyStripeId) {
     return res.status(409).json({
-      success: false,
       message: 'Company has no billing id yet - start a checkout first',
     });
   }
@@ -72,8 +65,6 @@ export const getBillingCustomerPortalUrl = async (req, res) => {
   const { url } = customerPortalCreationQuery;
 
   return res.status(200).json({
-    success: true,
-    message: 'Customer portal URL retrieved successfully',
     customerPortalUrl: url,
   });
 };
@@ -91,7 +82,6 @@ export const getBillingCheckoutSessionUrl = async (req, res) => {
 
   if (!subscriptionData) {
     return res.status(404).json({
-      success: false,
       message: 'No subscription found for the company',
     });
   }
@@ -119,8 +109,6 @@ export const getBillingCheckoutSessionUrl = async (req, res) => {
   const { url } = checkoutSession;
 
   return res.status(200).json({
-    success: true,
-    message: 'Billing checkout session generated successfully',
     checkoutSessionUrl: url,
   });
 };
@@ -133,14 +121,11 @@ export const getCompanySubscriptionData = async (req, res) => {
 
   if (!subscriptionData) {
     return res.status(404).json({
-      success: false,
       message: 'No subscription found for the company',
     });
   }
 
   return res.status(200).json({
-    success: true,
-    message: 'Billing data retrieved successfully - DB',
     subscriptionData: subscriptionData,
   });
 };

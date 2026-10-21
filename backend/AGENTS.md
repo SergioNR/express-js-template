@@ -68,8 +68,8 @@ Request flow: `server/app.js` → middlewares → routers → controllers → mo
 - Schema: `prisma/schema.prisma`. Models PascalCase, columns snake_case. Generated client outputs to `server/config/generated/` (gitignored + eslint-ignored) — run `npx prisma generate` after schema changes; never edit or commit generated files.
 - Runtime client uses the `pg` driver adapter (`server/config/prismaClient.js` → `PRISMA_POSTGRES_CONNECTION_STRING`); migrations use the direct URL (`prisma.config.ts` → `PRISMA_POSTGRES_DIRECT_URL`).
 - Schema changes require: migration (`npx prisma migrate dev --name <change>`), `prisma/seed.js` update if models change, `.env.example`/README if new vars.
-- Seed creates 1 company (`Acme Corp`, 7-day trial subscription) + 2 users, password `Password123!`: `owner@acme.test` (`company_owner`) and `user@acme.test` (`company_member`), both with the global `user` role.
-- Onboarding: `POST /auth/register` (`username`, `companyName`, `password`) creates the company, its trial and the user in one nested write; the registrant is the company's first user and gets `company_owner`. Everyone else joins through team invites.
+- Seed creates 2 companies (each with a 7-day trial subscription) + 3 users, password `Password123!`: tenant `Acme Corp` with `owner@acme.test` (`company_owner`) and `user@acme.test` (`company_member`), both global `user`; internal `Platform` company with the platform admin `admin@platform.test` (global `admin`).
+- Onboarding: `POST /auth/register` (`username`, `password`, optional `companyName` — kept optional for older clients) creates the company, its trial and the user in one nested write; the registrant is the company's first user and gets `company_owner`. Everyone else joins through team invites.
 - Historical quirk: the login/register request field for email is named `username` (validators, controllers, and OpenAPI schema all use it). Keep it consistent; do not rename casually.
 
 ## Logging

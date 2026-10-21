@@ -3,6 +3,7 @@ import { prisma } from '../server/config/prismaClient.js';
 import { BCRYPT_SALT_ROUNDS, FREE_TRIAL_DURATION_MS } from '../server/config/security.js';
 
 const ACME_COMPANY_ID = '5f8b7c2e-1d4a-4f6b-8c3a-2a1b3c4d5e6f';
+const PLATFORM_COMPANY_ID = '3c2b1a0f-9e8d-4c7b-a6f5-e4d3c2b1a0f9';
 
 //* Role ids are only used when a role row does not exist yet (same
 //* deterministic UUIDs as the team_invites_rbac migration). Assignments always
@@ -41,6 +42,13 @@ const companies = [
     id: ACME_COMPANY_ID,
     name: 'Acme Corp',
   },
+  {
+    //* Internal company holding the platform admin - User.company_id is
+    //* required, and keeping the admin out of tenant companies keeps it
+    //* out of their team lists
+    id: PLATFORM_COMPANY_ID,
+    name: 'Platform',
+  },
 ];
 
 //* Mirrors the onboarding flow: the owner is the account that registered the
@@ -59,6 +67,14 @@ const users = [
     role: 'user',
     companyRole: 'company_member',
     company_id: ACME_COMPANY_ID,
+  },
+  {
+    //* Platform admin: the global `admin` role unlocks /api/v1/admin
+    email: 'admin@platform.test',
+    password: 'Password123!',
+    role: 'admin',
+    companyRole: 'company_owner',
+    company_id: PLATFORM_COMPANY_ID,
   },
 ];
 

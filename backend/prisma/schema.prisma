@@ -25,6 +25,11 @@ model User {
   PasswordResetTokens PasswordResetTokens[]
   UserRoles           UserRole[]
   File                File[]
+  //* CRM back-relations
+  ClientsCreated      Client[]              @relation("ClientCreatedBy")
+  OwnersCreated       Owner[]               @relation("OwnerCreatedBy")
+  RequestsCreated     InformationRequest[]  @relation("RequestCreatedBy")
+  RequestsComercial   InformationRequest[]  @relation("RequestComercial")
 }
 
 model Company {
@@ -146,4 +151,239 @@ enum FileStatus {
 enum UserRoles {
   user
   superadmin
+}
+
+//* ---------------------------------------------------------------------------
+//* CRM domain - internal office-leasing consultancy tool
+//* (plan: .kilo/plans/1792592993857-crm-db-schema.md)
+//* ---------------------------------------------------------------------------
+
+//* Demand side - a company looking for offices. Identity + relationship ONLY:
+//* budget, m2, zones etc. live on InformationRequest (one row per touchpoint).
+//* The comercial (salesperson) also lives per touchpoint, on InformationRequest
+model Client {
+  id              String               @id @default(uuid())
+  name            String
+  cif             String?
+  current_address String?
+  status          String?
+  procedencia     String?
+  comments        String?
+  created_by      String?
+  CreatedBy       User?                @relation("ClientCreatedBy", fields: [created_by], references: [id], onDelete: SetNull)
+  Contacts        Contact[]
+  Requests        InformationRequest[]
+  created_at      DateTime             @default(now())
+  updated_at      DateTime             @default(now()) @updatedAt
+}
+
+//* Supply side - whoever holds rights on buildings or floors
+model Owner {
+  id                String      @id @default(uuid())
+  name              String
+  cif               String?
+  owner_type        OwnerType
+  address           String?
+  postal_code       String?
+  fee_terms         String?
+  last_contacted_at DateTime?
+  notes             String?
+  created_by        String?
+  CreatedBy         User?       @relation("OwnerCreatedBy", fields: [created_by], references: [id], onDelete: SetNull)
+  Ownerships        Ownership[]
+  Floors            Floor[]
+  Contacts          Contact[]
+  created_at        DateTime    @default(now())
+  updated_at        DateTime    @default(now()) @updatedAt
+}
+
+enum OwnerType {
+  individual
+  company
+  investor
+  promoter
+}
+
+//* Multi-owner buildings (proindiviso) - share_pct optional because owners
+//* without registered shares exist too
+model Ownership {
+  id          String   @id @default(uuid())
+  owner_id    String
+  Owner       Owner    @relation(fields: [owner_id], references: [id], onDelete: Cascade)
+  building_id String
+  Building    Building @relation(fields: [building_id], references: [id], onDelete: Cascade)
+  share_pct   Decimal? @db.Decimal(5, 2)
+
+  @@unique([owner_id, building_id])
+  @@index([building_id])
+}
+
+model Building {
+  id             String       @id @default(uuid())
+  street_address String?
+  postal_code    String?
+  zone           String?
+  property_type  String?
+  status         String?
+  has_parking    Boolean      @default(false)
+  //* Monthly parking price (€/month) when the building has parking
+  parking_price  Decimal?     @db.Decimal(10, 2)
+  observations   String?
+  //* Mandatory-bypass co-broking agency - 0..1 per building
+  consultancy_id String?
+  Consultancy    Consultancy? @relation(fields: [consultancy_id], references: [id], onDelete: SetNull)
+  Ownerships     Ownership[]
+  Floors         Floor[]
+  created_at     DateTime     @default(now())
+  updated_at     DateTime     @default(now()) @updatedAt
+}
+
+//* Co-broking agency that holds a mandatory bypass on a building
+model Consultancy {
+  id         String     @id @default(uuid())
+  name       String
+  cif        String?
+  notes      String?
+  Buildings  Building[]
+  Contacts   Contact[]
+  created_at DateTime   @default(now())
+  updated_at DateTime   @default(now()) @updatedAt
+}
+
+//* Maps the consultancy's own zone names (Building.zone) to Idealista's
+//* zone classification. Lookup by name; Building.zone stays free text
+model Zone {
+  id             String   @id @default(uuid())
+  name           String   @unique //* consultancy zone (barrio), e.g. "MENDEZ ALVARO"
+  idealista_name String         //* Idealista classification, e.g. "ARGANZUELA"
+  created_at     DateTime @default(now())
+  updated_at     DateTime @default(now()) @updatedAt
+}
+
+//* Physical floor - the stable anchor for registry m2, per-floor ownership and
+//* floor contacts. Offer cuts (Space) are re-cut freely underneath without
+//* touching any of these
+model Floor {
+  id          String               @id @default(uuid())
+  building_id String
+  Building    Building             @relation(fields: [building_id], references: [id], onDelete: Cascade)
+  label       String
+  m2          Decimal?             @db.Decimal(10, 2)
+  terrace     Boolean              @default(false)
+  owner_id    String?
+  Owner       Owner?               @relation(fields: [owner_id], references: [id], onDelete: SetNull)
+  Spaces      Space[]
+  Contacts    Contact[]
+  Interested  InformationRequest[] @relation("RequestInterestedFloor")
+  created_at  DateTime             @default(now())
+  updated_at  DateTime             @default(now()) @updatedAt
+
+  @@index([building_id])
+}
+
+//* Floor cut - the rentable offer unit. renta_total is computed in app:
+//* m2 * (renta_m2 + gastos_m2), so it is never stored
+model Space {
+  id              String               @id @default(uuid())
+  floor_id        String
+  Floor           Floor                @relation(fields: [floor_id], references: [id], onDelete: Cascade)
+  m2              Decimal              @db.Decimal(10, 2)
+  renta_m2        Decimal?             @db.Decimal(10, 2)
+  gastos_m2       Decimal?             @db.Decimal(10, 2)
+  ibi_m2          Decimal?             @db.Decimal(10, 2)
+  parking_spaces  Int?
+  status          SpaceStatus          @default(available)
+  available_from  DateTime?
+  last_renovation DateTime?
+  published       Boolean              @default(false)
+  observations    String?
+  Interested      InformationRequest[] @relation("RequestInterestedSpace")
+  created_at      DateTime             @default(now())
+  updated_at      DateTime             @default(now()) @updatedAt
+
+  @@index([floor_id])
+}
+
+enum SpaceStatus {
+  available
+  soon
+  reserved
+  rented
+  withdrawn
+}
+
+//* Exactly one of client_id / owner_id / floor_id / consultancy_id must be
+//* non-null - enforced via raw SQL CHECK added to the migration file (Prisma
+//* cannot express it in the schema)
+model Contact {
+  id             String       @id @default(uuid())
+  name           String
+  position       String?
+  phone          String?
+  mobile         String?
+  email          String?
+  notes          String?
+  client_id      String?
+  Client         Client?      @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  owner_id       String?
+  Owner          Owner?       @relation(fields: [owner_id], references: [id], onDelete: Cascade)
+  floor_id       String?
+  Floor          Floor?       @relation(fields: [floor_id], references: [id], onDelete: Cascade)
+  consultancy_id String?
+  Consultancy    Consultancy? @relation(fields: [consultancy_id], references: [id], onDelete: Cascade)
+  created_at     DateTime     @default(now())
+  updated_at     DateTime     @default(now()) @updatedAt
+
+  @@index([client_id])
+  @@index([owner_id])
+  @@index([floor_id])
+  @@index([consultancy_id])
+}
+
+//* One row per client touchpoint - no history table. Carries the requirement
+//* snapshot (budget, m2, zones) that used to sit on the CLIENTES sheet
+model InformationRequest {
+  id                  String        @id @default(uuid())
+  client_id           String
+  Client              Client        @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  request_date        DateTime      @default(now())
+  m2_min              Decimal?      @db.Decimal(10, 2)
+  m2_max              Decimal?      @db.Decimal(10, 2)
+  zones               String[]
+  //* Budget range + how to read it (total €, €/m2/month or market rent);
+  //* anything unparsable from the sheet stays in notes
+  budget_min          Decimal?      @db.Decimal(12, 2)
+  budget_max          Decimal?      @db.Decimal(12, 2)
+  budget_basis        BudgetBasis?
+  property_type       String?
+  idealista_zone      String?
+  target_date         DateTime?
+  interested_floor_id String?
+  InterestedFloor     Floor?        @relation("RequestInterestedFloor", fields: [interested_floor_id], references: [id], onDelete: SetNull)
+  interested_space_id String?
+  InterestedSpace     Space?        @relation("RequestInterestedSpace", fields: [interested_space_id], references: [id], onDelete: SetNull)
+  status              RequestStatus @default(open)
+  requests_parking    Boolean       @default(false)
+  //* Salesperson for this touchpoint (per request, not per client)
+  comercial_id        String?
+  Comercial           User?         @relation("RequestComercial", fields: [comercial_id], references: [id], onDelete: SetNull)
+  notes               String?
+  created_by          String?
+  CreatedBy           User?         @relation("RequestCreatedBy", fields: [created_by], references: [id], onDelete: SetNull)
+  created_at          DateTime      @default(now())
+  updated_at          DateTime      @default(now()) @updatedAt
+
+  @@index([client_id, request_date])
+}
+
+enum RequestStatus {
+  open
+  closed
+  discarded
+}
+
+enum BudgetBasis {
+  total
+  per_m2
+  market
 }

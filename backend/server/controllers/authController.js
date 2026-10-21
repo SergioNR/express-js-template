@@ -211,12 +211,20 @@ export const loginLocal = (req, res, next) => passport.authenticate('local', (er
     }
 
     // Successful login
+    //* Store the user id on the session row so sessions can be revoked by
+    //* user. A failure aborts the login and destroys the session - an
+    //* unlinked session could never be revoked
+    try {
+      await linkSessionToUser(req.sessionID, user.id);
+    } catch (linkErr) {
+      logError(`Could not link session to user ${user.id}`, linkErr);
+
+      return req.session.destroy(() => next(linkErr));
+    }
+
     posthogUserSuccessLoggedIn(user.id, 'local'); // Fire-and-forget function
 
     updateUserLastLoginDate(user.id); // Fire-and-forget function
-
-    //* Store the user id on the session row so sessions can be revoked by user
-    await linkSessionToUser(req.sessionID, user.id);
 
     return res.status(200).json({
       user: {

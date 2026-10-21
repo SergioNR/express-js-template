@@ -2,22 +2,18 @@ import { prisma } from '../config/prismaClient.js';
 import { logError } from '../config/loggerFunctions.js';
 
 //* Called right after a successful req.login so the session row keeps a real
-//* user_id column instead of relying on matching the serialized JSON blob
+//* user_id column instead of relying on matching the serialized JSON blob.
+//* Throws on failure: a session without user_id could never be revoked by
+//* deleteUserSessions, so the login must fail instead
 export const linkSessionToUser = async (sessionId, userId) => {
-  try {
-    await prisma.session.update({
-      where: {
-        sid: sessionId,
-      },
-      data: {
-        user_id: userId,
-      },
-    });
-  } catch (error) {
-    logError(`Could not link session to user ${userId}`, error);
-    // throw error //* NOT throwing an error since req-res
-    //*  flow should not be interrupted by this bookkeeping operation
-  }
+  await prisma.session.update({
+    where: {
+      sid: sessionId,
+    },
+    data: {
+      user_id: userId,
+    },
+  });
 };
 
 export const countActiveSessionsInDb = async () => {

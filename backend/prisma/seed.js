@@ -19,7 +19,7 @@ const roles = [
   {
     id: '00000000-0000-4000-8000-000000000002',
     name: 'company_admin',
-    permissions: ['team.view', 'team.invite', 'team.remove', 'files.view', 'files.upload', 'files.delete'],
+    permissions: ['team.view', 'team.invite', 'team.remove', 'team.manage_roles', 'files.view', 'files.upload', 'files.delete'],
   },
   {
     id: COMPANY_MEMBER_ROLE_ID,

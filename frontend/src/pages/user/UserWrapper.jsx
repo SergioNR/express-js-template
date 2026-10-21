@@ -8,6 +8,7 @@ import { usePostHog } from 'posthog-js/react';
 import { AppShell, Anchor, Burger, Group, Image, Text } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import PageLoader from '../../components/PageLoader.jsx';
+import SessionCheckError from '../../components/SessionCheckError.jsx';
 import { SubscriptionProvider } from '../../contexts/SubscriptionContext.jsx';
 
 const UserWrapper = () => {
@@ -15,6 +16,8 @@ const UserWrapper = () => {
   const posthog = usePostHog();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [opened, { toggle }] = useDisclosure();
   const [userId, setUserId] = useState(null);
 
@@ -22,16 +25,36 @@ const UserWrapper = () => {
     let cancelled = false;
 
     const checkSession = async () => {
+      setLoading(true);
+      setError(false);
+
       try {
         const response = await apiClient.get('/api/v1/auth/session');
 
-        if (!cancelled) {
-          setUserId(response.data.user.id);
-          setLoading(false);
+        if (cancelled) {
+          return;
         }
-      } catch {
-        if (!cancelled) {
+
+        //* Superadmins have no company - their area is /admin
+        if (response.data?.user?.role === 'superadmin') {
+          navigate('/admin', { replace: true });
+          return;
+        }
+
+        setUserId(response.data.user.id);
+        setLoading(false);
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+
+        //* Only a rejected session sends the user to login; a network/server
+        //* error keeps them here with a retry
+        if (err?.response?.status === 401) {
           navigate('/auth/login', { replace: true });
+        } else {
+          setError(true);
+          setLoading(false);
         }
       }
     };
@@ -41,7 +64,7 @@ const UserWrapper = () => {
     return () => {
       cancelled = true;
     };
-  }, [navigate]);
+  }, [navigate, attempt]);
 
   useEffect(() => {
     if (userId) {
@@ -53,6 +76,10 @@ const UserWrapper = () => {
   //* session check passes
   if (loading) {
     return <PageLoader />;
+  }
+
+  if (error) {
+    return <SessionCheckError onRetry={() => setAttempt((n) => n + 1)} />;
   }
 
   return (
@@ -74,6 +101,7 @@ const UserWrapper = () => {
                 onClick={toggle}
                 hiddenFrom="sm"
                 size="sm"
+                aria-label={t('nav.menu')}
               />
               <Anchor component={Link} to="/dashboard" underline="never" inherit>
                 <Group gap="xs" wrap="nowrap">

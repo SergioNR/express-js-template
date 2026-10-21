@@ -4,16 +4,21 @@ import { Container } from '@mantine/core';
 import AdminNavBar from '../../components/partials/AdminNavBar.jsx';
 import apiClient from '../../config/API/axiosConfig.mjs';
 import PageLoader from '../../components/PageLoader.jsx';
+import SessionCheckError from '../../components/SessionCheckError.jsx';
 import { SiteFooter } from '../../components/partials/SiteFooter';
 
 export const AdminDashboardWrapper = () => {
   const navigate = useNavigate();
-  const [authorized, setAuthorized] = useState(false);
+  const [sessionUser, setSessionUser] = useState(null);
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     const checkAuth = async () => {
+      setError(false);
+
       try {
         const response = await apiClient.get('/api/v1/auth/session');
 
@@ -22,13 +27,21 @@ export const AdminDashboardWrapper = () => {
         }
 
         if (response.data?.user?.role === 'superadmin') {
-          setAuthorized(true);
+          setSessionUser(response.data.user);
         } else {
           navigate('/dashboard', { replace: true });
         }
-      } catch {
-        if (!cancelled) {
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+
+        //* Only a rejected session sends the user to login; a network/server
+        //* error keeps them here with a retry
+        if (err?.response?.status === 401) {
           navigate('/auth/login', { replace: true });
+        } else {
+          setError(true);
         }
       }
     };
@@ -38,9 +51,13 @@ export const AdminDashboardWrapper = () => {
     return () => {
       cancelled = true;
     };
-  }, [navigate]);
+  }, [navigate, attempt]);
 
-  if (!authorized) {
+  if (error) {
+    return <SessionCheckError onRetry={() => setAttempt((n) => n + 1)} />;
+  }
+
+  if (!sessionUser) {
     return <PageLoader />;
   }
 
@@ -48,7 +65,8 @@ export const AdminDashboardWrapper = () => {
     <div>
       <AdminNavBar />
       <Container size="xl" px="md" py="lg">
-        <Outlet />
+        {/* Child pages read the signed-in admin via useOutletContext() */}
+        <Outlet context={{ sessionUser }} />
       </Container>
       <SiteFooter />
     </div>

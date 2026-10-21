@@ -4,13 +4,61 @@ on:
   push:
     branches: [ "latest", "next" ]
 
+# A newer push to the same branch supersedes an in-flight run - there is no
+# point finishing (and pushing) an image for a commit that is no longer the tip
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
 # Least privilege - the jobs only need to read the repository
 permissions:
   contents: read
 
 jobs:
+  test:
+    name: Test, lint and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26'
+          cache: npm
+          # Separate lockfiles per package - both are cached
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Backend - install
+        working-directory: backend
+        run: npm ci
+
+      - name: Backend - test
+        working-directory: backend
+        run: npm test
+
+      - name: Backend - lint
+        working-directory: backend
+        run: npx eslint .
+
+      - name: Frontend - install
+        working-directory: frontend
+        run: npm ci
+
+      - name: Frontend - lint
+        working-directory: frontend
+        run: npx eslint .
+
+      - name: Frontend - build
+        working-directory: frontend
+        run: npm run build
+
   backend:
     name: Backend image
+    needs: test
     runs-on: ubuntu-latest
     # Secrets/vars may be defined per GitHub environment (`latest` / `next`)
     # or at repository level - environment values take precedence
@@ -37,9 +85,11 @@ jobs:
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/expressjs-template
+          # The sha tag pins a deploy to an exact commit (rollbacks, audits)
           tags: |
             type=raw,value=${{ github.ref_name }}
             type=raw,value=${{ github.ref_name }}-${{ steps.date.outputs.date }}
+            type=sha,prefix=${{ github.ref_name }}-
 
       - name: Build and push
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
@@ -51,6 +101,7 @@ jobs:
 
   frontend:
     name: Frontend image
+    needs: test
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name }}
     steps:
@@ -78,6 +129,7 @@ jobs:
           tags: |
             type=raw,value=${{ github.ref_name }}
             type=raw,value=${{ github.ref_name }}-${{ steps.date.outputs.date }}
+            type=sha,prefix=${{ github.ref_name }}-
 
       - name: Build and push
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2

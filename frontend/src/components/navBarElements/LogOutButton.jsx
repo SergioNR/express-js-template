@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../config/API/axiosConfig.mjs';
 import { usePostHog } from 'posthog-js/react';
+import { UnstyledButton } from '@mantine/core';
 import { IconLogout } from '@tabler/icons-react';
 import classes from '../partials/NavbarSimple.module.css';
 import { notifyError } from '../../utils/notifications.js';
@@ -31,10 +32,10 @@ const LogOutButton = () => {
   };
 
   return (
-    <a className={classes.link} onClick={handleLogout}>
+    <UnstyledButton className={classes.link} onClick={handleLogout}>
       <IconLogout className={classes.linkIcon} stroke={1.5} />
       <span>{t('nav.logout')}</span>
-    </a>
+    </UnstyledButton>
   );
 };
 

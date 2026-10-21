@@ -1,5 +1,7 @@
 .DS_Store
 .env
+.env.*
+!.env.example
 node_modules/
 dist/
 .kilo/plans/

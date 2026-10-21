@@ -71,15 +71,16 @@ createRoot(document.getElementById('root')).render(
                 <Route path='companies/:companyId' element={<AdminCompanyDetail />} />
               </Route>
 
-              <Route path='/user' element={<UserWrapper />} >
-                <Route index element={<UserDashboard />} />
-                <Route path='profile' element={<CustomerProfile />} />
-                <Route path="billing" element={<UserBilling />} />
-                <Route path='team' element={<Team />} />
-              </Route>
-
-              <Route path="/dashboard" element={<UserWrapper />}>
-                <Route index element={<UserDashboard />} />
+              {/* One pathless layout so the shell (session check, subscription
+                  context) stays mounted when moving between /dashboard and /user/* */}
+              <Route element={<UserWrapper />}>
+                <Route path="/dashboard" element={<UserDashboard />} />
+                <Route path='/user'>
+                  <Route index element={<UserDashboard />} />
+                  <Route path='profile' element={<CustomerProfile />} />
+                  <Route path="billing" element={<UserBilling />} />
+                  <Route path='team' element={<Team />} />
+                </Route>
               </Route>
 
               <Route path="/auth" element={<AuthWrapper />}>

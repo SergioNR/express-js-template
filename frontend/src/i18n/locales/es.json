@@ -223,7 +223,20 @@
     },
     "pricing": {
       "title": "Planes y precios",
-      "subtitle": "Un único plan simple para empezar hoy mismo. Sin complicaciones, cancela cuando quieras."
+      "subtitle": "Un único plan simple para empezar hoy mismo. Sin complicaciones, cancela cuando quieras.",
+      "plans": {
+        "pro": {
+          "name": "Pro",
+          "subtitle": "Todo lo que necesitas para empezar a trabajar con nuestra plataforma.",
+          "features": [
+            "Acceso completo a la plataforma",
+            "Colaboración ilimitada con tu equipo",
+            "Integraciones con herramientas de terceros",
+            "Soporte prioritario por correo electrónico",
+            "RGPD - Alojado en la UE"
+          ]
+        }
+      }
     },
     "terms": {
       "title": "Términos y Condiciones de Uso",

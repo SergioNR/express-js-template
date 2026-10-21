@@ -11,18 +11,23 @@ export const SubscriptionProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   //* `silent` re-fetches in the background (post-checkout polling) without
-  //* flipping the page back to its loader
+  //* flipping the page back to its loader. A failed silent refresh keeps the
+  //* last good data and never touches `error`
   const fetchSubscription = useCallback(async ({ silent = false } = {}) => {
     if (!silent) {
       setLoading(true);
+      setError(null);
     }
-    setError(null);
 
     try {
       const response = await apiClient.get('/api/v1/billing');
 
       setSubscription(response.data?.subscriptionData ?? null);
     } catch (err) {
+      if (silent) {
+        return;
+      }
+
       const status = err?.response?.status;
       const code = err?.response?.data?.code;
 

@@ -89,6 +89,23 @@ const UserBilling = () => {
     return () => clearTimeout(timer);
   }, [paidPollsLeft, hasPaidSubscription, refresh]);
 
+  //* Polling ran out and the webhook still hasn't marked the subscription as
+  //* paid - tell the user it's still being processed
+  const pollingStartedRef = useRef(false);
+
+  useEffect(() => {
+    if (paidPollsLeft > 0) {
+      pollingStartedRef.current = true;
+      return;
+    }
+
+    if (pollingStartedRef.current && !hasPaidSubscription) {
+      notifyInfo(t('billing.checkout.processing'));
+    }
+
+    pollingStartedRef.current = false;
+  }, [paidPollsLeft, hasPaidSubscription, t]);
+
   useEffect(() => {
     const controller = new AbortController();
 
@@ -232,9 +249,7 @@ const UserBilling = () => {
                 </Text>
                 <Text size="sm" c="dimmed">{t('billing.monthly.vatIncluded')}</Text>
               </Group>
-              {/* hidden placeholder to keep cards identical in height distribution */}
-              <Text c="teal" size="sm" mt={4} style={{ visibility: 'hidden' }}>{t('billing.monthly.saveHint')}</Text>
-              <Text c="dimmed" mt="xs">{t('billing.monthly.description')}</Text>
+              <Text c="dimmed" mt="md">{t('billing.monthly.description')}</Text>
               {/* Disabled buttons swallow pointer events - the span wrapper keeps the tooltip hoverable */}
               <Tooltip
                 label={t('billing.locked.manage')}

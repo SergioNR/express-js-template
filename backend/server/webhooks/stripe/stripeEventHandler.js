@@ -1,8 +1,7 @@
 import { logError, logInfo, logWarn } from '../../config/loggerFunctions.js';
 import {
   getCompanyIdByStripeCustomerIdInDb,
-  getSubscriptionDataInDb,
-  upsertSubscriptionInDb,
+  syncSubscriptionWithCompanyLockInDb,
 } from '../../models/subscriptionModel.js';
 import { stripeInstance } from '../../config/stripe.js';
 import { retrieveStripeSubscription } from '../../integrations/stripe/subscription.js';
@@ -15,6 +14,10 @@ const ACCESS_GRANTING_STATUSES = ['active', 'trialing', 'past_due'];
 const ENDED_STATUSES = ['canceled', 'unpaid', 'incomplete_expired', 'paused'];
 
 const getStripeObjectId = (value) => (typeof value === 'string' ? value : value?.id ?? null);
+
+//* Stripe ids are internal - alerts only carry enough of them to find the
+//* objects in the dashboard, never the full id
+const redactStripeId = (stripeId) => (stripeId ? `${stripeId.slice(0, 4)}...${stripeId.slice(-4)}` : 'none');
 
 //* Since Stripe API 2025-03-31 the billing period lives on each subscription
 //* item instead of the subscription itself. The latest item period end wins;
@@ -39,38 +42,22 @@ const getSubscriptionExpiresAt = (subscription) => {
   return getSubscriptionPeriodEnd(subscription);
 };
 
-const isStoredSubscriptionReplaceable = (storedSubscription) => {
-  if (!storedSubscription) {
-    return true;
-  }
+const isStoredSubscriptionActive = (storedSubscription) => Boolean(
+  storedSubscription?.id?.startsWith('sub_')
+  && storedSubscription.expires_at
+  && new Date(storedSubscription.expires_at) > new Date(),
+);
 
-  //* Trial rows carry a random uuid - any real Stripe subscription replaces them
-  if (!storedSubscription.id?.startsWith('sub_')) {
-    return true;
-  }
+//* Trial rows (random uuid) and ended Stripe subscriptions can be replaced by
+//* a new subscription - an active Stripe subscription cannot
+const isStoredSubscriptionReplaceable = (storedSubscription) => !isStoredSubscriptionActive(storedSubscription);
 
-  //* An ended Stripe subscription can be replaced by a resubscription
-  const { expires_at: expiresAt } = storedSubscription;
-
-  return !expiresAt || new Date(expiresAt) <= new Date();
-};
-
-//* Always derives the state from a fresh Stripe read instead of the event
-//* payload, so out-of-order or retried deliveries converge on the current
-//* state. `knownCompanyId` comes from the checkout session; for the other
-//* events the company is resolved from the Stripe customer id
-const syncSubscriptionFromStripe = async (subscriptionId, eventType, knownCompanyId = null) => {
+//* Decides, with the company row locked and the stored row in hand, what to
+//* write for the subscription. Returns the write for the model or null to skip
+const resolveSubscriptionWrite = async (subscriptionId, storedSubscription, eventType, companyId) => {
+  //* Fetched inside the lock so the latest Stripe state always wins - two
+  //* overlapping deliveries both converge on it regardless of event order
   const subscription = await retrieveStripeSubscription(subscriptionId);
-
-  const companyId = knownCompanyId
-    ?? await getCompanyIdByStripeCustomerIdInDb(getStripeObjectId(subscription.customer));
-
-  if (!companyId) {
-    logWarn(`Stripe subscription ${subscription.id} has no matching company - skipping`, new Error('Company not found'), eventType);
-    return;
-  }
-
-  const storedSubscription = await getSubscriptionDataInDb(companyId);
   const isSameSubscription = storedSubscription?.id === subscription.id;
 
   if (!isSameSubscription) {
@@ -80,25 +67,69 @@ const syncSubscriptionFromStripe = async (subscriptionId, eventType, knownCompan
       && isStoredSubscriptionReplaceable(storedSubscription);
 
     if (!canReplace) {
-      logInfo(`Ignoring ${eventType} for subscription ${subscription.id} (status ${subscription.status}) - company ${companyId} tracks a different subscription`);
-      return;
+      //* Two subscriptions granting access at once means the customer is
+      //* being billed twice - that needs a human, so it is alerted, not ignored
+      if (ACCESS_GRANTING_STATUSES.includes(subscription.status)) {
+        logError(
+          `Company ${companyId} has an active subscription ${redactStripeId(storedSubscription.id)} but Stripe reports another access-granting subscription ${redactStripeId(subscription.id)} (${eventType}, status ${subscription.status}) - possible double billing`,
+          new Error('Duplicate active Stripe subscription'),
+          eventType,
+        );
+        return null;
+      }
+
+      logInfo(`Ignoring ${eventType} for subscription ${redactStripeId(subscription.id)} (status ${subscription.status}) - company ${companyId} tracks a different subscription`);
+      return null;
     }
   }
 
   //* Incomplete subscriptions have not been paid yet - wait for the payment events
   if (!ACCESS_GRANTING_STATUSES.includes(subscription.status)
     && !ENDED_STATUSES.includes(subscription.status)) {
-    logInfo(`Ignoring ${eventType} for subscription ${subscription.id} with status ${subscription.status}`);
+    logInfo(`Ignoring ${eventType} for subscription ${redactStripeId(subscription.id)} with status ${subscription.status}`);
+    return null;
+  }
+
+  return {
+    subscriptionId: subscription.id,
+    expiresAt: getSubscriptionExpiresAt(subscription),
+  };
+};
+
+//* Resolves the company before taking its lock. The checkout session carries
+//* the company id directly; the other events carry the Stripe customer id.
+//* Falls back to a Stripe read for payloads that carry neither
+const resolveCompanyId = async (subscriptionId, knownCompanyId, stripeCustomerId) => {
+  if (knownCompanyId) {
+    return knownCompanyId;
+  }
+
+  const customerId = stripeCustomerId
+    ?? getStripeObjectId((await retrieveStripeSubscription(subscriptionId)).customer);
+
+  return getCompanyIdByStripeCustomerIdInDb(customerId);
+};
+
+//* Always derives the state from a fresh Stripe read (taken under the company
+//* lock) instead of the event payload, so out-of-order or retried deliveries
+//* converge on the current state
+const syncSubscriptionFromStripe = async (subscriptionId, eventType, {
+  knownCompanyId = null,
+  stripeCustomerId = null,
+} = {}) => {
+  const companyId = await resolveCompanyId(subscriptionId, knownCompanyId, stripeCustomerId);
+
+  if (!companyId) {
+    logWarn(`Stripe subscription ${redactStripeId(subscriptionId)} has no matching company - skipping`, new Error('Company not found'), eventType);
     return;
   }
 
   //* Awaited so a DB failure surfaces as a 500 and Stripe retries the event
   //* instead of treating it as processed
-  await upsertSubscriptionInDb({
+  await syncSubscriptionWithCompanyLockInDb(
     companyId,
-    subscriptionId: subscription.id,
-    expiresAt: getSubscriptionExpiresAt(subscription),
-  });
+    (storedSubscription) => resolveSubscriptionWrite(subscriptionId, storedSubscription, eventType, companyId),
+  );
 };
 
 const handleCheckoutSession = async (checkoutSession, eventType) => {
@@ -109,7 +140,10 @@ const handleCheckoutSession = async (checkoutSession, eventType) => {
     return;
   }
 
-  await syncSubscriptionFromStripe(subscriptionId, eventType, checkoutSession.client_reference_id);
+  await syncSubscriptionFromStripe(subscriptionId, eventType, {
+    knownCompanyId: checkoutSession.client_reference_id,
+    stripeCustomerId: getStripeObjectId(checkoutSession.customer),
+  });
 };
 
 const getInvoiceSubscriptionId = (invoice) => getStripeObjectId(
@@ -130,7 +164,9 @@ export const stripeEventHandler = async (req, res) => {
 
     event = stripeInstance.webhooks.constructEvent(req.body, sig, endpointSecret);
   } catch (err) {
-    logError('error in stripe webhook signature verification', err);
+    //* Anyone can POST garbage to a public webhook URL - a bad signature is
+    //* noise to log, not an incident to page on
+    logWarn('Stripe webhook signature verification failed', err, { ip: req.ip });
     //* Generic message - verification details are not echoed back to the caller
     return res.status(400).json({
       message: 'Invalid webhook signature or payload',
@@ -158,7 +194,9 @@ export const stripeEventHandler = async (req, res) => {
         const subscriptionId = getInvoiceSubscriptionId(eventObject);
 
         if (subscriptionId) {
-          await syncSubscriptionFromStripe(subscriptionId, event.type);
+          await syncSubscriptionFromStripe(subscriptionId, event.type, {
+            stripeCustomerId: getStripeObjectId(eventObject.customer),
+          });
         }
         break;
       }
@@ -168,7 +206,9 @@ export const stripeEventHandler = async (req, res) => {
         //* Deletion keeps the row and moves expires_at to the end date, so the
         //* company can still resubscribe and reach the customer portal
         // TODO -- send an email to the user about the subscription end
-        await syncSubscriptionFromStripe(eventObject.id, event.type);
+        await syncSubscriptionFromStripe(eventObject.id, event.type, {
+          stripeCustomerId: getStripeObjectId(eventObject.customer),
+        });
         break;
       }
 

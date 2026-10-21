@@ -1,6 +1,6 @@
 import { deleteUserWithCompanyDataInDb } from '../models/userModel.js';
 import { deleteS3Objects } from '../integrations/s3/deleteS3Objects.js';
-import { cancelCompanySubscriptionInStripe } from '../models/subscriptionModel.js';
+import { cancelCompanySubscriptionInStripe } from '../integrations/stripe/subscription.js';
 import { logError } from '../config/loggerFunctions.js';
 
 //* Third-party side effects of a committed deletion. They run strictly after

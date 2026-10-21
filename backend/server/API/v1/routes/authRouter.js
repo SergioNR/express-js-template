@@ -14,6 +14,7 @@ import {
 } from '../../../controllers/authController.js';
 import { sanitizerResult } from '../../../middlewares/sanitizerResult.js';
 import { authLimiter } from '../../../middlewares/authRateLimiter.js';
+import { passwordResetLimiter } from '../../../middlewares/passwordResetRateLimiter.js';
 import { createUserValidationSchema } from '../../../utils/validators/createUserSchema.js';
 import { userLoginValidationSchema } from '../../../utils/validators/userLoginValidationSchema.js';
 
@@ -176,13 +177,13 @@ authRouter.get('/password-reset', checkSchema(passwordResetTokenQuerySchema), sa
  *             schema:
  *               $ref: '#/components/schemas/ValidationError'
  *       429:
- *         description: Too many authentication attempts
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorMessage'
- */
-authRouter.post('/password-reset', authLimiter, checkSchema(requestNewPasswordSchema), sanitizerResult, requestPasswordResetToken);
+   *         description: Too many password reset requests
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/ErrorMessage'
+   */
+authRouter.post('/password-reset', passwordResetLimiter, checkSchema(requestNewPasswordSchema), sanitizerResult, requestPasswordResetToken);
 
 /**
  * @openapi

@@ -229,9 +229,11 @@ export const getAllUsersInDb = async (filters = {}, pagination = {}) => {
         },
       },
     },
-    orderBy: {
-      created_at: 'desc',
-    },
+    //* id tiebreaker keeps the cursor order total when created_at collides
+    orderBy: [
+      { created_at: 'desc' },
+      { id: 'desc' },
+    ],
     take: pagination.limit,
     skip: pagination.cursor ? 1 : undefined,
     cursor: pagination.cursor ? { id: pagination.cursor } : undefined,

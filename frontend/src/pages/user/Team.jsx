@@ -63,6 +63,7 @@ export function Team() {
 
   const [inviteModalOpened, setInviteModalOpened] = useState(false);
   const [inviteRole, setInviteRole] = useState(null);
+  const [inviteRoleError, setInviteRoleError] = useState(false);
   const [inviting, setInviting] = useState(false);
 
   const [removeTarget, setRemoveTarget] = useState(null);
@@ -101,6 +102,12 @@ export function Team() {
 
   const submitInvite = async (event) => {
     event.preventDefault();
+
+    //* Mantine's Select `required` is not enforced by the browser
+    if (!inviteRole) {
+      setInviteRoleError(true);
+      return;
+    }
 
     setInviting(true);
 
@@ -409,7 +416,10 @@ export function Team() {
 
       <Modal
         opened={inviteModalOpened}
-        onClose={() => setInviteModalOpened(false)}
+        onClose={() => {
+          setInviteModalOpened(false);
+          setInviteRoleError(false);
+        }}
         title={t('team.inviteModal.title')}
       >
         <form onSubmit={submitInvite}>
@@ -426,7 +436,11 @@ export function Team() {
               placeholder={t('team.inviteModal.rolePlaceholder')}
               data={assignableRoleOptions}
               value={inviteRole}
-              onChange={setInviteRole}
+              onChange={(roleName) => {
+                setInviteRole(roleName);
+                setInviteRoleError(false);
+              }}
+              error={inviteRoleError ? t('team.inviteModal.roleRequired') : null}
               required
             />
             <Group justify="flex-end">

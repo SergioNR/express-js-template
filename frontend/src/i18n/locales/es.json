@@ -606,7 +606,8 @@
       "role": "Rol",
       "rolePlaceholder": "Selecciona un rol",
       "submit": "Enviar invitación",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "roleRequired": "Selecciona un rol para la invitación"
     },
     "locked": {
       "invite": "No tienes permiso para invitar miembros al equipo",

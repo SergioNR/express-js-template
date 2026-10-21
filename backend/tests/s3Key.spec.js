@@ -7,7 +7,7 @@ describe('sanitizeFilename', () => {
 
   it('replaces unsafe characters with underscores', () => {
     expect(sanitizeFilename('my report (final).pdf')).toBe('my_report_(final).pdf');
-    expect(sanitizeFilename('café norte.csv')).toBe('caf__norte.csv');
+    expect(sanitizeFilename('caf\u00e9 norte.csv')).toBe('cafe_norte.csv'); //* NFKD turns é into e + combining mark; the mark is dropped
   });
 
   it('strips path separators so a client cannot shape the key', () => {

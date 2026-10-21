@@ -131,6 +131,7 @@ const RestorePasswordPage = () => {
                 placeholder={t('auth.restore.newPasswordPlaceholder')}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
                 required
                 mt="md"
               />
@@ -140,6 +141,7 @@ const RestorePasswordPage = () => {
                 placeholder={t('auth.restore.confirmNewPasswordPlaceholder')}
                 value={confirmNewPassword}
                 onChange={(e) => setConfirmNewPassword(e.target.value)}
+                autoComplete="new-password"
                 required
                 mt="md"
               />

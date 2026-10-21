@@ -21,6 +21,19 @@ import PageLoader from '../../components/PageLoader.jsx';
 import Seo from '../../components/Seo.jsx';
 import { notifyError, notifySuccess } from '../../utils/notifications.js';
 
+//* Maps a 400 from the invite check/accept endpoints to an invalid-state key
+const invalidReasonFor400 = (code) => {
+  if (code === 'INVITE_EXPIRED') {
+    return 'expired';
+  }
+
+  if (code === 'INVITER_INVALID') {
+    return 'inviterInvalid';
+  }
+
+  return 'notFound';
+};
+
 export function AcceptInvitePage() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
@@ -53,7 +66,11 @@ export function AcceptInvitePage() {
         }
       } catch (err) {
         if (!cancelled) {
-          setInvalidReason(err?.response?.status === 400 ? 'expired' : 'notFound');
+          setInvalidReason(
+            err?.response?.status === 400
+              ? invalidReasonFor400(err?.response?.data?.code)
+              : 'notFound'
+          );
         }
       } finally {
         if (!cancelled) {
@@ -84,11 +101,19 @@ export function AcceptInvitePage() {
       navigate('/auth/login');
     } catch (err) {
       const status = err?.response?.status;
+      const code = err?.response?.data?.code;
 
       if (status === 409) {
         notifyError(t('auth.acceptInvite.errors.registered'));
       } else if (status === 400) {
-        notifyError(t('auth.acceptInvite.errors.expired'));
+        //* The invite went stale while the form was open - swap to the
+        //* matching invalid state instead of a toast
+        setInviteData(null);
+        setInvalidReason(invalidReasonFor400(code));
+      } else if (status === 404) {
+        //* Consumed or revoked in the meantime
+        setInviteData(null);
+        setInvalidReason('notFound');
       } else if (status === 422) {
         notifyError(t('auth.acceptInvite.errors.invalidPassword'));
       } else {
@@ -108,7 +133,8 @@ export function AcceptInvitePage() {
 
       {!loading && invalidReason && (
         <Paper shadow="xs" p={20} mt="xl" radius="md">
-          {/* invalidReason: 'expired' (400) or 'notFound' (missing/unknown token) */}
+          {/* invalidReason: 'expired' / 'inviterInvalid' (400 by code) or
+              'notFound' (missing/unknown/consumed token) */}
           <Alert
             icon={<IconAlertCircle size="1rem" />}
             title={t(`auth.acceptInvite.invalid.${invalidReason}.title`)}
@@ -166,6 +192,7 @@ export function AcceptInvitePage() {
               name="password"
               label={t('auth.acceptInvite.password')}
               placeholder={t('auth.acceptInvite.passwordPlaceholder')}
+              autoComplete="new-password"
               required
               mt="md"
             />

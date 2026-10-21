@@ -99,6 +99,8 @@ export function LoginForm() {
         <form onSubmit={handleLogin}>
           <TextInput
             name="username"
+            type="email"
+            autoComplete="username"
             label={t('auth.fields.email')}
             placeholder={t('auth.fields.emailPlaceholder')}
             required
@@ -107,6 +109,7 @@ export function LoginForm() {
             name="password"
             label={t('auth.fields.password')}
             placeholder={t('auth.fields.passwordPlaceholder')}
+            autoComplete="current-password"
             required
             mt="md"
           />

@@ -107,6 +107,7 @@ const CustomerRegistrationForm = () => {
               name="password"
               label={t('auth.fields.password')}
               placeholder={t('auth.fields.passwordPlaceholder')}
+              autoComplete="new-password"
               required
               mt="md"
             />

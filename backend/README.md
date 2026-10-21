@@ -159,7 +159,7 @@ The image runs `tini` as PID 1 and `node` directly (so `SIGTERM` triggers the gr
 
 ### Billing safeguards
 
-A checkout is refused with `409 SUBSCRIPTION_ACTIVE` when the stored row is an unexpired `sub_` subscription **or** Stripe reports an active subscription for the customer; any still-open Checkout Session is expired before a new one is created, and session creation is idempotent per company + plan + price within a 10 minute window. Webhook writes run under the company row lock and read the subscription fresh from Stripe, so out-of-order deliveries converge on the latest state; a second access-granting subscription for a company that already tracks an active one raises a `logError` alert instead of being silently ignored.
+A checkout is refused with `409 SUBSCRIPTION_ACTIVE` when the stored row is an unexpired `sub_` subscription **or** Stripe reports an active, trialing or past-due subscription for the customer. An open Checkout Session for the same plan, billing cycle and price is reused (its URL is returned again); every other open session is expired before a new one is created, so at most one checkout can complete. A concurrent request Stripe is still processing answers `409 CHECKOUT_IN_PROGRESS`. Webhook writes run under the company row lock and read the subscription fresh from Stripe, so out-of-order deliveries converge on the latest state; a second access-granting subscription for a company that already tracks an active one raises a `logError` alert instead of being silently ignored.
 
 ## Stripe webhook testing
 

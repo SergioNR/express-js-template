@@ -1,30 +1,51 @@
+import { randomUUID } from 'node:crypto';
 import { stripeInstance } from '../../config/stripe.js';
 import { getStripePriceId } from '../../config/planPrices.js';
 
-//* Idempotency keys are bucketed so a double-submitted checkout request
-//* replays the same Stripe call (same session) instead of opening a second
-//* one, while a genuine retry after the bucket moved on gets a fresh session
-export const IDEMPOTENCY_WINDOW_MS = 10 * 60 * 1000;
+//* An open session is only worth reusing while the customer still has time to
+//* finish it - one about to expire is replaced by a fresh one instead
+const MIN_REMAINING_SESSION_LIFETIME_MS = 10 * 60 * 1000;
 
-const getIdempotencyKey = (companyId, planName, planBillingCycle, priceId) => {
-  const windowBucket = Math.floor(Date.now() / IDEMPOTENCY_WINDOW_MS);
-
-  return `checkout-${companyId}-${planName}-${planBillingCycle}-${priceId}-${windowBucket}`;
-};
+const isReusableSession = (session, planName, planBillingCycle, priceId) => (
+  session.metadata?.planName === planName
+  && session.metadata?.planBillingCycle === planBillingCycle
+  && session.metadata?.priceId === priceId
+  && Boolean(session.url)
+  && session.expires_at * 1000 > Date.now() + MIN_REMAINING_SESSION_LIFETIME_MS
+);
 
 //* An open session can still be completed by the customer after a newer one
-//* was created, which would end in two subscriptions - expiring the older
-//* ones keeps at most one completable checkout per customer
-export const expireOpenStripeCheckoutSessions = async (stripeCustomerId) => {
+//* was created, which would end in two subscriptions - so at most one open
+//* session per customer survives this call. A session for the same plan,
+//* cycle and price is reused (a double-submit or a second tab lands on the
+//* same checkout); every other open session is expired. Resolves to the
+//* reusable session, or null when a new one has to be created
+export const reuseOrExpireOpenStripeCheckoutSessions = async (stripeCustomerId, planName, planBillingCycle) => {
+  const priceId = getStripePriceId(planName, planBillingCycle);
+
   const openSessions = await stripeInstance.checkout.sessions.list({
     customer: stripeCustomerId,
     status: 'open',
+    limit: 100,
   });
 
-  await Promise.all(openSessions.data.map((session) => stripeInstance.checkout.sessions.expire(session.id)));
+  //* Stripe lists newest first, so the newest matching session is reused
+  const reusableSession = openSessions.data
+    .find((session) => isReusableSession(session, planName, planBillingCycle, priceId)) ?? null;
 
-  return openSessions.data.length;
+  const staleSessions = openSessions.data.filter((session) => session !== reusableSession);
+
+  await Promise.all(staleSessions.map((session) => stripeInstance.checkout.sessions.expire(session.id)));
+
+  return reusableSession;
 };
+
+//* Stripe answers a concurrent request on the same idempotency key, or one
+//* whose parameters differ from the key's first use, with an idempotency
+//* error / 409 - a conflict for the client to retry, not a server fault
+export const isStripeCheckoutConflictError = (error) => (
+  error?.type === 'StripeIdempotencyError' || error?.statusCode === 409
+);
 
 export const createStripeCheckoutSession = async (
   companyId,
@@ -60,6 +81,9 @@ export const createStripeCheckoutSession = async (
     metadata: {
       planName: planName,
       planBillingCycle: planBillingCycle,
+      //* Lets a later request recognize a reusable open session even after
+      //* the plan's price id was reconfigured
+      priceId: priceId,
       userId: userId,
       companyId: companyId,
     },
@@ -70,7 +94,11 @@ export const createStripeCheckoutSession = async (
       enabled: true,
     },
   }, {
-    idempotencyKey: getIdempotencyKey(companyId, planName, planBillingCycle, priceId),
+    //* Per request: only a network retry of this very call replays it. Reuse
+    //* across requests is decided by reuseOrExpireOpenStripeCheckoutSessions,
+    //* never by a shared key - a replayed key would hand back a session that
+    //* was expired in the meantime
+    idempotencyKey: randomUUID(),
   });
 
   return checkoutSession;

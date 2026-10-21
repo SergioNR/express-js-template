@@ -4,11 +4,8 @@ import {
   syncSubscriptionWithCompanyLockInDb,
 } from '../../models/subscriptionModel.js';
 import { stripeInstance } from '../../config/stripe.js';
+import { ACCESS_GRANTING_STATUSES } from '../../config/stripeSubscriptionStatuses.js';
 import { retrieveStripeSubscription } from '../../integrations/stripe/subscription.js';
-
-//* Statuses that grant access until the end of the current billing period
-//* (past_due keeps access while Stripe retries the payment)
-const ACCESS_GRANTING_STATUSES = ['active', 'trialing', 'past_due'];
 
 //* Statuses after which the subscription no longer grants access
 const ENDED_STATUSES = ['canceled', 'unpaid', 'incomplete_expired', 'paused'];

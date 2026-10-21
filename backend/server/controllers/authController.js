@@ -227,36 +227,45 @@ export const loginLocal = (req, res, next) => passport.authenticate('local', (er
   });
 })(req, res, next);
 
-export const registerUser = async (req, res) => {
-  const userData = {
-    username: req.body.username,
-    password: await bcrypt.hash(req.body.password, BCRYPT_SALT_ROUNDS),
-  };
-
-  const isExistingUser = await getUserByEmail(userData.username);
-
-  if (isExistingUser !== null) {
-    //* Fire-and-forget so email delivery cannot change the response
-    //* shape or timing of the duplicate-registration path
-    sendExistingAccountNoticeToUser(userData.username);
-
-    //* Responding with the same shape & status as a successful creation
-    //* so the endpoint cannot be used to enumerate registered emails
-    return res.status(201).json({});
-  }
-
+//* Detached from the request so the existing-account and new-account paths
+//* are indistinguishable in response body, status AND timing (the bcrypt
+//* hash and the multi-row create would otherwise only run for new emails).
+//* Swallows its own errors - they are logged, never surfaced to the client
+const registerUserInBackground = async (email, password) => {
   try {
-    await createUserInDB(userData);
-  } catch (error) {
-    //* Concurrent registrations can beat the existence check - the unique
-    //* constraint resolves the race, respond with the same enumeration-safe 201
-    if (error.code === 'P2002') {
-      return res.status(201).json({});
+    const existingUser = await getUserByEmail(email);
+
+    if (existingUser) {
+      //* The function swallows its own errors - recipient is the stored address
+      await sendExistingAccountNoticeToUser(existingUser.email);
+
+      return;
     }
 
-    throw error;
-  }
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
+    await createUserInDB({
+      username: email,
+      password: hashedPassword,
+    });
+  } catch (error) {
+    //* Concurrent registrations can beat the existence check - the unique
+    //* constraint resolves the race, nothing else to do
+    if (error.code === 'P2002') {
+      return;
+    }
+
+    logError('Background user registration failed', error);
+  }
+};
+
+export const registerUser = async (req, res) => {
+  const { username, password } = req.body;
+
+  registerUserInBackground(username, password); // Fire-and-forget
+
+  //* Same shape & status for new and already-registered emails so the
+  //* endpoint cannot be used to enumerate registered emails
   return res.status(201).json({});
 };
 

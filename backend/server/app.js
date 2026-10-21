@@ -15,12 +15,15 @@ import { checkJsonContentType } from './middlewares/jsonContentTypeChecker.js';
 import { startCronJobs } from './cron/jobsContainer.js';
 import { globalErrorHandler } from './middlewares/globalErrorHandler.js';
 import { webhookRouter } from './webhooks/webhooksRouter.js';
+import { trustProxySetting } from './config/trustProxy.js';
 
 const app = express();
 const server = createServer(app);
 
-//* Trust the reverse proxy so req.ip / req.protocol reflect the client
-app.set('trust proxy', 1);
+//* Trust exactly the reverse proxy hops declared in TRUST_PROXY so req.ip /
+//* req.protocol reflect the client and rate limits cannot be bypassed by
+//* forging X-Forwarded-For
+app.set('trust proxy', trustProxySetting);
 
 //* Middleware for ExpressJS securization
 app.use(helmetMiddleware);

@@ -18,6 +18,7 @@ services:
   #   environment:
   #     NODE_ENV: ${NODE_ENV}
   #     DEPLOY_ENVIRONMENT: ${DEPLOY_ENVIRONMENT}
+  #     TRUST_PROXY: ${TRUST_PROXY}
   #     POSTHOG_API_KEY: ${POSTHOG_API_KEY}
   #     SESSION_SECRET: ${SESSION_SECRET}
   #     BREVO_API_KEY: ${BREVO_API_KEY}

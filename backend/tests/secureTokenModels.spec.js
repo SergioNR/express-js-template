@@ -149,7 +149,7 @@ describe('passwordResetTokensModel tokens', () => {
         deleteMany: jest.fn(),
       },
       user: { update: jest.fn() },
-      session: { deleteMany: jest.fn() },
+      session: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
     };
 
     beforeEach(() => {

@@ -8,7 +8,7 @@ import LogOutButton from '../navBarElements/LogOutButton';
 
 //* Shared AppShell for the private areas (user, admin): header with brand and
 //* burger, sidebar with the area's links and logout as the only exit
-export const AreaShell = ({ homeTo, title, links }) => {
+export const AreaShell = ({ homeTo, title, links, outletContext }) => {
   const { t } = useTranslation();
   const [opened, { toggle, close }] = useDisclosure();
 
@@ -69,7 +69,8 @@ export const AreaShell = ({ homeTo, title, links }) => {
       </AppShell.Navbar>
 
       <AppShell.Main>
-        <Outlet />
+        {/* Area pages read wrapper data (e.g. the signed-in admin) through useOutletContext() */}
+        <Outlet context={outletContext} />
       </AppShell.Main>
     </AppShell>
   );
@@ -84,6 +85,7 @@ AreaShell.propTypes = {
     icon: PropTypes.elementType.isRequired,
     end: PropTypes.bool,
   })).isRequired,
+  outletContext: PropTypes.object,
 };
 
 export default AreaShell;

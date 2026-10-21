@@ -1,4 +1,9 @@
-import { brevoClient, companyEmails } from './brevo.js';
+import {
+  brevoClient,
+  commonTemplateParams,
+  companyEmails,
+  templateIds,
+} from './brevo.js';
 import { logError } from '../../../config/loggerFunctions.js';
 
 export const sendResetPasswordTokenToUser = async (userEmail, passwordResetToken) => {
@@ -11,8 +16,11 @@ export const sendResetPasswordTokenToUser = async (userEmail, passwordResetToken
       to: [{
         email: userEmail,
       }],
-      templateId: 2, //* Direct link to the template --> https://my.brevo.com/camp/template/2/setup
+      templateId: templateIds.resetPassword, //* Brevo dashboard --> https://my.brevo.com/camp/template/<id>/setup
+      //* The clickable link to {{ params.appOrigin }}/auth/reset-password?token=...
+      //* is built inside the Brevo template body, not in code
       params: {
+        ...commonTemplateParams(),
         passwordResetToken: passwordResetToken,
       },
     });

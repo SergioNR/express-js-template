@@ -5,3 +5,5 @@
 node_modules/
 dist/
 .kilo/plans/
+# Claude Code worktrees/session files
+.claude/

@@ -36,9 +36,13 @@ const ForgotPasswordForm = () => {
       setRecoverPasswordResponse(response.data);
       setRecoverPasswordError(null);
     } catch (error) {
-      setRecoverPasswordError(true);
-      console.error('Error al recuperar la contraseña:', error);
+      console.error('Password reset request failed:', error);
       setRecoverPasswordResponse(null);
+      setRecoverPasswordError(
+        error.response?.status === 429
+          ? t('auth.errors.tooManyAttempts')
+          : t('auth.recover.error')
+      );
     }
   };
 
@@ -61,7 +65,7 @@ const ForgotPasswordForm = () => {
 
       {recoverPasswordError && (
         <Alert icon={<IconAlertCircle size={16} />} color="red" mt={20}>
-          {t('auth.recover.error')}
+          {recoverPasswordError}
         </Alert>
       )}
 

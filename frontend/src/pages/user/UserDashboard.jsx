@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { useTranslation, Trans } from 'react-i18next';
 import PropTypes from 'prop-types';
 import {
@@ -38,28 +38,9 @@ import apiClient from '../../config/API/axiosConfig.mjs';
 import { useSubscription } from '../../contexts/useSubscription.js';
 import NoActiveSubscriptionBanner from '../../components/partials/NoActiveSubscriptionBanner.jsx';
 import Seo from '../../components/Seo.jsx';
+import { formatDate, formatDateTime } from '../../utils/formatDate.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-const formatDate = (value) =>
-  value
-    ? new Date(value).toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      })
-    : '—';
-
-const formatDateTime = (value) =>
-  value
-    ? new Date(value).toLocaleString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : '—';
 
 const formatRelativeDays = (value) => {
   if (!value) return '—';
@@ -119,7 +100,13 @@ QuickAction.propTypes = {
 const UserDashboard = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { subscription, hasActiveSubscription, loading: subscriptionLoading } = useSubscription();
+  const {
+    subscription,
+    hasActiveSubscription,
+    hasPaidSubscription,
+    isTrial,
+    loading: subscriptionLoading,
+  } = useSubscription();
   const [user, setUser] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
   const [now, setNow] = useState(null);
@@ -195,9 +182,13 @@ const UserDashboard = () => {
         <StatCard label={t('user.dashboard.stats.subscription')} icon={<IconCreditCard size={20} stroke={1.5} />}>
           {loading ? (
             <Skeleton height={28} width="60%" />
-          ) : hasActiveSubscription ? (
+          ) : hasPaidSubscription ? (
             <Badge color="teal" variant="light" size="lg">
               {t('billing.statusActive')}
+            </Badge>
+          ) : isTrial ? (
+            <Badge color="yellow" variant="light" size="lg">
+              {t('billing.statusTrial')}
             </Badge>
           ) : (
             <Badge color="red" variant="light" size="lg">
@@ -250,9 +241,11 @@ const UserDashboard = () => {
         <Card withBorder radius="md" p="lg">
           <Title order={4}>{t('user.dashboard.plan.title')}</Title>
           <Text c="dimmed" size="sm" mt={4} mb="lg">
-            {hasActiveSubscription
+            {hasPaidSubscription
               ? t('user.dashboard.plan.activeDescription')
-              : t('user.dashboard.plan.inactiveDescription')}
+              : isTrial
+                ? t('user.dashboard.plan.trialDescription')
+                : t('user.dashboard.plan.inactiveDescription')}
           </Text>
 
           {loading ? (
@@ -316,7 +309,12 @@ const UserDashboard = () => {
               title={t('user.dashboard.quick.billing.title')}
               description={t('user.dashboard.quick.billing.description')}
               action={
-                <Anchor size="sm" onClick={() => navigate('/user/billing')}>
+                <Anchor
+                  component={Link}
+                  to="/user/billing"
+                  size="sm"
+                  aria-label={t('user.dashboard.quick.billing.title')}
+                >
                   <IconExternalLink size={16} />
                 </Anchor>
               }
@@ -326,26 +324,43 @@ const UserDashboard = () => {
               title={t('user.dashboard.quick.security.title')}
               description={t('user.dashboard.quick.security.description')}
               action={
-                <Anchor size="sm" onClick={() => navigate('/user/profile')}>
+                <Anchor
+                  component={Link}
+                  to="/user/profile"
+                  size="sm"
+                  aria-label={t('user.dashboard.quick.security.title')}
+                >
                   <IconExternalLink size={16} />
                 </Anchor>
               }
             />
+            {/* Auto-renewal only exists for a paid Stripe subscription; the
+                trial just runs out */}
             <QuickAction
               icon={<IconClockHour3 size={20} stroke={1.5} />}
               title={t('user.dashboard.quick.renewal.title')}
               description={
-                hasActiveSubscription
+                hasPaidSubscription
                   ? t('user.dashboard.quick.renewal.renewsOn', {
                       date: formatRelativeDays(subscription.expires_at),
                     })
-                  : t('user.dashboard.quick.renewal.unavailable')
+                  : isTrial
+                    ? t('user.dashboard.quick.renewal.trialEndsIn', {
+                        count: daysRemaining ?? 0,
+                      })
+                    : t('user.dashboard.quick.renewal.unavailable')
               }
               action={
-                <Badge size="sm" variant="light" color={hasActiveSubscription ? 'teal' : 'gray'}>
-                  {hasActiveSubscription
+                <Badge
+                  size="sm"
+                  variant="light"
+                  color={hasPaidSubscription ? 'teal' : isTrial ? 'yellow' : 'gray'}
+                >
+                  {hasPaidSubscription
                     ? t('user.dashboard.quick.renewal.enabled')
-                    : t('user.dashboard.quick.renewal.disabled')}
+                    : isTrial
+                      ? t('user.dashboard.quick.renewal.trial')
+                      : t('user.dashboard.quick.renewal.disabled')}
                 </Badge>
               }
             />
@@ -402,7 +417,7 @@ const UserDashboard = () => {
           <Trans
             i18nKey="user.dashboard.subscriptionAlert"
             t={t}
-            components={[<Anchor key="choose-plan" onClick={() => navigate('/user/billing')} />]}
+            components={[<Anchor key="choose-plan" component={Link} to="/user/billing" />]}
           />
         </Alert>
       )}

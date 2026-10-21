@@ -35,6 +35,10 @@ FROM nginxinc/nginx-unprivileged:1.30.6-alpine
 # arg, overridable at runtime with `-e NGINX_CSP_API_ORIGIN=...`
 ARG VITE_API_BASE_URL
 ENV NGINX_CSP_API_ORIGIN=${VITE_API_BASE_URL}
+# Extra connect-src origins (space-separated, e.g. the S3/MinIO origin that
+# presigned uploads go to). Must be defined - even empty - or envsubst leaves
+# the placeholder in the header.
+ENV NGINX_CSP_CONNECT_EXTRA=""
 
 # The image entrypoint renders /etc/nginx/templates/*.template with envsubst
 # into /etc/nginx/conf.d/ on startup

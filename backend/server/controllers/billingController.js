@@ -1,6 +1,11 @@
 import { createStripeCustomerPortalSession } from '../integrations/stripe/customerPortalSession.js';
 import { createCompanyIdInStripe } from '../integrations/stripe/customerId.js';
-import { createStripeCheckoutSession } from '../integrations/stripe/checkoutSession.js';
+import {
+  createStripeCheckoutSession,
+  isStripeCheckoutConflictError,
+  reuseOrExpireOpenStripeCheckoutSessions,
+} from '../integrations/stripe/checkoutSession.js';
+import { hasActiveStripeSubscription } from '../integrations/stripe/subscription.js';
 import {
   getCompanyStripeIdInDb,
   getSubscriptionDataInDb,
@@ -10,7 +15,7 @@ import {
 
 //* A company is actively subscribed only through a real Stripe subscription
 //* (`sub_` id) that has not expired yet - trial rows carry a random uuid
-const hasActiveStripeSubscription = (subscriptionData) => Boolean(
+const hasActiveStoredSubscription = (subscriptionData) => Boolean(
   subscriptionData?.id?.startsWith('sub_')
   && subscriptionData.expires_at
   && new Date(subscriptionData.expires_at) > new Date(),
@@ -23,6 +28,11 @@ const createAndStoreCompanyStripeId = async (email, companyId) => {
 
   return storeBillingCompanyIdInDb(companyId, companyBillingId.id);
 };
+
+const subscriptionActiveResponse = (res) => res.status(409).json({
+  message: 'Company already has an active subscription - manage it through the customer portal',
+  code: 'SUBSCRIPTION_ACTIVE',
+});
 
 export const createCompanyBillingId = async (req, res) => {
   const {
@@ -82,37 +92,64 @@ export const getBillingCheckoutSessionUrl = async (req, res) => {
 
   //* A second checkout would create a duplicate Stripe subscription - plan
   //* changes go through the customer portal instead
-  if (hasActiveStripeSubscription(subscriptionData)) {
-    return res.status(409).json({
-      message: 'Company already has an active subscription - manage it through the customer portal',
-      code: 'SUBSCRIPTION_ACTIVE',
-    });
+  if (hasActiveStoredSubscription(subscriptionData)) {
+    return subscriptionActiveResponse(res);
   }
 
-  //* Auto-create the Stripe customer on first checkout - removes the need for
-  //* a separate create-billing-id round trip on the client
-  const companyStripeId = await getCompanyStripeIdInDb(companyId)
-    ?? await createAndStoreCompanyStripeId(email, companyId);
+  const storedStripeId = await getCompanyStripeIdInDb(companyId);
 
-  const checkoutSession = await createStripeCheckoutSession(
-    companyId,
-    companyStripeId,
-    userId,
-    planName,
-    planBillingCycle,
-  );
+  try {
+    //* An existing customer may already be subscribed in Stripe while the
+    //* local row lags behind (webhook still in flight, or a checkout completed
+    //* in a second tab) - Stripe is asked directly before a session is handed
+    //* out. An open session for the same plan is reused, any other one is
+    //* expired so only one checkout can ever complete
+    if (storedStripeId) {
+      if (await hasActiveStripeSubscription(storedStripeId)) {
+        return subscriptionActiveResponse(res);
+      }
 
-  const { url } = checkoutSession;
+      const reusableSession = await reuseOrExpireOpenStripeCheckoutSessions(storedStripeId, planName, planBillingCycle);
 
-  return res.status(200).json({
-    checkoutSessionUrl: url,
-  });
+      if (reusableSession) {
+        return res.status(200).json({
+          checkoutSessionUrl: reusableSession.url,
+        });
+      }
+    }
+
+    //* Auto-create the Stripe customer on first checkout - removes the need
+    //* for a separate create-billing-id round trip on the client
+    const companyStripeId = storedStripeId
+      ?? await createAndStoreCompanyStripeId(email, companyId);
+
+    const checkoutSession = await createStripeCheckoutSession(
+      companyId,
+      companyStripeId,
+      userId,
+      planName,
+      planBillingCycle,
+    );
+
+    return res.status(200).json({
+      checkoutSessionUrl: checkoutSession.url,
+    });
+  } catch (error) {
+    if (isStripeCheckoutConflictError(error)) {
+      return res.status(409).json({
+        message: 'A checkout request for this company is already in progress - please retry',
+        code: 'CHECKOUT_IN_PROGRESS',
+      });
+    }
+
+    throw error;
+  }
 };
 
 export const getCompanySubscriptionData = async (req, res) => {
   const { company_id: companyId } = req.user;
 
-  //* Public shape - the internal Stripe customer id is never exposed
+  //* Public shape - no internal Stripe id (customer or subscription) is exposed
   const subscriptionData = await getSubscriptionPublicDataInDb(companyId);
 
   if (!subscriptionData) {

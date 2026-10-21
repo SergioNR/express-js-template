@@ -50,11 +50,13 @@ LockedTooltip.propTypes = {
 export function Team() {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  //* null | 'load' | 'membership'
+  const [error, setError] = useState(null);
   const [members, setMembers] = useState([]);
   const [invites, setInvites] = useState([]);
   const [callerPermissions, setCallerPermissions] = useState([]);
   const [assignableRoles, setAssignableRoles] = useState([]);
+  const [callerId, setCallerId] = useState(null);
   const [now, setNow] = useState(null);
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export function Team() {
 
   const loadTeam = useCallback(async () => {
     setLoading(true);
-    setError(false);
+    setError(null);
 
     try {
       const response = await apiClient.get('/api/v1/team');
@@ -80,8 +82,14 @@ export function Team() {
       setInvites(response.data.invites);
       setCallerPermissions(response.data.callerPermissions);
       setAssignableRoles(response.data.assignableRoles);
-    } catch {
-      setError(true);
+      setCallerId(response.data.callerId ?? null);
+    } catch (err) {
+      const status = err?.response?.status;
+      const code = err?.response?.data?.code;
+
+      //* Users without a company membership (shouldn't reach this page - the
+      //* wrapper redirects superadmins) get a specific message
+      setError(status === 403 && code === 'COMPANY_MEMBERSHIP_REQUIRED' ? 'membership' : 'load');
     } finally {
       setLoading(false);
     }
@@ -125,6 +133,7 @@ export function Team() {
     } catch (err) {
       const status = err?.response?.status;
 
+      //* 409 only means an invite is already pending for this email
       if (status === 409) {
         notifyError(t('team.errors.inviteConflict'));
       } else if (status === 403) {
@@ -155,6 +164,8 @@ export function Team() {
 
       if (status === 409) {
         notifyError(t('team.errors.removeConflict'));
+      } else if (status === 403) {
+        notifyError(t('team.errors.forbidden'));
       } else {
         notifyError(t('team.errors.generic'));
       }
@@ -194,9 +205,17 @@ export function Team() {
       await loadTeam();
     } catch (err) {
       const status = err?.response?.status;
+      const code = err?.response?.data?.code;
 
-      if (status === 409) {
-        notifyError(t('team.errors.inviteConflict'));
+      //* INVITER_INVALID: the original inviter can no longer grant the role -
+      //* the invite has to be revoked and sent again. Any other 409 is a
+      //* transient conflict worth retrying
+      if (status === 409 && code === 'INVITER_INVALID') {
+        notifyError(t('team.errors.resendInviterInvalid'));
+      } else if (status === 409) {
+        notifyError(t('team.errors.retry'));
+      } else if (status === 403) {
+        notifyError(t('team.errors.forbidden'));
       } else {
         notifyError(t('team.errors.generic'));
       }
@@ -209,67 +228,93 @@ export function Team() {
 
       notifySuccess(t('team.invites.revokedToast'));
       await loadTeam();
-    } catch {
-      notifyError(t('team.errors.generic'));
+    } catch (err) {
+      if (err?.response?.status === 403) {
+        notifyError(t('team.errors.forbidden'));
+      } else {
+        notifyError(t('team.errors.generic'));
+      }
     }
   };
 
-  const memberRows = members.map((member) => (
-    <Table.Tr key={member.id}>
-      <Table.Td>
-        <Text fz="sm">{member.email}</Text>
-      </Table.Td>
-      <Table.Td>
-        <Group gap={4}>
-          {member.companyRoles.map((roleName) => (
-            <Badge
-              key={roleName}
-              color={roleName === 'company_owner' ? 'violet' : roleName === 'company_admin' ? 'indigo' : 'gray'}
-              variant="light"
-            >
-              {roleLabel(t, roleName)}
-            </Badge>
-          ))}
-        </Group>
-      </Table.Td>
-      <Table.Td>
-        <Text fz="sm">{formatDateTime(member.created_at)}</Text>
-      </Table.Td>
-      <Table.Td>
-        <Group gap="sm" justify="flex-end" wrap="nowrap">
-          {member.role !== 'superadmin' && (
-            <LockedTooltip locked={!canManageRoles} label={t('team.locked.manageRoles')}>
+  const memberRows = members.map((member) => {
+    //* The Select can only represent a single role that the caller is allowed
+    //* to assign; other members (multi-role, or a role above the caller's
+    //* reach such as the owner) keep their badge and a locked Select
+    const currentRole = member.companyRoles.length === 1 ? member.companyRoles[0] : null;
+    const roleNotAssignable = !currentRole || !assignableRoles.includes(currentRole);
+    //* The API marks a member manageable only when the caller strictly
+    //* outranks every role they hold; the caller's own row is never manageable
+    const isSelf = callerId !== null && member.id === callerId;
+    const outranked = !member.manageable;
+    const rankLockLabel = isSelf ? t('team.locked.self') : t('team.locked.notOutranked');
+
+    const roleLocked = !canManageRoles || isSelf || outranked || roleNotAssignable;
+    const roleLockLabel = !canManageRoles
+      ? t('team.locked.manageRoles')
+      : isSelf || outranked
+        ? rankLockLabel
+        : t('team.locked.roleNotAssignable');
+
+    const removeLocked = !canRemove || isSelf || outranked;
+    const removeLockLabel = !canRemove ? t('team.locked.remove') : rankLockLabel;
+
+    return (
+      <Table.Tr key={member.id}>
+        <Table.Td>
+          <Text fz="sm">{member.email}</Text>
+        </Table.Td>
+        <Table.Td>
+          <Group gap={4}>
+            {member.companyRoles.map((roleName) => (
+              <Badge
+                key={roleName}
+                color={roleName === 'company_owner' ? 'violet' : roleName === 'company_admin' ? 'indigo' : 'gray'}
+                variant="light"
+              >
+                {roleLabel(t, roleName)}
+              </Badge>
+            ))}
+          </Group>
+        </Table.Td>
+        <Table.Td>
+          <Text fz="sm">{formatDateTime(member.created_at)}</Text>
+        </Table.Td>
+        <Table.Td>
+          <Group gap="sm" justify="flex-end" wrap="nowrap">
+            <LockedTooltip locked={roleLocked} label={roleLockLabel}>
               <Select
                 size="xs"
                 w={160}
-                disabled={!canManageRoles || assignableRoleOptions.length === 0}
+                disabled={roleLocked}
                 data={assignableRoleOptions}
-                value={member.companyRoles.length === 1 ? member.companyRoles[0] : null}
+                value={roleNotAssignable ? null : currentRole}
                 onChange={(roleName) => changeMemberRole(member.id, roleName)}
                 aria-label={t('team.members.roleChange', { email: member.email })}
               />
             </LockedTooltip>
-          )}
-          {member.role !== 'superadmin' && (
-            <LockedTooltip locked={!canRemove} label={t('team.locked.remove')}>
+            <LockedTooltip locked={removeLocked} label={removeLockLabel}>
               <ActionIcon
                 variant="subtle"
                 color="red"
-                disabled={!canRemove}
+                disabled={removeLocked}
                 aria-label={t('team.members.removeAction', { email: member.email })}
                 onClick={() => setRemoveTarget(member)}
               >
                 <IconTrash size={16} stroke={1.5} />
               </ActionIcon>
             </LockedTooltip>
-          )}
-        </Group>
-      </Table.Td>
-    </Table.Tr>
-  ));
+          </Group>
+        </Table.Td>
+      </Table.Tr>
+    );
+  });
 
   const inviteRows = invites.map((invite) => {
     const expired = now !== null && new Date(invite.token_expires).getTime() < now;
+    //* `manageable` = the caller can grant the invite's role
+    const inviteLocked = !canInvite || !invite.manageable;
+    const inviteLockLabel = !canInvite ? t('team.locked.invite') : t('team.locked.inviteRole');
 
     return (
       <Table.Tr key={invite.id}>
@@ -293,22 +338,22 @@ export function Team() {
         </Table.Td>
         <Table.Td>
           <Group gap={0} justify="flex-end" wrap="nowrap">
-            <LockedTooltip locked={!canInvite} label={t('team.locked.invite')}>
+            <LockedTooltip locked={inviteLocked} label={inviteLockLabel}>
               <ActionIcon
                 variant="subtle"
                 color="blue"
-                disabled={!canInvite}
+                disabled={inviteLocked}
                 aria-label={t('team.invites.resend', { email: invite.email })}
                 onClick={() => resendInvite(invite.id)}
               >
                 <IconMailForward size={16} stroke={1.5} />
               </ActionIcon>
             </LockedTooltip>
-            <LockedTooltip locked={!canInvite} label={t('team.locked.invite')}>
+            <LockedTooltip locked={inviteLocked} label={inviteLockLabel}>
               <ActionIcon
                 variant="subtle"
                 color="red"
-                disabled={!canInvite}
+                disabled={inviteLocked}
                 aria-label={t('team.invites.revoke', { email: invite.email })}
                 onClick={() => revokeInvite(invite.id)}
               >
@@ -340,7 +385,7 @@ export function Team() {
 
       {error ? (
         <Alert color="red" variant="light">
-          {t('team.errors.loadError')}
+          {error === 'membership' ? t('team.errors.membershipRequired') : t('team.errors.loadError')}
         </Alert>
       ) : (
         <>

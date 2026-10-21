@@ -47,8 +47,17 @@ const companies = [
 //* - `role` is the platform role (User.role): `user` for every tenant
 //*   account, `superadmin` for SaaS-provider staff
 //* - `companyRole` is the role inside the tenant company (UserRole)
-//* The superadmin belongs to no company and holds no company role
+//* The superadmin belongs to no company and holds no company role.
+//* Acme gets an owner so the seeded company mirrors a real onboarding (the
+//* registrant always becomes company_owner) and billing/owner-only flows work
 const users = [
+  {
+    email: 'owner@acme.test',
+    password: 'Password123!',
+    role: 'user',
+    companyRole: 'company_owner',
+    company_id: ACME_COMPANY_ID,
+  },
   {
     email: 'admin@acme.test',
     password: 'Password123!',
@@ -163,12 +172,15 @@ async function main() {
         : []),
     ]);
 
+    //* The seed is a CLI script, not server code - console is the right output
+    // eslint-disable-next-line no-console
     console.log(`Seeded user ${user.email} (${user.role}, ${companyRoleName ?? 'no company'})`);
   }
 }
 
 main()
   .catch((error) => {
+    // eslint-disable-next-line no-console
     console.error(error);
     process.exitCode = 1;
   })

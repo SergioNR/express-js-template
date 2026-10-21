@@ -9,7 +9,7 @@ jest.unstable_mockModule('../server/models/userModel.js', () => ({
   }),
 }));
 
-jest.unstable_mockModule('../server/models/subscriptionModel.js', () => ({
+jest.unstable_mockModule('../server/integrations/stripe/subscription.js', () => ({
   cancelCompanySubscriptionInStripe: jest.fn(async () => { callOrder.push('stripe'); }),
 }));
 
@@ -23,7 +23,7 @@ jest.unstable_mockModule('../server/config/loggerFunctions.js', () => ({
 
 const { cleanupAfterUserDeletion, deleteUserAndCleanup } = await import('../server/utils/userDeletionCleanup.js');
 const { deleteUserWithCompanyDataInDb } = await import('../server/models/userModel.js');
-const { cancelCompanySubscriptionInStripe } = await import('../server/models/subscriptionModel.js');
+const { cancelCompanySubscriptionInStripe } = await import('../server/integrations/stripe/subscription.js');
 const { deleteS3Objects } = await import('../server/integrations/s3/deleteS3Objects.js');
 const { logError } = await import('../server/config/loggerFunctions.js');
 

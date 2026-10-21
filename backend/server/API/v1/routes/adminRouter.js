@@ -41,8 +41,8 @@ const companyListQueryValidation = [
  * /api/v1/admin/users:
  *   get:
  *     tags: [Admin]
- *     summary: List all users (admin only)
- *     description: Returns the users in the database, newest first, with cursor-based pagination. Requires an authenticated session with the `admin` role.
+ *     summary: List all users (superadmin only)
+ *     description: Returns the users in the database, newest first, with cursor-based pagination. Requires an authenticated session with the `superadmin` platform role.
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -119,7 +119,7 @@ adminRouter.get('/users', userListQueryValidation, getAllUsers);
  * /api/v1/admin/users/{userId}:
  *   get:
  *     tags: [Admin]
- *     summary: Get a single user with related data (admin only)
+ *     summary: Get a single user with related data (superadmin only)
  *     description: Returns the user plus its related company (with the Stripe customer id reduced to a `stripeLinked` boolean), the company subscription (public fields) and the count of active sessions.
  *     security:
  *       - sessionCookie: []
@@ -150,6 +150,8 @@ adminRouter.get('/users', userListQueryValidation, getAllUsers);
  *                       enum: [user, superadmin]
  *                     company_id:
  *                       type: string
+ *                       nullable: true
+ *                       description: Null for superadmins, who belong to no company
  *                     company:
  *                       type: object
  *                       nullable: true
@@ -187,8 +189,8 @@ adminRouter.get('/users/:userId', userIdParamValidation, getOneUserById);
  * /api/v1/admin/users/{userId}:
  *   delete:
  *     tags: [Admin]
- *     summary: Delete a user by id (admin only)
- *     description: Same transactional deletion as the self-delete endpoint (sessions revoked, company data removed when the user was its last member, Stripe/S3 cleanup after the commit). Superadmins are not bound by the last-owner rule.
+ *     summary: Delete a user by id (superadmin only)
+ *     description: Same transactional deletion as the self-delete endpoint (sessions revoked, company data removed when the user was its last member, Stripe/S3 cleanup after the commit). The last-owner rule applies here too - the last owner of a company with other members cannot be deleted (409, code `LAST_COMPANY_OWNER`); promote another member first.
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -227,11 +229,18 @@ adminRouter.get('/users/:userId', userIdParamValidation, getOneUserById);
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  *       409:
- *         description: Admin tried to delete their own account via the admin endpoint, or related DB entries exist (nothing was deleted)
+ *         description: Superadmin tried to delete their own account via the admin endpoint, the user is the last owner of a company with other members (code `LAST_COMPANY_OWNER`), or related DB entries exist (nothing was deleted)
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorMessage'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ErrorMessage'
+ *                 - type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       enum: [LAST_COMPANY_OWNER]
+ *                       description: Only present for the last-owner conflict
  *       422:
  *         description: Validation errors
  *         content:
@@ -246,7 +255,7 @@ adminRouter.delete('/users/:userId', userIdParamValidation, deleteOneUserById);
  * /api/v1/admin/companies:
  *   get:
  *     tags: [Admin]
- *     summary: List all companies (admin only)
+ *     summary: List all companies (superadmin only)
  *     description: Returns the companies in the database, newest first, with cursor-based pagination, their user count and their subscription (public fields). The Stripe customer id is never exposed - only a `stripeLinked` boolean.
  *     security:
  *       - sessionCookie: []
@@ -317,7 +326,7 @@ adminRouter.get('/companies', companyListQueryValidation, getAllCompanies);
  * /api/v1/admin/companies/{companyId}:
  *   get:
  *     tags: [Admin]
- *     summary: Get a single company with related data (admin only)
+ *     summary: Get a single company with related data (superadmin only)
  *     description: Returns the company plus its users (safe fields only) and its subscription (public fields). The Stripe customer id is never exposed - only a `stripeLinked` boolean.
  *     security:
  *       - sessionCookie: []
@@ -385,7 +394,7 @@ adminRouter.get('/companies/:companyId', companyIdParamValidation, getOneCompany
  * /api/v1/admin/stats:
  *   get:
  *     tags: [Admin]
- *     summary: Platform counters for the admin overview (admin only)
+ *     summary: Platform counters for the admin overview (superadmin only)
  *     description: Returns aggregated counts - users (total, superadmins, new in the last 7 days), companies, subscriptions (total and active) and active sessions. A subscription is active when its `expires_at` is in the future.
  *     security:
  *       - sessionCookie: []

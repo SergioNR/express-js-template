@@ -7,16 +7,6 @@ export const createUserValidationSchema = {
       errorMessage: 'Please enter a valid email address',
       bail: true,
     },
-    custom: {
-      options: (value) => {
-        const blockedDomains = ['tempmail.com', 'throwaway.com'];
-        const domain = value.split('@')[1];
-        if (blockedDomains.includes(domain)) {
-          throw new Error('This email domain is not allowed');
-        }
-        return true;
-      },
-    },
     normalizeEmail: {
       options: {
         lowercase: true,
@@ -26,6 +16,19 @@ export const createUserValidationSchema = {
         outlookdotcom_remove_subaddress: true,
         yahoo_remove_subaddress: true,
         icloud_remove_subaddress: true,
+      },
+    },
+    //* Runs AFTER normalization (express-validator applies the chain in key
+    //* order) and compares lower-cased, so `User@TempMail.com` or a
+    //* googlemail alias cannot slip past the domain block
+    custom: {
+      options: (value) => {
+        const blockedDomains = ['tempmail.com', 'throwaway.com'];
+        const domain = String(value).split('@')[1]?.toLowerCase();
+        if (blockedDomains.includes(domain)) {
+          throw new Error('This email domain is not allowed');
+        }
+        return true;
       },
     },
     isLength: {

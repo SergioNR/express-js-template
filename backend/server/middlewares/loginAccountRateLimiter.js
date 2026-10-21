@@ -1,15 +1,20 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { logRateLimited } from '../config/loggerFunctions.js';
 
 //* Per-account brute-force guard for login, keyed by the normalized email
-//* (`username`) instead of the IP, so distributed attacks against a single
-//* account are throttled too. Only failed attempts count (successful logins
-//* are skipped). Must run after the login validator so the email is normalized.
-export const loginAccountKey = (req) => `login:${String(req.body?.username ?? '').trim().toLowerCase()}`;
+//* (`username`) together with the client IP. The account part throttles
+//* guessing against one account from one source; the IP part keeps a single
+//* attacker from locking a victim out of their own account by burning the
+//* budget from elsewhere. Only failed attempts count (successful logins are
+//* skipped). Must run after the login validator so the email is normalized.
+//* `ipKeyGenerator` collapses an IPv6 address to its /56 subnet - a single
+//* IPv6 client controls a whole block and could otherwise rotate addresses to
+//* get a fresh budget on every attempt (IPv4 addresses pass through as-is)
+export const loginAccountKey = (req) => `login:${ipKeyGenerator(req.ip ?? '')}:${String(req.body?.username ?? '').trim().toLowerCase()}`;
 
 export const loginAccountLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 5, // 5 failed login attempts per account per window
+  limit: 5, // 5 failed login attempts per account + IP per window
   skipSuccessfulRequests: true,
   keyGenerator: loginAccountKey,
   standardHeaders: 'draft-8',

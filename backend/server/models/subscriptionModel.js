@@ -1,26 +1,64 @@
 import { prisma } from '../config/prismaClient.js';
-import { stripeInstance } from '../config/stripe.js';
-import { logError } from '../config/loggerFunctions.js';
+import { lockCompanyForUpdateInDb } from './companyModel.js';
 
-//* Upsert (instead of update) so Stripe event retries and first checkout for a
-//* company without a Subscription row are both handled idempotently. The row
-//* is never deleted when the Stripe subscription ends - expires_at moves to
-//* the end date instead, so the company keeps its row and can resubscribe
-export const upsertSubscriptionInDb = async (subscriptionData) => {
-  await prisma.subscription.upsert({
-    where: {
-      company_id: subscriptionData.companyId,
-    },
-    update: {
-      id: subscriptionData.subscriptionId,
-      expires_at: subscriptionData.expiresAt,
-    },
-    create: {
-      id: subscriptionData.subscriptionId,
-      company_id: subscriptionData.companyId,
-      expires_at: subscriptionData.expiresAt,
-    },
+const subscriptionStateFields = {
+  id: true,
+  expires_at: true,
+};
+
+//* The Stripe call inside the lock can take a while, so the interactive
+//* transaction gets more than Prisma's 5s default before it is rolled back
+const SUBSCRIPTION_SYNC_TIMEOUT_MS = 20000;
+
+//* Serializes every subscription write of a company behind its row lock. Stripe
+//* delivers events concurrently and out of order, so `resolveSubscriptionWrite`
+//* runs inside the lock: it receives the currently stored row, fetches the
+//* fresh Stripe state itself and returns the write to apply (or null to skip).
+//* Two overlapping deliveries therefore both end up writing the latest state
+//* instead of the slower one clobbering the newer one.
+//* Resolves to true when a write happened
+export const syncSubscriptionWithCompanyLockInDb = async (companyId, resolveSubscriptionWrite) => {
+  const written = await prisma.$transaction(async (tx) => {
+    await lockCompanyForUpdateInDb(tx, companyId);
+
+    const storedSubscription = await tx.subscription.findUnique({
+      where: {
+        company_id: companyId,
+      },
+      select: subscriptionStateFields,
+    });
+
+    const subscriptionWrite = await resolveSubscriptionWrite(storedSubscription);
+
+    if (!subscriptionWrite) {
+      return false;
+    }
+
+    //* Upsert so Stripe event retries and the first checkout of a company
+    //* without a Subscription row are both handled idempotently. The row is
+    //* never deleted when the Stripe subscription ends - expires_at moves to
+    //* the end date instead, so the company keeps its row and can resubscribe
+    await tx.subscription.upsert({
+      where: {
+        company_id: companyId,
+      },
+      update: {
+        id: subscriptionWrite.subscriptionId,
+        expires_at: subscriptionWrite.expiresAt,
+      },
+      create: {
+        id: subscriptionWrite.subscriptionId,
+        company_id: companyId,
+        expires_at: subscriptionWrite.expiresAt,
+      },
+    });
+
+    return true;
+  }, {
+    timeout: SUBSCRIPTION_SYNC_TIMEOUT_MS,
   });
+
+  return written;
 };
 
 export const getCompanyStripeIdInDb = async (companyId) => {
@@ -78,8 +116,7 @@ export const getSubscriptionDataInDb = async (companyId) => {
   const subscriptionData = await prisma.subscription.findUnique({
     where: whereClause,
     select: {
-      id: true,
-      expires_at: true,
+      ...subscriptionStateFields,
       Company: {
         select: {
           stripe_id: true,
@@ -91,10 +128,11 @@ export const getSubscriptionDataInDb = async (companyId) => {
   return subscriptionData;
 };
 
-//* Public shape returned to clients - deliberately excludes the internal
-//* Stripe customer id and any other Company fields. The id's existence is
-//* exposed as a boolean so the client can gate portal access without ever
-//* seeing the id itself
+//* Public shape returned to clients - deliberately excludes the row id (for
+//* paid subscriptions it is the internal Stripe `sub_` id), the Stripe
+//* customer id and any other Company fields. Both ids are exposed as booleans
+//* so the client can gate portal access and tell trials from paid plans
+//* without ever seeing an id
 export const getSubscriptionPublicDataInDb = async (companyId) => {
   const subscriptionData = await prisma.subscription.findUnique({
     where: {
@@ -117,20 +155,13 @@ export const getSubscriptionPublicDataInDb = async (companyId) => {
     return null;
   }
 
-  const { Company, ...publicData } = subscriptionData;
+  const { Company, id, ...publicData } = subscriptionData;
 
   return {
     ...publicData,
+    is_paid: Boolean(id?.startsWith('sub_')),
     has_billing_id: Boolean(Company?.stripe_id),
   };
-};
-
-export const deleteSubscriptionByCompanyId = async (companyId) => {
-  await prisma.subscription.deleteMany({
-    where: {
-      company_id: companyId,
-    },
-  });
 };
 
 export const countTotalSubscriptionsInDb = async () => {
@@ -151,24 +182,4 @@ export const countActiveSubscriptionsInDb = async () => {
   });
 
   return activeSubscriptionCount;
-};
-
-//* Best-effort cancellation at period end - a Stripe API failure must not
-//* block the account deletion flow, so errors are logged and swallowed
-export const cancelCompanySubscriptionInStripe = async (subscription) => {
-  const stripeSubscriptionId = subscription?.id;
-
-  //* Trial subscriptions have a random uuid as id - only `sub_` prefixed ids
-  //* reference a real Stripe subscription
-  if (!stripeSubscriptionId || !stripeSubscriptionId.startsWith('sub_')) {
-    return;
-  }
-
-  try {
-    await stripeInstance.subscriptions.update(stripeSubscriptionId, {
-      cancel_at_period_end: true,
-    });
-  } catch (error) {
-    logError(`Could not cancel Stripe subscription ${stripeSubscriptionId} at period end`, error);
-  }
 };

@@ -1,10 +1,11 @@
 import bcrypt from 'bcryptjs';
-import { BCRYPT_SALT_ROUNDS, SESSION_COOKIE_NAME } from '../config/security.js';
+import { BCRYPT_SALT_ROUNDS, SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS } from '../config/security.js';
 import { logError } from '../config/loggerFunctions.js';
 import passport from '../auth/passportjs.js';
 import { posthogUserSuccessLoggedIn } from '../models/posthogModel.js';
 import {
   getUserByEmail,
+  canCompanyMemberGrantRoleInDb,
   updateUserPasswordInDB,
   createUserInDB,
   getUserPassword,
@@ -16,7 +17,7 @@ import {
   resetUserPasswordWithTokenInDb,
 } from '../models/passwordResetTokensModel.js';
 import { getTeamInviteByTokenInDb, deleteTeamInviteByIdSafe } from '../models/teamInvitesModel.js';
-import { deleteUserSessions, linkSessionToUser } from '../models/sessionModel.js';
+import { linkSessionToUser } from '../models/sessionModel.js';
 import { sendResetPasswordTokenToUser } from '../integrations/brevo/transactionalEmails/sendResetPasswordTokenToUser.js';
 import { sendExistingAccountNoticeToUser } from '../integrations/brevo/transactionalEmails/sendExistingAccountNoticeToUser.js';
 
@@ -95,6 +96,25 @@ export const updateRecoveredUserPassword = async (req, res) => {
   return res.status(200).json({});
 };
 
+//* Both 400s of the invite check/accept carry a stable code so the SPA can
+//* tell "ask for a new invite" from "the inviter can no longer vouch for it"
+const INVITE_EXPIRED_RESPONSE = {
+  message: 'Invite expired - Please ask a team admin for a new invite',
+  code: 'INVITE_EXPIRED',
+};
+
+const INVITER_INVALID_RESPONSE = {
+  message: 'Invite is no longer valid - the inviter left the company or lost the required role',
+  code: 'INVITER_INVALID',
+};
+
+//* Fast path only - acceptance repeats the check under the company lock
+const isInviterStillAbleToGrant = (inviteData) => canCompanyMemberGrantRoleInDb(
+  inviteData.invited_by,
+  inviteData.company_id,
+  inviteData.Role.name,
+);
+
 export const checkTeamInviteValidity = async (req, res) => {
   const { inviteToken } = req.query;
 
@@ -109,9 +129,11 @@ export const checkTeamInviteValidity = async (req, res) => {
   const { token_expires: tokenExpirationDate } = inviteData;
 
   if (new Date(tokenExpirationDate) < new Date()) {
-    return res.status(400).json({
-      message: 'Invite expired - Please ask a team admin for a new invite',
-    });
+    return res.status(400).json(INVITE_EXPIRED_RESPONSE);
+  }
+
+  if (!(await isInviterStillAbleToGrant(inviteData))) {
+    return res.status(400).json(INVITER_INVALID_RESPONSE);
   }
 
   return res.status(200).json({
@@ -138,9 +160,14 @@ export const acceptTeamInvite = async (req, res) => {
   const { token_expires: tokenExpires } = inviteData;
 
   if (new Date(tokenExpires) < new Date()) {
-    return res.status(400).json({
-      message: 'Invite expired - Please ask a team admin for a new invite',
-    });
+    return res.status(400).json(INVITE_EXPIRED_RESPONSE);
+  }
+
+  if (!(await isInviterStillAbleToGrant(inviteData))) {
+    //* Void it - a dead inviter cannot be revived by a later resend either
+    await deleteTeamInviteByIdSafe(inviteData.id);
+
+    return res.status(400).json(INVITER_INVALID_RESPONSE);
   }
 
   const existingUser = await getUserByEmail(inviteData.email);
@@ -156,13 +183,24 @@ export const acceptTeamInvite = async (req, res) => {
 
   const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
+  let acceptResult;
+
   try {
-    await createUserInDB({
+    acceptResult = await createUserInDB({
       username: inviteData.email,
       password: hashedPassword,
       companyId: inviteData.company_id,
       roleId: inviteData.role_id,
-      inviteId: inviteData.id, //* Consumed in the same transaction as the user creation
+      //* Re-checked under the company lock, in the same transaction as the
+      //* user creation - a demotion committed after the fast path above
+      //* still voids the invite
+      roleName: inviteData.Role.name,
+      invitedBy: inviteData.invited_by,
+      //* Consumed in the same transaction as the user creation, with a
+      //* conditional delete on id + digest + expiry - the lookup above is
+      //* only a fast path, the transaction is the real guard
+      inviteId: inviteData.id,
+      inviteToken,
     });
   } catch (error) {
     //* Concurrent self-registration with the same email can beat the check
@@ -178,22 +216,32 @@ export const acceptTeamInvite = async (req, res) => {
     throw error;
   }
 
+  if (acceptResult.status === 'inviter_invalid') {
+    //* The inviter was removed or demoted between the fast path and the
+    //* transaction - the transaction already voided the invite
+    return res.status(400).json(INVITER_INVALID_RESPONSE);
+  }
+
+  if (acceptResult.status !== 'created') {
+    //* Consumed, revoked, rotated or expired between the lookup and the
+    //* transaction - either way the link is dead and a new invite is needed
+    return res.status(400).json({
+      message: 'Invite is invalid or expired - Please ask a team admin for a new invite',
+      code: 'INVITE_EXPIRED',
+    });
+  }
+
   //* No auto-login here - consistent with the register endpoint
   return res.status(201).json({});
 };
 
-export const checkSession = async (req, res) => {
-  if (req.user) {
-    return res.status(200).json({
-      user: {
-        id: req.user.id,
-        role: req.user.role,
-      },
-    });
-  }
-
-  return res.status(401).json({});
-};
+//* Mounted behind checkAuthentication(), so req.user is always present here
+export const checkSession = async (req, res) => res.status(200).json({
+  user: {
+    id: req.user.id,
+    role: req.user.role,
+  },
+});
 
 export const loginLocal = (req, res, next) => passport.authenticate('local', (err, user) => {
   if (err) {
@@ -317,11 +365,12 @@ export const updateUserPassword = async (req, res) => {
   // Hash the new password
   const newHashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 
-  // Update password in database
-  const updatedUser = await updateUserPasswordInDB(userId, newHashedPassword);
-
-  //* Revoke every other session of the user - the current one is kept alive
-  await deleteUserSessions(userId, req.sessionID);
+  //* One transaction: new hash, every outstanding reset token revoked and
+  //* every other session revoked - the current one is kept alive. A failure
+  //* throws (500) instead of leaving a half-applied credential change
+  const updatedUser = await updateUserPasswordInDB(userId, newHashedPassword, {
+    keepSessionId: req.sessionID,
+  });
 
   return res.status(200).json({
     userId: updatedUser.id,
@@ -341,8 +390,9 @@ export const logoutUser = (req, res, next) => req.logout((err) => {
       return next(error);
     }
 
-    // Clear cookie on client side
-    res.clearCookie(SESSION_COOKIE_NAME);
+    //* Clear cookie on client side - same attributes it was set with, or the
+    //* browser keeps it
+    res.clearCookie(SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS);
 
     return res.status(200).json({});
   });

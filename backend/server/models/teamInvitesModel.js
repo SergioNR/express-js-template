@@ -52,9 +52,10 @@ export const createTeamInviteInDb = async (inviteData) => {
 
 //* Rotation is a single UPDATE on the existing row, so it is atomic and the
 //* invite id (the public handle for resend/revoke) never changes. The old
-//* link stops working the moment the new digest is written. Returns null when
-//* the invite was revoked or accepted concurrently
-export const rotateTeamInviteTokenInDb = async (inviteId, companyId, invitedBy) => {
+//* link stops working the moment the new digest is written. The original
+//* inviter stays on the row - a resend never re-attributes the invite.
+//* Returns null when the invite was revoked or accepted concurrently
+export const rotateTeamInviteTokenInDb = async (inviteId, companyId) => {
   const inviteToken = generateSecureToken();
 
   try {
@@ -64,7 +65,6 @@ export const rotateTeamInviteTokenInDb = async (inviteId, companyId, invitedBy) 
         company_id: companyId,
       },
       data: {
-        invited_by: invitedBy,
         token_hash: hashSecureToken(inviteToken),
         token_expires: new Date(Date.now() + INVITE_EXPIRY_DURATION_MS),
       },

@@ -9,51 +9,9 @@ volumes:
   template-database:
     name: template-database
 
+#* Local services only - the API itself runs on the host (`npm run start:local`).
+#* The production image is built by CI from ./Dockerfile
 services:
-  # server:
-  #   container_name: server
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.dev
-  #   environment:
-  #     NODE_ENV: ${NODE_ENV}
-  #     DEPLOY_ENVIRONMENT: ${DEPLOY_ENVIRONMENT}
-  #     TRUST_PROXY: ${TRUST_PROXY}
-  #     POSTHOG_API_KEY: ${POSTHOG_API_KEY}
-  #     SESSION_SECRET: ${SESSION_SECRET}
-  #     BREVO_API_KEY: ${BREVO_API_KEY}
-  #     BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL}
-  #     PRISMA_POSTGRES_DIRECT_URL: ${PRISMA_POSTGRES_DIRECT_URL}
-  #     PRISMA_POSTGRES_CONNECTION_STRING: ${PRISMA_POSTGRES_CONNECTION_STRING}
-  #     TELEGRAM_BOT_API_KEY: ${TELEGRAM_BOT_API_KEY}
-  #     TELEGRAM_INFO_CHAT_ID: ${TELEGRAM_INFO_CHAT_ID}
-  #     TELEGRAM_ERRORS_CHAT_ID: ${TELEGRAM_ERRORS_CHAT_ID}
-  #     FRONT_WEB_APP_ORIGIN_URL: ${FRONT_WEB_APP_ORIGIN_URL}
-  #     STRIPE_API_KEY: ${STRIPE_API_KEY}
-  #     STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
-  #     STRIPE_PRICE_ID: ${STRIPE_PRICE_ID}
-  #     PORT: ${PORT}
-  #   ports:
-  #     - 3000:3000
-  #   develop:
-  #     watch:
-  #       - path: .
-  #         action: sync+restart #* Synchronize code changes and restart the server
-  #         target: /usr/src/app/
-  #   depends_on: #* References the SERVICE name - NOT the container_name
-  #     database:
-  #       condition: service_started
-  #   networks:
-  #     - template-network
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         cpus: '1.0'
-  #         memory: 512M
-  #       reservations:
-  #         cpus: '0.5'
-  #         memory: 256M
-
   database:
     image: postgres:18.6
     restart: on-failure
@@ -67,5 +25,12 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     ports:
       - 127.0.0.1:5432:5432 #* Only reachable from this machine, never from the LAN
+    healthcheck:
+      #* `docker compose up --wait database` returns once Postgres accepts connections
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     networks:
       - template-network

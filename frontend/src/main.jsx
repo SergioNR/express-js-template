@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Routes, Route } from 'react-router';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import PageNotFound from './pages/index/404.jsx';
 import './index.css';
 import './i18n/index.js';
@@ -22,7 +22,7 @@ import UserDashboard from './pages/user/UserDashboard.jsx';
 import Team from './pages/user/Team.jsx';
 import AcceptInvitePage from './pages/auth/AcceptInvitePage.jsx';
 import RecoverPasswordPage from './pages/auth/RecoverPasswordPage.jsx';
-import FAQ from './pages/index/sections/FAQ.jsx';
+import FAQPage from './pages/index/FAQPage.jsx';
 import AuthWrapper from './pages/auth/AuthWrapper.jsx';
 import { MantineProvider } from '@mantine/core';
 import '@mantine/core/styles.css';
@@ -59,7 +59,7 @@ createRoot(document.getElementById('root')).render(
                 <Route index element={<Homepage />} />
 
                 <Route path='terminos-condiciones' element={<TerminosCondiciones />} />
-                <Route path='preguntas-frecuentes' element={<FAQ />} />
+                <Route path='preguntas-frecuentes' element={<FAQPage />} />
                 <Route path='pricing' element={<PricingPage />} />
               </Route>
 
@@ -71,14 +71,15 @@ createRoot(document.getElementById('root')).render(
                 <Route path='companies/:companyId' element={<AdminCompanyDetail />} />
               </Route>
 
-              {/* One pathless layout so the shell (session check, subscription
-                  context) stays mounted when moving between /dashboard and /user/* */}
+              {/* One pathless layout for the whole user area so moving between
+                  /dashboard and /user/* keeps the wrapper (session check,
+                  subscription context) mounted */}
               <Route element={<UserWrapper />}>
-                <Route path="/dashboard" element={<UserDashboard />} />
-                <Route path='/user'>
-                  <Route index element={<UserDashboard />} />
+                <Route path='dashboard' element={<UserDashboard />} />
+                <Route path='user'>
+                  <Route index element={<Navigate to="/dashboard" replace />} />
                   <Route path='profile' element={<CustomerProfile />} />
-                  <Route path="billing" element={<UserBilling />} />
+                  <Route path='billing' element={<UserBilling />} />
                   <Route path='team' element={<Team />} />
                 </Route>
               </Route>

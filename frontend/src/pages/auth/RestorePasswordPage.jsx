@@ -112,11 +112,14 @@ const RestorePasswordPage = () => {
           </Alert>
 
           <Center mt="xl">
-            <Anchor component={Link} to="/auth/login">
-              <Button variant="outline" leftSection={<IconArrowLeft size="1rem" />}>
-                {t('auth.restore.backToLogin')}
-              </Button>
-            </Anchor>
+            <Button
+              component={Link}
+              to="/auth/login"
+              variant="outline"
+              leftSection={<IconArrowLeft size="1rem" />}
+            >
+              {t('auth.restore.backToLogin')}
+            </Button>
           </Center>
         </Paper>
       ) : (
@@ -128,6 +131,7 @@ const RestorePasswordPage = () => {
                 placeholder={t('auth.restore.newPasswordPlaceholder')}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
                 required
                 mt="md"
               />
@@ -137,6 +141,7 @@ const RestorePasswordPage = () => {
                 placeholder={t('auth.restore.confirmNewPasswordPlaceholder')}
                 value={confirmNewPassword}
                 onChange={(e) => setConfirmNewPassword(e.target.value)}
+                autoComplete="new-password"
                 required
                 mt="md"
               />
@@ -191,11 +196,14 @@ const RestorePasswordPage = () => {
             </Alert>
 
             <Center mt="xl">
-              <Anchor component={Link} to="/auth/recover-password">
-                <Button variant="outline" leftSection={<IconArrowLeft size="1rem" />}>
-                  {t('auth.restore.requestNewLink')}
-                </Button>
-              </Anchor>
+              <Button
+                component={Link}
+                to="/auth/recover-password"
+                variant="outline"
+                leftSection={<IconArrowLeft size="1rem" />}
+              >
+                {t('auth.restore.requestNewLink')}
+              </Button>
             </Center>
           </Paper>
         )

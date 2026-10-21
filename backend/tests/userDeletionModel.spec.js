@@ -15,6 +15,9 @@ const tx = {
   session: {
     deleteMany: jest.fn(),
   },
+  teamInvites: {
+    deleteMany: jest.fn(),
+  },
 };
 
 jest.unstable_mockModule('../server/config/prismaClient.js', () => ({
@@ -31,6 +34,7 @@ jest.unstable_mockModule('../server/models/posthogModel.js', () => ({
 jest.unstable_mockModule('../server/config/loggerFunctions.js', () => ({
   logError: jest.fn(),
   logInfo: jest.fn(),
+  logPasswordResetTokenCreated: jest.fn(),
 }));
 
 const { deleteUserWithCompanyDataInDb } = await import('../server/models/userModel.js');
@@ -66,5 +70,54 @@ describe('deleteUserWithCompanyDataInDb', () => {
 
     expect(result).toEqual({ status: 'not_found' });
     expect(tx.user.delete).not.toHaveBeenCalled();
+  });
+
+  describe('company member deletion', () => {
+    const rolesOf = (roleNames) => roleNames.map((name) => ({ Role: { name } }));
+
+    beforeEach(() => {
+      tx.user.count.mockResolvedValue(2);
+      tx.session.deleteMany.mockResolvedValue({ count: 1 });
+      tx.teamInvites.deleteMany.mockResolvedValue({ count: 0 });
+    });
+
+    it('re-reads the caller roles under the lock and refuses a caller that does not outrank the target', async () => {
+      tx.user.findFirst
+        .mockResolvedValueOnce({ id: 'target', company_id: 'company-1' })
+        .mockResolvedValueOnce({ UserRoles: rolesOf(['company_admin']) }); //* caller, a peer
+      tx.userRole.findMany.mockResolvedValue(rolesOf(['company_admin']));
+
+      const result = await deleteUserWithCompanyDataInDb('target', { companyId: 'company-1', callerId: 'caller' });
+
+      expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
+      expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(tx.user.findFirst.mock.invocationCallOrder[1]);
+      expect(result).toEqual({ status: 'forbidden' });
+      expect(tx.user.delete).not.toHaveBeenCalled();
+    });
+
+    it('refuses when the caller left the company meanwhile', async () => {
+      tx.user.findFirst
+        .mockResolvedValueOnce({ id: 'target', company_id: 'company-1' })
+        .mockResolvedValueOnce(null);
+      tx.userRole.findMany.mockResolvedValue(rolesOf(['company_member']));
+
+      const result = await deleteUserWithCompanyDataInDb('target', { companyId: 'company-1', callerId: 'caller' });
+
+      expect(result).toEqual({ status: 'forbidden' });
+    });
+
+    it('deletes the member, their sessions and the invites they issued', async () => {
+      tx.user.findFirst
+        .mockResolvedValueOnce({ id: 'target', company_id: 'company-1' })
+        .mockResolvedValueOnce({ UserRoles: rolesOf(['company_owner']) });
+      tx.userRole.findMany.mockResolvedValue(rolesOf(['company_member']));
+      tx.user.delete.mockResolvedValue({ id: 'target', role: 'user' });
+
+      const result = await deleteUserWithCompanyDataInDb('target', { companyId: 'company-1', callerId: 'caller', protectLastOwner: true });
+
+      expect(result).toEqual(expect.objectContaining({ status: 'deleted', companyDeleted: false }));
+      expect(tx.session.deleteMany).toHaveBeenCalledWith({ where: { user_id: 'target' } });
+      expect(tx.teamInvites.deleteMany).toHaveBeenCalledWith({ where: { invited_by: 'target' } });
+    });
   });
 });

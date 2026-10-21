@@ -1,6 +1,7 @@
 import { prisma } from '../config/prismaClient.js';
 import { logPasswordResetTokenCreated } from '../config/loggerFunctions.js';
 import { generateSecureToken, hashSecureToken } from '../utils/secureToken.js';
+import { deleteUserSessionsInTx } from './sessionModel.js';
 
 const PASSWORD_RESET_TOKEN_TTL_MS = 3600000; // 1 hour
 
@@ -29,6 +30,21 @@ export const createPasswordResetToken = async (userId) => {
   logPasswordResetTokenCreated(userId);
 
   return passwordResetToken;
+};
+
+//* Transaction-aware revocation of every reset token of a user - called from
+//* the credential-changing transactions so a changed password and its
+//* outstanding reset links can never outlive each other
+export const deleteUserPasswordResetTokensInTx = async (tx, userId) => {
+  const deleteResult = await tx.passwordResetTokens.deleteMany({
+    where: {
+      user_id: userId,
+    },
+  });
+
+  return {
+    deletedCount: deleteResult.count,
+  };
 };
 
 export const getPasswordResetTokenData = async (token) => {
@@ -92,18 +108,10 @@ export const resetUserPasswordWithTokenInDb = async (token, hashedPassword) => {
       },
     });
 
-    await tx.passwordResetTokens.deleteMany({
-      where: {
-        user_id: userId,
-      },
-    });
+    await deleteUserPasswordResetTokensInTx(tx, userId);
 
     //* The old credential is no longer valid - every active session goes
-    await tx.session.deleteMany({
-      where: {
-        user_id: userId,
-      },
-    });
+    await deleteUserSessionsInTx(tx, userId);
 
     return { userId };
   });

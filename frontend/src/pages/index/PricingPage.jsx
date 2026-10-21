@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import RegisterButton from '../../components/navBarElements/RegisterButton.jsx';
 import Seo from '../../components/Seo.jsx';
 import { PLANS } from '../../config/plans.js';
+import { formatPlanPrice } from '../../utils/formatPrice.js';
 
 export const PricingPage = () => {
   const { t } = useTranslation();
@@ -35,6 +36,13 @@ export const PricingPage = () => {
                 style={{ width: '100%', height: '100%', textAlign: 'center' }}
               >
                 <Title order={3} mb="md">{t(`index.pricing.plans.${plan.id}.name`)}</Title>
+
+                <Text fw={700} size="xl">
+                  {t('index.pricing.pricePerMonth', { price: formatPlanPrice(plan) })}
+                </Text>
+                <Text c="dimmed" size="xs" mb="md">
+                  {t('index.pricing.vatIncluded')}
+                </Text>
 
                 <Text c="dimmed" size="sm" mb="md">
                   {t(`index.pricing.plans.${plan.id}.subtitle`)}

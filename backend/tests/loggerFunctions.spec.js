@@ -14,7 +14,9 @@ jest.unstable_mockModule('../server/config/telegramBotConfig.js', () => ({
   sendTelegramMessage: jest.fn().mockResolvedValue(true),
 }));
 
-const { logError, logWarn, serializeError } = await import('../server/config/loggerFunctions.js');
+const {
+  logError, logInfo, logWarn, serializeError,
+} = await import('../server/config/loggerFunctions.js');
 const { escapeHtml } = await import('../server/integrations/telegram/sendLogsToTelegram.js');
 const { sendTelegramMessage } = await import('../server/config/telegramBotConfig.js');
 
@@ -58,6 +60,17 @@ describe('log functions', () => {
   it('logWarn tolerates a missing error', async () => {
     await expect(logWarn('Just a warning')).resolves.toBeUndefined();
     expect(loggerMock.warn).toHaveBeenCalled();
+  });
+
+  it('only logError reaches Telegram - info and warn stay in pino', async () => {
+    await logInfo('routine event');
+    await logWarn('something odd', new Error('odd'));
+    expect(loggerMock.info).toHaveBeenCalledTimes(1);
+    expect(loggerMock.warn).toHaveBeenCalledTimes(1);
+    expect(sendTelegramMessage).not.toHaveBeenCalled();
+
+    logError('real failure', new Error('boom'));
+    expect(sendTelegramMessage).toHaveBeenCalledTimes(1);
   });
 
   it('escapes HTML in the Telegram error message', () => {

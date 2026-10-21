@@ -61,39 +61,46 @@ export const getFileByIdInDb = async (fileId, companyId, status = undefined) => 
   return getFileByIdQuery;
 };
 
-export const deleteFileInDb = async (fileId) => {
-  const deleteFileQuery = await prisma.file.delete({
+//* Company-scoped conditional delete - resolves to false when the row did not
+//* exist (or belonged to another company), so callers can answer 404 instead
+//* of touching the bucket for a file they do not own
+export const deleteFileInDb = async (fileId, companyId) => {
+  const deleteResult = await prisma.file.deleteMany({
     where: {
       id: fileId,
-    },
-  });
-
-  return deleteFileQuery;
-};
-
-//* Used by the company-deletion cleanup: the keys are collected before the
-//* company delete cascades the File rows away, so the objects can be removed
-//* from the bucket afterwards
-export const getFileKeysForCompanyInDb = async (companyId) => {
-  const getFileKeysQuery = await prisma.file.findMany({
-    where: {
       company_id: companyId,
     },
-    select: {
-      s3_key: true,
+  });
+
+  return deleteResult.count > 0;
+};
+
+//* Unconfirmed uploads of a company - bounds the number of presigned URLs a
+//* company can hold open at once (see MAX_PENDING_UPLOADS_PER_COMPANY)
+export const countPendingFilesInDb = async (companyId) => {
+  const pendingCount = await prisma.file.count({
+    where: {
+      company_id: companyId,
+      status: 'pending',
     },
   });
 
-  return getFileKeysQuery.map((file) => file.s3_key);
+  return pendingCount;
 };
 
 //* Conditional transition so a row the cleanup job removed concurrently is
-//* never resurrected. Returns the updated row, or null when it was not pending
-export const markFileReadyInDb = async (fileId) => {
+//* never resurrected, and a row old enough for the cleanup job to be deleting
+//* its object right now (created at or before `createdAfter`) is never
+//* flipped to ready. Returns the updated row, or null when no pending row
+//* young enough matched
+export const markFileReadyInDb = async (fileId, createdAfter) => {
   const updateResult = await prisma.file.updateMany({
     where: {
       id: fileId,
       status: 'pending',
+      created_at: {
+        gt: createdAfter,
+      },
     },
     data: {
       status: 'ready',
@@ -109,18 +116,4 @@ export const markFileReadyInDb = async (fileId) => {
       id: fileId,
     },
   });
-};
-
-//* Deletes pending rows older than the cutoff in a single statement and
-//* returns their keys, so the bucket objects of exactly those rows can be
-//* removed afterwards (a row confirmed meanwhile is untouched). Prisma
-//* stores UTC wall time in timestamp(3) columns, hence the ISO -> timestamp cast
-export const deleteStalePendingFilesInDb = async (createdBefore) => {
-  const deletedRows = await prisma.$queryRaw`
-    DELETE FROM "File"
-    WHERE "status" = 'pending' AND "created_at" < ${createdBefore.toISOString()}::timestamp
-    RETURNING "s3_key"
-  `;
-
-  return deletedRows.map((row) => row.s3_key);
 };

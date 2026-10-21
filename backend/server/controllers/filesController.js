@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  countPendingFilesInDb,
   createFileInDb,
   deleteFileInDb,
   getFileByIdInDb,
@@ -11,6 +12,25 @@ import { headS3Object } from '../integrations/s3/headS3Object.js';
 import { presignGetObject } from '../integrations/s3/presignGetObject.js';
 import { deleteS3Objects } from '../integrations/s3/deleteS3Objects.js';
 import { buildFileS3Key, sanitizeFilename } from '../utils/s3Key.js';
+import { MAX_PENDING_UPLOADS_PER_COMPANY } from '../config/s3.js';
+import { PENDING_FILE_CONFIRM_MAX_AGE_MS } from '../config/pendingFileUploads.js';
+import { logWarn } from '../config/loggerFunctions.js';
+
+//* The catalog row is the source of truth and is already gone when this runs:
+//* an orphaned object is harmless and reclaimable, a dangling row is not, so a
+//* failed object delete is logged and never turns the finished delete into a 500
+const deleteS3ObjectBestEffort = async (s3Key) => {
+  const { failedKeys } = await deleteS3Objects([s3Key]);
+
+  if (failedKeys.length > 0) {
+    logWarn(`Bucket object ${s3Key} could not be deleted after its catalog row was removed`, new Error('S3 delete failed'));
+  }
+};
+
+const uploadExpiredResponse = (res) => res.status(409).json({
+  message: 'The upload is too old to be confirmed - upload the file again',
+  code: 'FILE_UPLOAD_EXPIRED',
+});
 
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
@@ -35,6 +55,18 @@ const toFileShape = (file) => ({
 export const createFileUpload = async (req, res) => {
   const { company_id: companyId, id: userId } = req.user;
   const { filename, contentType, sizeBytes } = req.body;
+
+  //* Bounds the presigned URLs a company can hold open; the count and the
+  //* insert are not atomic, so a burst can overshoot by a few - the cap is a
+  //* brake on abuse, not an exact quota
+  const pendingUploadCount = await countPendingFilesInDb(companyId);
+
+  if (pendingUploadCount >= MAX_PENDING_UPLOADS_PER_COMPANY) {
+    return res.status(409).json({
+      message: `Too many unconfirmed uploads - confirm or wait for the cleanup of pending uploads (limit ${MAX_PENDING_UPLOADS_PER_COMPANY})`,
+      code: 'FILE_PENDING_UPLOAD_LIMIT',
+    });
+  }
 
   const fileId = randomUUID();
   const sanitizedFilename = sanitizeFilename(filename);
@@ -84,6 +116,15 @@ export const confirmFileUpload = async (req, res) => {
     });
   }
 
+  //* Rows past the confirm window may already be losing their object to the
+  //* cleanup job (see config/pendingFileUploads.js) - fast path, the
+  //* conditional update below is the real guard
+  const confirmableAfter = new Date(Date.now() - PENDING_FILE_CONFIRM_MAX_AGE_MS);
+
+  if (new Date(file.created_at) <= confirmableAfter) {
+    return uploadExpiredResponse(res);
+  }
+
   const storedObject = await headS3Object(file.s3_key);
 
   if (!storedObject) {
@@ -99,8 +140,9 @@ export const confirmFileUpload = async (req, res) => {
   const typeMatches = String(storedObject.contentType ?? '').toLowerCase() === file.mime_type.toLowerCase();
 
   if (!sizeMatches || !typeMatches) {
-    await deleteS3Objects([file.s3_key]);
-    await deleteFileInDb(file.id);
+    //* Row first (company-scoped), object second and best-effort
+    await deleteFileInDb(file.id, companyId);
+    await deleteS3ObjectBestEffort(file.s3_key);
 
     return res.status(400).json({
       message: 'The uploaded object does not match the declared size or content type - the upload was discarded',
@@ -108,13 +150,27 @@ export const confirmFileUpload = async (req, res) => {
     });
   }
 
-  const readyFile = await markFileReadyInDb(file.id);
+  const readyFile = await markFileReadyInDb(file.id, confirmableAfter);
 
   if (!readyFile) {
-    //* Removed by the pending-upload cleanup between the lookup and the update
-    return res.status(404).json({
-      message: 'File does not exist',
-    });
+    //* No longer a young-enough pending row: a concurrent confirm won (answer
+    //* like a retry), the row was deleted meanwhile, or it crossed the
+    //* confirm window during the HEAD request
+    const currentFile = await getFileByIdInDb(file.id, companyId);
+
+    if (!currentFile) {
+      return res.status(404).json({
+        message: 'File does not exist',
+      });
+    }
+
+    if (currentFile.status === 'ready') {
+      return res.status(200).json({
+        file: toFileShape(currentFile),
+      });
+    }
+
+    return uploadExpiredResponse(res);
   }
 
   return res.status(200).json({
@@ -154,7 +210,12 @@ export const getFileDownloadUrl = async (req, res) => {
     });
   }
 
-  const url = await presignGetObject(file.s3_key);
+  //* Forced download under the catalog filename and verified MIME type - the
+  //* object is never rendered inline on the bucket origin
+  const url = await presignGetObject(file.s3_key, {
+    filename: file.original_filename,
+    contentType: file.mime_type,
+  });
 
   return res.status(200).json({
     url,
@@ -174,10 +235,18 @@ export const deleteOneFileById = async (req, res) => {
     });
   }
 
-  //* Objects are removed best-effort (missing keys are a no-op) - the DB row
-  //* is the source of truth, so it is always deleted
-  await deleteS3Objects([file.s3_key]);
-  await deleteFileInDb(file.id);
+  //* The row goes first, with a company-scoped conditional delete: a file
+  //* deleted concurrently answers 404 and its object is never touched twice.
+  //* The object is removed afterwards, best-effort (missing keys are a no-op)
+  const rowDeleted = await deleteFileInDb(file.id, companyId);
+
+  if (!rowDeleted) {
+    return res.status(404).json({
+      message: 'File does not exist',
+    });
+  }
+
+  await deleteS3ObjectBestEffort(file.s3_key);
 
   return res.status(200).json({
     fileId: file.id,

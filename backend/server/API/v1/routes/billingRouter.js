@@ -38,8 +38,9 @@ const requireBillingManage = checkCompanyPermission('billing.manage');
  *                   type: object
  *                   description: Subscription fields only - internal Stripe ids are never exposed
  *                   properties:
- *                     id:
- *                       type: string
+ *                     is_paid:
+ *                       type: boolean
+ *                       description: Whether the row is a real Stripe subscription - the free trial row is not. The subscription id itself is never exposed
  *                     expires_at:
  *                       type: string
  *                       format: date-time
@@ -111,7 +112,7 @@ billingRouter.post('/', requireBillingManage, createCompanyBillingId);
  *   post:
  *     tags: [Billing]
  *     summary: Create a Stripe checkout session
- *     description: Creates a Stripe checkout session for the user's company and returns its URL for redirecting the user. The Stripe customer is created on first use. Refused while the company has an active Stripe subscription. Requires the `billing.manage` company permission.
+ *     description: Returns the URL of a Stripe checkout session for the user's company. The Stripe customer is created on first use. When the customer already has an open session for the same plan, billing cycle and price, that session's URL is returned (a double-submit or second tab lands on the same checkout); every other open session is expired, so at most one checkout can complete. Refused while the company has an active, trialing or past-due Stripe subscription. Requires the `billing.manage` company permission.
  *     security:
  *       - sessionCookie: []
  *     requestBody:
@@ -130,7 +131,7 @@ billingRouter.post('/', requireBillingManage, createCompanyBillingId);
  *                 description: Billing cycle of the plan
  *     responses:
  *       200:
- *         description: Checkout session URL generated successfully
+ *         description: Checkout session URL - a reused open session or a new one
  *         content:
  *           application/json:
  *             schema:
@@ -152,7 +153,7 @@ billingRouter.post('/', requireBillingManage, createCompanyBillingId);
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  *       409:
- *         description: The company already has an active Stripe subscription (`code` = `SUBSCRIPTION_ACTIVE`) - manage or change it through the customer portal instead
+ *         description: The company already has an active Stripe subscription (`code` = `SUBSCRIPTION_ACTIVE`) - manage or change it through the customer portal instead; or a concurrent checkout request for the company is still in progress at Stripe (`code` = `CHECKOUT_IN_PROGRESS`) - retry
  *         content:
  *           application/json:
  *             schema:
@@ -162,7 +163,7 @@ billingRouter.post('/', requireBillingManage, createCompanyBillingId);
  *                   type: string
  *                 code:
  *                   type: string
- *                   enum: [SUBSCRIPTION_ACTIVE]
+ *                   enum: [SUBSCRIPTION_ACTIVE, CHECKOUT_IN_PROGRESS]
  *       422:
  *         description: Validation errors - unknown plan or billing cycle
  *         content:

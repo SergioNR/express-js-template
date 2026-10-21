@@ -7,8 +7,8 @@ const DEV_SITE_BASE_URL = 'http://localhost:5173';
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
 
-  //* index.html interpolates %VITE_SITE_BASE_URL% (canonical/og:url) - an unset
-  //* var would ship the literal placeholder. Production builds must set it;
+  //* Seo.jsx builds the canonical/og:url from VITE_SITE_BASE_URL - an unset
+  //* var would ship pages without them. Production builds must set it;
   //* the dev server falls back to the local Vite origin
   if (!env.VITE_SITE_BASE_URL) {
     if (command === 'build') {

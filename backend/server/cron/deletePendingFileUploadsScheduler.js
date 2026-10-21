@@ -1,33 +1,75 @@
 import { CronJob } from 'cron';
-import { logError, logInfo } from '../config/loggerFunctions.js';
-import { deleteStalePendingFilesInDb } from '../models/filesModel.js';
+import { logError, logInfo, logWarn } from '../config/loggerFunctions.js';
+import { PENDING_FILE_MAX_AGE_MS } from '../config/pendingFileUploads.js';
+import {
+  deletePendingFilesByKeysInDb,
+  getStalePendingFileKeysInDb,
+} from '../models/pendingFileUploadsModel.js';
 import { deleteS3Objects } from '../integrations/s3/deleteS3Objects.js';
 
-//* Presigned upload URLs live for minutes - a row still pending after an
-//* hour belongs to an upload that was abandoned or never confirmed
-export const PENDING_FILE_MAX_AGE_MS = 60 * 60 * 1000;
+//* Keys whose bucket delete failed on the previous tick. A key that keeps
+//* failing is retried every tick, so it alerts (logError, Telegram) only the
+//* first time and is merely logged (logWarn) while it stays stuck
+let previouslyFailedKeys = new Set();
 
+const reportFailedKeys = (failedKeys, staleKeyCount) => {
+  const failedKeySet = new Set(failedKeys);
+  const hasNewFailures = failedKeys.some((key) => !previouslyFailedKeys.has(key));
+
+  previouslyFailedKeys = failedKeySet;
+
+  if (failedKeys.length === 0) {
+    return failedKeySet;
+  }
+
+  const message = `Could not delete ${failedKeys.length} of ${staleKeyCount} stale pending upload object(s) from the bucket - their rows are kept for the next run`;
+
+  if (hasNewFailures) {
+    logError(message, new Error('S3 batch delete reported failed keys'), { failedKeys });
+  } else {
+    logWarn(`${message} (same keys as the previous run)`, new Error('S3 batch delete reported failed keys'), { failedKeys });
+  }
+
+  return failedKeySet;
+};
+
+//* Bucket first, catalog second: a row is only dropped once its object is
+//* confirmed gone, so a failed bucket delete keeps the row and the next tick
+//* retries it instead of silently orphaning the object. The listing uses the
+//* full PENDING_FILE_MAX_AGE_MS while confirm refuses rows older than
+//* PENDING_FILE_CONFIRM_MAX_AGE_MS (a safety margin earlier), so no row this
+//* job touches can be flipped to `ready` between the bucket delete and the
+//* row delete - which is additionally filtered on `pending`
 export const deletePendingFileUploads = async () => {
-  //* Rows are deleted first (atomically returning their keys), so an object
-  //* is only removed once no catalog entry can reference it anymore
-  const staleKeys = await deleteStalePendingFilesInDb(new Date(Date.now() - PENDING_FILE_MAX_AGE_MS));
+  const staleKeys = await getStalePendingFileKeysInDb(new Date(Date.now() - PENDING_FILE_MAX_AGE_MS));
 
   if (staleKeys.length === 0) {
+    reportFailedKeys([], 0);
+
     return;
   }
 
-  await deleteS3Objects(staleKeys);
+  const { failedKeys } = await deleteS3Objects(staleKeys);
 
-  logInfo(`Deleted ${staleKeys.length} stale pending file upload(s)`);
+  const failedKeySet = reportFailedKeys(failedKeys, staleKeys.length);
+
+  const deletedKeys = staleKeys.filter((key) => !failedKeySet.has(key));
+
+  const deletedRowCount = await deletePendingFilesByKeysInDb(deletedKeys);
+
+  logInfo(`Deleted ${deletedRowCount} stale pending file upload(s)`);
 };
 
-export const deletePendingFileUploadsScheduler = new CronJob(
-  '*/15 * * * *',
-  async () => {
+//* waitForCompletion: an in-flight tick (slow bucket delete) is never
+//* overlapped by the next one, so two runs cannot race on the same keys
+export const deletePendingFileUploadsScheduler = CronJob.from({
+  cronTime: '*/15 * * * *',
+  onTick: async () => {
     try {
       await deletePendingFileUploads();
     } catch (error) {
       logError('Error deleting stale pending file uploads:', error);
     }
   },
-);
+  waitForCompletion: true,
+});

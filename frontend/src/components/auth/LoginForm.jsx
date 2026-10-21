@@ -23,14 +23,12 @@ export function LoginForm() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [loginResponse, setLoginResponse] = useState(null);
-  const [participantMessage, setParticipantMessage] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
     // Reset messages
     setLoginResponse(null);
-    setParticipantMessage(false);
 
     const data = {
       username: e.target.username.value,
@@ -51,12 +49,19 @@ export function LoginForm() {
     } catch (error) {
       console.error(error);
 
-      if (error.response?.status === 403) {
-        setParticipantMessage(true);
-      } else if (error.response?.status === 401) {
+      const status = error.response?.status;
+
+      //* 422 = malformed email - from the user's point of view the same as
+      //* wrong credentials; 429 = login rate limit
+      if (status === 401 || status === 422) {
         setLoginResponse({
           type: 'error',
           message: t('auth.login.errors.invalidCredentials'),
+        });
+      } else if (status === 429) {
+        setLoginResponse({
+          type: 'error',
+          message: t('auth.errors.tooManyAttempts'),
         });
       } else {
         setLoginResponse({
@@ -80,17 +85,6 @@ export function LoginForm() {
         </Anchor>
       </Text>
 
-      {participantMessage && (
-        <Alert
-          icon={<IconAlertCircle size={16} />}
-          title={t('auth.login.participantTitle')}
-          color="yellow"
-          mt={20}
-        >
-          {t('auth.login.participantBody')}
-        </Alert>
-      )}
-
       {loginResponse && (
         <Alert
           icon={loginResponse.type === 'error' ? <IconAlertCircle size={16} /> : <IconCheck size={16} />}
@@ -105,6 +99,8 @@ export function LoginForm() {
         <form onSubmit={handleLogin}>
           <TextInput
             name="username"
+            type="email"
+            autoComplete="username"
             label={t('auth.fields.email')}
             placeholder={t('auth.fields.emailPlaceholder')}
             required
@@ -113,6 +109,7 @@ export function LoginForm() {
             name="password"
             label={t('auth.fields.password')}
             placeholder={t('auth.fields.passwordPlaceholder')}
+            autoComplete="current-password"
             required
             mt="md"
           />

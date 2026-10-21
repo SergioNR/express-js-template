@@ -1,5 +1,5 @@
 import { logger } from './logger.js';
-import { sendErrorLogsToTelegram, sendInfoLogsToTelegram } from '../integrations/telegram/sendLogsToTelegram.js';
+import { sendErrorLogsToTelegram } from '../integrations/telegram/sendLogsToTelegram.js';
 
 //* Only a whitelist of error fields is logged - serializing the whole error
 //* object leaks whatever libraries attach to it (request bodies, headers,
@@ -24,6 +24,9 @@ export const serializeError = (error) => {
   return Object.fromEntries(Object.entries(serialized).filter(([, value]) => value !== undefined));
 };
 
+//* Severity decides the channel: errors page a human through Telegram, while
+//* warnings and info stay in pino only - routine events must never flood the
+//* alert chat, or real incidents drown in them
 export const logError = (errorMessage, error, additionalInfo = 'N/A') => {
   try {
     logger.error({
@@ -60,10 +63,8 @@ export const logInfo = async (message, context = 'no context') => {
       message: message,
       context: context,
     });
-
-    sendInfoLogsToTelegram(message);
-  } catch (error) {
-    logError(`error in storing INFO logs for: ${message}`, error);
+  } catch {
+    // Fail silently
   }
 };
 

@@ -1,5 +1,4 @@
 import { prisma } from '../config/prismaClient.js';
-import { logError } from '../config/loggerFunctions.js';
 
 //* Called right after a successful req.login so the session row keeps a real
 //* user_id column instead of relying on matching the serialized JSON blob.
@@ -43,28 +42,29 @@ export const countActiveSessionsByUserInDb = async (userId) => {
   return activeSessionCount;
 };
 
-export const deleteUserSessions = async (userId, exceptSessionId = null) => {
-  try {
-    const whereClause = {
-      user_id: userId,
+//* Transaction-aware revocation: `tx` is an interactive-transaction client,
+//* so callers changing a credential (password update / reset) revoke the
+//* sessions in the same commit as the credential write. Errors propagate
+export const deleteUserSessionsInTx = async (tx, userId, exceptSessionId = null) => {
+  const whereClause = {
+    user_id: userId,
+  };
+
+  if (exceptSessionId) {
+    whereClause.sid = {
+      not: exceptSessionId,
     };
-
-    if (exceptSessionId) {
-      whereClause.sid = {
-        not: exceptSessionId,
-      };
-    }
-
-    const deleteResult = await prisma.session.deleteMany({
-      where: whereClause,
-    });
-
-    return {
-      deletedCount: deleteResult.count,
-    };
-  } catch (error) {
-    return logError(`Sessions for user ID ${userId} deletion failed`, error);
-    // throw error //* NOT throwing an error since req-res
-    //*  flow should not be interrupted with this cleanup operation
   }
+
+  const deleteResult = await tx.session.deleteMany({
+    where: whereClause,
+  });
+
+  return {
+    deletedCount: deleteResult.count,
+  };
 };
+
+//* Standalone revocation outside a transaction - throws on failure, callers
+//* that want fire-and-forget semantics must catch themselves
+export const deleteUserSessions = async (userId, exceptSessionId = null) => deleteUserSessionsInTx(prisma, userId, exceptSessionId);

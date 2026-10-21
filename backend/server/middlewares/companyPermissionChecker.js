@@ -7,11 +7,8 @@ export const checkCompanyPermission = (permissionName) => async (req, res, next)
     });
   }
 
-  //* Global admins are platform superusers and bypass company permission
-  //* checks, mirroring the checkPermissionByRole bypass
-  if (req.user.role === 'admin') {
-    return next();
-  }
+  //* Company permissions come only from company roles. The platform
+  //* superadmin role grants nothing inside a tenant company
 
   const userPermissions = await getUserCompanyPermissions(req.user.id);
 

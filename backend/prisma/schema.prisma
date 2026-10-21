@@ -17,8 +17,11 @@ model User {
   created_at          DateTime              @default(now())
   last_updated_at     DateTime              @default(now()) @updatedAt
   last_login_at       DateTime?
-  company_id          String
-  Company             Company               @relation(fields: [company_id], references: [id])
+  //* Null only for superadmins - SaaS-provider staff who belong to no tenant
+  //* company. Restrict (not Prisma's optional-relation SetNull default) so a
+  //* company with members can still never be deleted out from under them
+  company_id          String?
+  Company             Company?              @relation(fields: [company_id], references: [id], onDelete: Restrict)
   PasswordResetTokens PasswordResetTokens[]
   UserRoles           UserRole[]
   File                File[]
@@ -138,7 +141,9 @@ enum FileStatus {
   ready
 }
 
+//* Platform role - independent from the company roles (Role / UserRole).
+//* `superadmin` is SaaS-provider staff: full /api/v1/admin access, no company
 enum UserRoles {
   user
-  admin
+  superadmin
 }

@@ -301,7 +301,7 @@ describe('getAdminStats', () => {
 
   it('composes all counters into the stats envelope', async () => {
     countUsersInDb.mockImplementation(async (filters = {}) => {
-      if (filters.role === 'admin') return 2;
+      if (filters.role === 'superadmin') return 2;
       if (filters.created_at) return 3;
       return 10;
     });

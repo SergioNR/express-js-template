@@ -4,7 +4,7 @@ A production-ready Express.js backend template with authentication, billing, and
 
 ## Features
 
-- **Authentication** — Passport.js local strategy with session-based auth (stored in PostgreSQL), password reset flow via email tokens, and role-based access control (`user` / `admin`)
+- **Authentication** — Passport.js local strategy with session-based auth (stored in PostgreSQL), password reset flow via email tokens, and two role layers: platform roles (`user` / `superadmin` for SaaS-provider staff) and company roles (`company_owner` / `company_admin` / `company_member`)
 - **Team management** — company member invites (single-use email tokens), member removal and role changes
 - **Database** — PostgreSQL with Prisma ORM, migrations, and a Prisma-backed session store
 - **Billing** — Stripe subscriptions (checkout sessions, customer portal, webhook handling)

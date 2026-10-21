@@ -38,7 +38,7 @@ const fileIdParamValidation = [
  *   post:
  *     tags: [Files]
  *     summary: Register a file and get a presigned upload URL
- *     description: Validates the declared file metadata (size, MIME whitelist), creates a `pending` file catalog entry and returns a short-lived presigned PUT URL. The client uploads the bytes directly to the bucket with the exact declared `Content-Type` and `Content-Length` (both are signed), then calls `POST /api/v1/files/{fileId}/confirm`. Pending files are not listed nor downloadable, and pending entries older than one hour are deleted automatically together with their object. Requires the `files.upload` company permission (global admins bypass permission checks).
+ *     description: Validates the declared file metadata (size, MIME whitelist), creates a `pending` file catalog entry and returns a short-lived presigned PUT URL. The client uploads the bytes directly to the bucket with the exact declared `Content-Type` and `Content-Length` (both are signed), then calls `POST /api/v1/files/{fileId}/confirm`. Pending files are not listed nor downloadable, and pending entries older than one hour are deleted automatically together with their object. Requires the `files.upload` company permission.
  *     security:
  *       - sessionCookie: []
  *     requestBody:
@@ -88,7 +88,7 @@ filesRouter.post('/', checkCompanyPermission('files.upload'), createUploadValida
  *   post:
  *     tags: [Files]
  *     summary: Confirm a finished upload
- *     description: Call after the PUT to the presigned URL succeeded. The server reads the stored object's metadata and compares it with the size and MIME type declared at registration. On a match the file becomes `ready` (listed and downloadable). On a mismatch the object and the catalog entry are deleted (400, code `FILE_UPLOAD_MISMATCH`). When the object does not exist yet the entry stays pending (409, code `FILE_UPLOAD_MISSING`) and the call can be retried. Confirming an already-ready file is idempotent. Only files of the caller's company can be confirmed. Requires the `files.upload` company permission (global admins bypass permission checks).
+ *     description: Call after the PUT to the presigned URL succeeded. The server reads the stored object's metadata and compares it with the size and MIME type declared at registration. On a match the file becomes `ready` (listed and downloadable). On a mismatch the object and the catalog entry are deleted (400, code `FILE_UPLOAD_MISMATCH`). When the object does not exist yet the entry stays pending (409, code `FILE_UPLOAD_MISSING`) and the call can be retried. Confirming an already-ready file is idempotent. Only files of the caller's company can be confirmed. Requires the `files.upload` company permission.
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -154,7 +154,7 @@ filesRouter.post('/:fileId/confirm', checkCompanyPermission('files.upload'), fil
  *   get:
  *     tags: [Files]
  *     summary: List the caller's company files
- *     description: Cursor-paginated list of the confirmed (`ready`) files of the caller's company, newest first (id as tiebreaker). Pending uploads are never listed. Requires the `files.view` company permission (global admins bypass permission checks).
+ *     description: Cursor-paginated list of the confirmed (`ready`) files of the caller's company, newest first (id as tiebreaker). Pending uploads are never listed. Requires the `files.view` company permission.
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -216,7 +216,7 @@ filesRouter.get('/', checkCompanyPermission('files.view'), filesListValidation, 
  *   get:
  *     tags: [Files]
  *     summary: Get a presigned download URL for a company file
- *     description: Returns a fresh short-lived presigned GET URL for the file's object. URLs expire within minutes - request a new one when needed. Files outside the caller's company answer 404 (no existence leak). Requires the `files.view` company permission (global admins bypass permission checks). Pending (unconfirmed) files answer 404.
+ *     description: Returns a fresh short-lived presigned GET URL for the file's object. URLs expire within minutes - request a new one when needed. Files outside the caller's company answer 404 (no existence leak). Requires the `files.view` company permission. Pending (unconfirmed) files answer 404.
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -272,7 +272,7 @@ filesRouter.get('/:fileId/download', checkCompanyPermission('files.view'), fileI
  *   delete:
  *     tags: [Files]
  *     summary: Delete a company file
- *     description: Removes the file's object from the bucket (best-effort - the delete is idempotent) and its catalog entry. Only files of the caller's company can be deleted. Requires the `files.delete` company permission (global admins bypass permission checks).
+ *     description: Removes the file's object from the bucket (best-effort - the delete is idempotent) and its catalog entry. Only files of the caller's company can be deleted. Requires the `files.delete` company permission.
  *     security:
  *       - sessionCookie: []
  *     parameters:

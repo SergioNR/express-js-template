@@ -58,7 +58,7 @@ export const authRouter = Router();
  *                       format: uuid
  *                     role:
  *                       type: string
- *                       enum: [user, admin]
+ *                       enum: [user, superadmin]
  *       401:
  *         description: Incorrect email or password
  *         content:
@@ -451,7 +451,7 @@ authRouter.patch('/update-user-password', checkSchema(updatePasswordSchema), san
  *                       format: uuid
  *                     role:
  *                       type: string
- *                       enum: [user, admin]
+ *                       enum: [user, superadmin]
  *       401:
  *         description: Session is invalid
  *         content:

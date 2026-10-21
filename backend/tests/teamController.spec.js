@@ -60,7 +60,6 @@ const {
 } = await import('../server/models/teamInvitesModel.js');
 const {
   getAllPermissionNames,
-  getAllRolesWithPermissions,
   getUserCompanyPermissions,
   getUserCompanyRoleNames,
   getRoleByName,
@@ -104,10 +103,6 @@ describe('getTeamData', () => {
         id: 'invite-1', email: 'new@acme.test', token_expires: '2026-01-08', created_at: '2026-01-01', Role: { name: 'company_member' },
       },
     ]);
-    getAllRolesWithPermissions.mockResolvedValue([
-      { name: 'company_owner' },
-      { name: 'company_member' },
-    ]);
     getUserCompanyPermissions.mockResolvedValue(['team.view', 'team.invite']);
     getUserCompanyRoleNames.mockResolvedValue(['company_owner']);
 
@@ -124,21 +119,20 @@ describe('getTeamData', () => {
     }));
   });
 
-  it('gives superusers every permission and every assignable role', async () => {
+  it('derives permissions from company roles only, even for superadmins', async () => {
     getCompanyMembersInDb.mockResolvedValue([]);
     getCompanyPendingInvitesInDb.mockResolvedValue([]);
-    getAllRolesWithPermissions.mockResolvedValue([{ name: 'company_member' }, { name: 'company_owner' }]);
-    getAllPermissionNames.mockResolvedValue(['team.invite', 'team.view']);
+    getUserCompanyPermissions.mockResolvedValue(['team.view']);
+    getUserCompanyRoleNames.mockResolvedValue(['company_member']);
 
     const res = mockRes();
 
-    await getTeamData({ user: { ...caller, role: 'admin' } }, res);
+    await getTeamData({ user: { ...caller, role: 'superadmin' } }, res);
 
-    expect(getAllPermissionNames).toHaveBeenCalled();
-    expect(getUserCompanyPermissions).not.toHaveBeenCalled();
+    expect(getAllPermissionNames).not.toHaveBeenCalled();
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-      callerPermissions: ['team.invite', 'team.view'],
-      assignableRoles: ['company_member', 'company_owner'],
+      callerPermissions: ['team.view'],
+      assignableRoles: ['company_member'],
     }));
   });
 });
@@ -235,17 +229,17 @@ describe('createTeamInvite', () => {
     expect(JSON.stringify(res.json.mock.calls)).not.toContain('raw-secret-token');
   });
 
-  it('lets superusers grant roles they do not hold themselves', async () => {
+  it('does not let superadmins grant company roles they do not hold', async () => {
     getUserByEmail.mockResolvedValue(null);
     getTeamInviteByCompanyAndEmailInDb.mockResolvedValue(null);
     getRoleByName.mockResolvedValue({ id: 'role-owner', name: 'company_owner' });
-    createTeamInviteInDb.mockResolvedValue(createdInvite());
+    getUserCompanyRoleNames.mockResolvedValue([]);
     const res = mockRes();
 
-    await createTeamInvite({ user: { ...caller, role: 'admin' }, body: { email: 'new@acme.test', roleName: 'company_owner' } }, res);
+    await createTeamInvite({ user: { ...caller, role: 'superadmin' }, body: { email: 'new@acme.test', roleName: 'company_owner' } }, res);
 
-    expect(getUserCompanyRoleNames).not.toHaveBeenCalled();
-    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(createTeamInviteInDb).not.toHaveBeenCalled();
   });
 
   it('maps a concurrent-creation P2002 to 409', async () => {
@@ -391,8 +385,8 @@ describe('removeTeamMember', () => {
     expect(res.status).toHaveBeenCalledWith(404);
   });
 
-  it('returns 409 when the target is a global admin', async () => {
-    getOneCompanyMemberInDb.mockResolvedValue(memberRecord('target', 'admin@acme.test', ['company_member'], 'admin'));
+  it('returns 409 when the target is a superadmin', async () => {
+    getOneCompanyMemberInDb.mockResolvedValue(memberRecord('target', 'staff@platform.test', ['company_member'], 'superadmin'));
     const res = mockRes();
 
     await removeTeamMember({ user: caller, params: { userId: 'target' } }, res);
@@ -451,16 +445,15 @@ describe('removeTeamMember', () => {
     expect(res.json).toHaveBeenCalledWith({ userId: 'target' });
   });
 
-  it('does not restrict target roles for superusers', async () => {
+  it('restricts target roles for superadmins like for anyone else', async () => {
     getOneCompanyMemberInDb.mockResolvedValue(memberRecord('target', 'owner2@acme.test', ['company_owner']));
-    deleteUserAndCleanup.mockResolvedValue({ status: 'deleted', deletedUser: { id: 'target' } });
+    getUserCompanyRoleNames.mockResolvedValue(['company_admin']);
     const res = mockRes();
 
-    await removeTeamMember({ user: { ...caller, role: 'admin' }, params: { userId: 'target' } }, res);
+    await removeTeamMember({ user: { ...caller, role: 'superadmin' }, params: { userId: 'target' } }, res);
 
-    expect(getUserCompanyRoleNames).not.toHaveBeenCalled();
-    expect(deleteUserAndCleanup).toHaveBeenCalledWith('target', expect.objectContaining({ allowedTargetRoleNames: undefined }));
-    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(deleteUserAndCleanup).not.toHaveBeenCalled();
   });
 });
 
@@ -478,8 +471,8 @@ describe('updateTeamMemberRole', () => {
     expect(updateCompanyMemberRoleInDb).not.toHaveBeenCalled();
   });
 
-  it('returns 409 when the target is a global admin', async () => {
-    getOneCompanyMemberInDb.mockResolvedValue(memberRecord('target', 'admin@acme.test', ['company_member'], 'admin'));
+  it('returns 409 when the target is a superadmin', async () => {
+    getOneCompanyMemberInDb.mockResolvedValue(memberRecord('target', 'staff@platform.test', ['company_member'], 'superadmin'));
     const res = mockRes();
 
     await updateTeamMemberRole({ user: caller, params: { userId: 'target' }, body: { roleName: 'company_member' } }, res);

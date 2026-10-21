@@ -2,8 +2,8 @@ export const adminUserListQueryValidationSchema = {
   role: {
     optional: true,
     isIn: {
-      options: [['user', 'admin']],
-      errorMessage: 'Role filter must be one of: user, admin',
+      options: [['user', 'superadmin']],
+      errorMessage: 'Role filter must be one of: user, superadmin',
     },
   },
   search: {

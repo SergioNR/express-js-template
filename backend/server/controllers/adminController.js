@@ -176,7 +176,7 @@ export const getAdminStats = async (req, res) => {
     activeSessionCount,
   ] = await Promise.all([
     countUsersInDb(),
-    countUsersInDb({ role: 'admin' }),
+    countUsersInDb({ role: 'superadmin' }),
     countUsersInDb({ created_at: { gte: new Date(Date.now() - WEEK_IN_MS) } }),
     countCompaniesInDb(),
     countTotalSubscriptionsInDb(),

@@ -8,13 +8,14 @@ import { teamRouter } from './v1/routes/teamRouter.js';
 import { filesRouter } from './v1/routes/filesRouter.js';
 import { checkAuthentication } from '../middlewares/authenticationChecker.js';
 import { checkPermissionByRole } from '../middlewares/permissionByRoleChecker.js';
+import { checkCompanyMembership } from '../middlewares/companyMembershipChecker.js';
 import { isS3Configured } from '../config/s3.js';
 import { logWarn } from '../config/loggerFunctions.js';
 
 export const apiRouter = Router();
 
 const userRole = 'user';
-const adminRole = 'admin';
+const superadminRole = 'superadmin';
 
 apiRouter.use('/v1/auth', authRouter);
 
@@ -22,6 +23,7 @@ apiRouter.use(
   '/v1/billing',
   checkAuthentication(),
   checkPermissionByRole(userRole),
+  checkCompanyMembership(),
   billingRouter,
 );
 
@@ -32,18 +34,19 @@ apiRouter.use(
   userRouter,
 );
 
-//* Team routes are open to every authenticated global role - the fine-grained
-//* company permission checks happen per route inside teamRouter
+//* Team routes are open to every company member - the fine-grained company
+//* permission checks happen per route inside teamRouter
 apiRouter.use(
   '/v1/team',
   checkAuthentication(),
+  checkCompanyMembership(),
   teamRouter,
 );
 
 apiRouter.use(
   '/v1/admin',
   checkAuthentication(),
-  checkPermissionByRole(adminRole),
+  checkPermissionByRole(superadminRole),
   adminRouter,
 );
 
@@ -53,6 +56,7 @@ if (isS3Configured()) {
   apiRouter.use(
     '/v1/files',
     checkAuthentication(),
+    checkCompanyMembership(),
     filesRouter,
   );
 } else {

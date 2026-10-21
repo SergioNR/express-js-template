@@ -35,10 +35,12 @@ apiRouter.use(
 );
 
 //* Team routes are open to every company member - the fine-grained company
-//* permission checks happen per route inside teamRouter
+//* permission checks happen per route inside teamRouter. Mounted like billing
+//* so every company-scoped router shares the same gate chain
 apiRouter.use(
   '/v1/team',
   checkAuthentication(),
+  checkPermissionByRole(userRole),
   checkCompanyMembership(),
   teamRouter,
 );
@@ -56,6 +58,7 @@ if (isS3Configured()) {
   apiRouter.use(
     '/v1/files',
     checkAuthentication(),
+    checkPermissionByRole(userRole),
     checkCompanyMembership(),
     filesRouter,
   );

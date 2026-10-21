@@ -25,7 +25,7 @@ export const SiteFooter = () => {
       title: t('footer.columns.legal'),
       links: [
         { label: t('footer.links.terms'), href: '/terminos-condiciones' },
-        { label: t('footer.links.contact'), href: 'mailto:hello@yourapp.com' },
+        { label: t('footer.links.contact'), href: `mailto:${t('common.contactEmail')}` },
       ],
     },
   ];

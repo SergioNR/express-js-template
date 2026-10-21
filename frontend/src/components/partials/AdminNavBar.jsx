@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink } from 'react-router';
+import { Link, NavLink } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Anchor, Burger } from '@mantine/core';
 import LogOutButton from '../navBarElements/LogOutButton';
@@ -22,7 +22,9 @@ const AdminNavBar = () => {
   return (
     <header className={styles.header}>
 
-      <Anchor component={NavLink} to="/admin" underline="never" className={styles.brand}>
+      {/* Plain Link: a NavLink here would mark the brand as the current page
+          on every /admin/* route */}
+      <Anchor component={Link} to="/admin" underline="never" className={styles.brand}>
         <img src="/logo.svg" alt={t('common.logoAlt')} className={styles.brandLogo} />
         <span className={styles.brandTitle}>{t('admin.areaTitle')}</span>
       </Anchor>

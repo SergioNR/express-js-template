@@ -64,7 +64,8 @@ const FAQ = () => {
             <Trans
               i18nKey="index.faq.items.moreQuestions.a"
               t={t}
-              components={[<Anchor key="contact" href="mailto:hello@yourapp.com" />]}
+              values={{ email: t('common.contactEmail') }}
+              components={[<Anchor key="contact" href={`mailto:${t('common.contactEmail')}`} />]}
             />
           </Accordion.Panel>
         </Accordion.Item>

@@ -19,13 +19,11 @@
   },
   "dependencies": {
     "@mantine/core": "^9.7.3",
-    "@mantine/form": "^9.7.3",
     "@mantine/hooks": "^9.7.3",
     "@mantine/notifications": "^9.7.3",
     "@tabler/icons-react": "^3.31.0",
     "axios": "^1.7.9",
     "i18next": "^26.5.3",
-    "js-cookie": "^3.0.5",
     "posthog-js": "^1.257.2",
     "prop-types": "^15.8.1",
     "react": "^19.0.0",

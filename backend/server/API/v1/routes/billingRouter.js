@@ -38,8 +38,9 @@ const requireBillingManage = checkCompanyPermission('billing.manage');
  *                   type: object
  *                   description: Subscription fields only - internal Stripe ids are never exposed
  *                   properties:
- *                     id:
- *                       type: string
+ *                     is_paid:
+ *                       type: boolean
+ *                       description: Whether the row is a real Stripe subscription - the free trial row is not. The subscription id itself is never exposed
  *                     expires_at:
  *                       type: string
  *                       format: date-time

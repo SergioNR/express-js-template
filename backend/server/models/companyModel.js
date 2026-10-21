@@ -1,7 +1,7 @@
 import { prisma } from '../config/prismaClient.js';
 
+//* No `id` - for paid rows it is the Stripe subscription id, which is never exposed
 const subscriptionPublicFields = {
-  id: true,
   created_at: true,
   updated_at: true,
   expires_at: true,

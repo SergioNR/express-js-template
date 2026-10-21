@@ -10,6 +10,11 @@ jest.unstable_mockModule('../server/integrations/stripe/customerId.js', () => ({
 
 jest.unstable_mockModule('../server/integrations/stripe/checkoutSession.js', () => ({
   createStripeCheckoutSession: jest.fn(),
+  expireOpenStripeCheckoutSessions: jest.fn(),
+}));
+
+jest.unstable_mockModule('../server/integrations/stripe/subscription.js', () => ({
+  hasActiveStripeSubscription: jest.fn(),
 }));
 
 jest.unstable_mockModule('../server/models/subscriptionModel.js', () => ({
@@ -26,7 +31,8 @@ const {
 } = await import('../server/controllers/billingController.js');
 const { createStripeCustomerPortalSession } = await import('../server/integrations/stripe/customerPortalSession.js');
 const { createCompanyIdInStripe } = await import('../server/integrations/stripe/customerId.js');
-const { createStripeCheckoutSession } = await import('../server/integrations/stripe/checkoutSession.js');
+const { createStripeCheckoutSession, expireOpenStripeCheckoutSessions } = await import('../server/integrations/stripe/checkoutSession.js');
+const { hasActiveStripeSubscription } = await import('../server/integrations/stripe/subscription.js');
 const {
   getCompanyStripeIdInDb,
   getSubscriptionDataInDb,
@@ -54,6 +60,8 @@ describe('billingController', () => {
     createStripeCheckoutSession.mockResolvedValue({ url: 'https://checkout.stripe.test/s' });
     createCompanyIdInStripe.mockResolvedValue({ id: 'cus_new' });
     storeBillingCompanyIdInDb.mockImplementation(async (companyId, stripeId) => stripeId);
+    hasActiveStripeSubscription.mockResolvedValue(false);
+    expireOpenStripeCheckoutSessions.mockResolvedValue(0);
   });
 
   describe('getBillingCheckoutSessionUrl', () => {
@@ -65,7 +73,36 @@ describe('billingController', () => {
 
       expect(res.status).toHaveBeenCalledWith(409);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'SUBSCRIPTION_ACTIVE' }));
+      expect(hasActiveStripeSubscription).not.toHaveBeenCalled();
       expect(createStripeCheckoutSession).not.toHaveBeenCalled();
+    });
+
+    it('refuses with 409 SUBSCRIPTION_ACTIVE when Stripe reports an active subscription the row does not know yet', async () => {
+      getSubscriptionDataInDb.mockResolvedValue({ id: 'trial-uuid', expires_at: FUTURE });
+      getCompanyStripeIdInDb.mockResolvedValue('cus_existing');
+      hasActiveStripeSubscription.mockResolvedValue(true);
+      const res = createMockRes();
+
+      await getBillingCheckoutSessionUrl(createReq(), res);
+
+      expect(hasActiveStripeSubscription).toHaveBeenCalledWith('cus_existing');
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'SUBSCRIPTION_ACTIVE' }));
+      expect(expireOpenStripeCheckoutSessions).not.toHaveBeenCalled();
+      expect(createStripeCheckoutSession).not.toHaveBeenCalled();
+    });
+
+    it('expires open checkout sessions of an existing customer before creating a new one', async () => {
+      getSubscriptionDataInDb.mockResolvedValue(null);
+      getCompanyStripeIdInDb.mockResolvedValue('cus_existing');
+      const res = createMockRes();
+
+      await getBillingCheckoutSessionUrl(createReq(), res);
+
+      expect(expireOpenStripeCheckoutSessions).toHaveBeenCalledWith('cus_existing');
+      expect(expireOpenStripeCheckoutSessions.mock.invocationCallOrder[0])
+        .toBeLessThan(createStripeCheckoutSession.mock.invocationCallOrder[0]);
+      expect(res.status).toHaveBeenCalledWith(200);
     });
 
     it('allows checkout during a trial (non-sub_ id)', async () => {
@@ -99,6 +136,9 @@ describe('billingController', () => {
 
       expect(createCompanyIdInStripe).toHaveBeenCalledWith('owner@acme.test', 'company-1');
       expect(storeBillingCompanyIdInDb).toHaveBeenCalledWith('company-1', 'cus_new');
+      //* A brand-new customer cannot have subscriptions or open sessions yet
+      expect(hasActiveStripeSubscription).not.toHaveBeenCalled();
+      expect(expireOpenStripeCheckoutSessions).not.toHaveBeenCalled();
       expect(createStripeCheckoutSession).toHaveBeenCalledWith('company-1', 'cus_new', 'user-1', 'pro', 'monthly');
       expect(res.json).toHaveBeenCalledWith({ checkoutSessionUrl: 'https://checkout.stripe.test/s' });
     });

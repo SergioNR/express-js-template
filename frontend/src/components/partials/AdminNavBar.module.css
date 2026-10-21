@@ -52,9 +52,9 @@
   color: light-dark(var(--mantine-color-black), var(--mantine-color-white));
 }
 
-/* NavLink adds the `active` class automatically - highlight the current
-   admin section the same way the user-area sidebar does */
-.link.active {
+/* Applied through NavLink's className({ isActive }) callback - highlight the
+   current admin section the same way the user-area sidebar does */
+.linkActive {
   &,
   &:hover {
     background-color: var(--mantine-color-blue-light);

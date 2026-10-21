@@ -11,6 +11,10 @@ const NAV_LINKS = [
   { to: '/admin/companies', key: 'admin.nav.companies', end: false },
 ];
 
+//* Mantine's Anchor can't forward NavLink's className callback, so section
+//* links use NavLink directly (same approach as UserNavBar)
+const linkClassName = ({ isActive }) => `${styles.link}${isActive ? ` ${styles.linkActive}` : ''}`;
+
 const AdminNavBar = () => {
   const { t } = useTranslation();
   const [mobileMenuOpened, setMobileMenuOpened] = useState(false);
@@ -25,16 +29,9 @@ const AdminNavBar = () => {
 
       <nav className={styles.navLinks}>
         {NAV_LINKS.map(({ to, key, end }) => (
-          <Anchor
-            key={key}
-            component={NavLink}
-            to={to}
-            end={end}
-            underline="never"
-            className={styles.link}
-          >
+          <NavLink key={key} to={to} end={end} className={linkClassName}>
             {t(key)}
-          </Anchor>
+          </NavLink>
         ))}
       </nav>
 
@@ -54,17 +51,16 @@ const AdminNavBar = () => {
       />
 
       <nav className={`${styles.mobileNav} ${mobileMenuOpened ? styles.mobileNavOpen : ''}`}>
-        {NAV_LINKS.map(({ to, key }) => (
-          <Anchor
+        {NAV_LINKS.map(({ to, key, end }) => (
+          <NavLink
             key={key}
-            component={NavLink}
             to={to}
-            underline="never"
-            className={styles.link}
+            end={end}
+            className={linkClassName}
             onClick={() => setMobileMenuOpened(false)}
           >
             {t(key)}
-          </Anchor>
+          </NavLink>
         ))}
         <div className={styles.mobileActions}>
           <Anchor

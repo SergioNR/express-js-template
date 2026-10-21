@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useOutletContext } from 'react-router';
 import {
   ActionIcon,
   Alert,
@@ -16,6 +16,7 @@ import {
   Text,
   TextInput,
   Title,
+  Tooltip,
 } from '@mantine/core';
 import { IconSearch, IconTrash } from '@tabler/icons-react';
 import apiClient from '../../config/API/axiosConfig.mjs';
@@ -28,6 +29,8 @@ const SEARCH_DEBOUNCE_MS = 400;
 
 const AdminUsersList = () => {
   const { t } = useTranslation();
+  //* Provided by AdminDashboardWrapper's <Outlet context>
+  const { sessionUser } = useOutletContext();
   const [users, setUsers] = useState([]);
   const [userCount, setUserCount] = useState(0);
   const [nextCursor, setNextCursor] = useState(null);
@@ -144,8 +147,11 @@ const AdminUsersList = () => {
       await loadFirstPage();
     } catch (err) {
       const status = err?.response?.status;
+      const code = err?.response?.data?.code;
 
-      if (status === 409) {
+      if (status === 409 && code === 'LAST_COMPANY_OWNER') {
+        notifyError(t('admin.users.deleteLastOwner'));
+      } else if (status === 409) {
         notifyError(t('admin.users.deleteConflict'));
       } else if (status === 404) {
         notifyError(t('admin.users.deleteNotFound'));
@@ -162,41 +168,52 @@ const AdminUsersList = () => {
     { value: 'superadmin', label: t('admin.roles.superadmin') },
   ];
 
-  const rows = users.map((user) => (
-    <Table.Tr key={user.id}>
-      <Table.Td>
-        <Anchor component={Link} to={`/admin/users/${user.id}`} size="sm">
-          {user.email}
-        </Anchor>
-      </Table.Td>
-      <Table.Td>
-        <Badge color={user.role === 'superadmin' ? 'violet' : 'gray'} variant="light">
-          {t(`admin.roles.${user.role}`)}
-        </Badge>
-      </Table.Td>
-      <Table.Td>
-        <Text fz="sm">{user.Company?.name ?? '—'}</Text>
-      </Table.Td>
-      <Table.Td>
-        <Text fz="sm">{formatDateTime(user.last_login_at)}</Text>
-      </Table.Td>
-      <Table.Td>
-        <Text fz="sm">{formatDateTime(user.created_at)}</Text>
-      </Table.Td>
-      <Table.Td>
-        <Group gap={0} justify="flex-end">
-          <ActionIcon
-            variant="subtle"
-            color="red"
-            aria-label={t('admin.users.deleteAction', { email: user.email })}
-            onClick={() => setDeleteTarget(user)}
-          >
-            <IconTrash size={16} stroke={1.5} />
-          </ActionIcon>
-        </Group>
-      </Table.Td>
-    </Table.Tr>
-  ));
+  const rows = users.map((user) => {
+    //* Admins delete their own account from their profile, not from this list
+    const isSelf = user.id === sessionUser?.id;
+
+    return (
+      <Table.Tr key={user.id}>
+        <Table.Td>
+          <Anchor component={Link} to={`/admin/users/${user.id}`} size="sm">
+            {user.email}
+          </Anchor>
+        </Table.Td>
+        <Table.Td>
+          <Badge color={user.role === 'superadmin' ? 'violet' : 'gray'} variant="light">
+            {t(`admin.roles.${user.role}`)}
+          </Badge>
+        </Table.Td>
+        <Table.Td>
+          <Text fz="sm">{user.Company?.name ?? '—'}</Text>
+        </Table.Td>
+        <Table.Td>
+          <Text fz="sm">{formatDateTime(user.last_login_at)}</Text>
+        </Table.Td>
+        <Table.Td>
+          <Text fz="sm">{formatDateTime(user.created_at)}</Text>
+        </Table.Td>
+        <Table.Td>
+          <Group gap={0} justify="flex-end">
+            {/* Disabled controls swallow pointer events - the span keeps the tooltip hoverable */}
+            <Tooltip label={t('admin.users.deleteSelfLocked')} disabled={!isSelf} withArrow>
+              <span style={{ display: 'inline-flex' }}>
+                <ActionIcon
+                  variant="subtle"
+                  color="red"
+                  disabled={isSelf}
+                  aria-label={t('admin.users.deleteAction', { email: user.email })}
+                  onClick={() => setDeleteTarget(user)}
+                >
+                  <IconTrash size={16} stroke={1.5} />
+                </ActionIcon>
+              </span>
+            </Tooltip>
+          </Group>
+        </Table.Td>
+      </Table.Tr>
+    );
+  });
 
   return (
     <Stack gap="lg">
@@ -288,7 +305,7 @@ const AdminUsersList = () => {
           </Text>
           {deleteTarget?.role === 'superadmin' && (
             <Alert color="red" variant="light">
-              {t('admin.users.deleteModal.adminWarning')}
+              {t('admin.users.deleteModal.superadminWarning')}
             </Alert>
           )}
           <Group justify="flex-end">

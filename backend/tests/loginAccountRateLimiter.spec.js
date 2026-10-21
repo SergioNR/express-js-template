@@ -25,12 +25,15 @@ describe('loginAccountLimiter', () => {
     expect(loginAccountLimiter.skipSuccessfulRequests).toBe(true);
   });
 
-  it('keys on the normalized username, not the IP', () => {
+  it('keys on the normalized username together with the client IP', () => {
     const keyA = loginAccountKey({ ip: '203.0.113.1', body: { username: ' User@Example.com ' } });
-    const keyB = loginAccountKey({ ip: '198.51.100.2', body: { username: 'user@example.com' } });
+    const keySameIp = loginAccountKey({ ip: '203.0.113.1', body: { username: 'user@example.com' } });
+    const keyOtherIp = loginAccountKey({ ip: '198.51.100.2', body: { username: 'user@example.com' } });
 
-    expect(keyA).toBe(keyB);
-    expect(keyA).toBe('login:user@example.com');
+    expect(keyA).toBe(keySameIp);
+    expect(keyA).toBe('login:203.0.113.1:user@example.com');
+    //* Another source cannot burn the budget of the account for everyone
+    expect(keyOtherIp).not.toBe(keyA);
   });
 
   it('responds 429 when the account budget is exhausted', () => {

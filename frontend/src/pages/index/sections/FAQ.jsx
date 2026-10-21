@@ -1,7 +1,7 @@
 import { Container, Title, Accordion, Anchor } from '@mantine/core';
 import { Trans, useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { IconHelpHexagon } from '@tabler/icons-react';
-import Seo from '../../../components/Seo.jsx';
 
 const control = (t, key) => (
   <Accordion.Control icon={<IconHelpHexagon size={16} />}>
@@ -14,11 +14,6 @@ const FAQ = () => {
 
   return (
     <Container size="lg" py="xl">
-      <Seo
-        title={t('index.faq.title')}
-        description={t('seo.faqDescription')}
-        path="/preguntas-frecuentes"
-      />
       <Title order={2} ta="center" mb="xl">
         {t('index.faq.title')}
       </Title>
@@ -37,7 +32,7 @@ const FAQ = () => {
             <Trans
               i18nKey="index.faq.items.pricing.a"
               t={t}
-              components={[<Anchor key="pricing" href="/pricing" />]}
+              components={[<Anchor key="pricing" component={Link} to="/pricing" />]}
             />
           </Accordion.Panel>
         </Accordion.Item>

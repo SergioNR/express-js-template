@@ -2,10 +2,27 @@ import { createStripeCustomerPortalSession } from '../integrations/stripe/custom
 import { createCompanyIdInStripe } from '../integrations/stripe/customerId.js';
 import { createStripeCheckoutSession } from '../integrations/stripe/checkoutSession.js';
 import {
+  getCompanyStripeIdInDb,
   getSubscriptionDataInDb,
   getSubscriptionPublicDataInDb,
   storeBillingCompanyIdInDb,
 } from '../models/subscriptionModel.js';
+
+//* A company is actively subscribed only through a real Stripe subscription
+//* (`sub_` id) that has not expired yet - trial rows carry a random uuid
+const hasActiveStripeSubscription = (subscriptionData) => Boolean(
+  subscriptionData?.id?.startsWith('sub_')
+  && subscriptionData.expires_at
+  && new Date(subscriptionData.expires_at) > new Date(),
+);
+
+//* Creates the Stripe customer and stores it with a conditional write. When a
+//* concurrent request stored a customer first, the stored id is reused
+const createAndStoreCompanyStripeId = async (email, companyId) => {
+  const companyBillingId = await createCompanyIdInStripe(email, companyId);
+
+  return storeBillingCompanyIdInDb(companyId, companyBillingId.id);
+};
 
 export const createCompanyBillingId = async (req, res) => {
   const {
@@ -13,15 +30,7 @@ export const createCompanyBillingId = async (req, res) => {
     company_id: companyId,
   } = req.user;
 
-  const subscriptionData = await getSubscriptionDataInDb(companyId);
-
-  if (!subscriptionData) {
-    return res.status(404).json({
-      message: 'No subscription found for the company',
-    });
-  }
-
-  const { stripe_id: companyStripeId } = subscriptionData.Company;
+  const companyStripeId = await getCompanyStripeIdInDb(companyId);
 
   if (companyStripeId) {
     return res.status(409).json({
@@ -29,12 +38,7 @@ export const createCompanyBillingId = async (req, res) => {
     });
   }
 
-  const companyBillingId = await createCompanyIdInStripe(email, companyId);
-
-  await storeBillingCompanyIdInDb(
-    companyId,
-    companyBillingId.id,
-  );
+  await createAndStoreCompanyStripeId(email, companyId);
 
   return res.status(201).json({});
 };
@@ -44,15 +48,9 @@ export const getBillingCustomerPortalUrl = async (req, res) => {
     company_id: companyId,
   } = req.user;
 
-  const subscriptionData = await getSubscriptionDataInDb(companyId);
-
-  if (!subscriptionData) {
-    return res.status(404).json({
-      message: 'No subscription found for the company',
-    });
-  }
-
-  const companyStripeId = subscriptionData.Company?.stripe_id;
+  //* Only the Stripe customer is needed - the portal must stay reachable after
+  //* the subscription ended so the company can see invoices and resubscribe
+  const companyStripeId = await getCompanyStripeIdInDb(companyId);
 
   if (!companyStripeId) {
     return res.status(409).json({
@@ -78,25 +76,23 @@ export const getBillingCheckoutSessionUrl = async (req, res) => {
 
   const { planName, planBillingCycle } = req.body;
 
+  //* The subscription row is optional - a company whose subscription ended
+  //* (or never had one) can still start a new checkout
   const subscriptionData = await getSubscriptionDataInDb(companyId);
 
-  if (!subscriptionData) {
-    return res.status(404).json({
-      message: 'No subscription found for the company',
+  //* A second checkout would create a duplicate Stripe subscription - plan
+  //* changes go through the customer portal instead
+  if (hasActiveStripeSubscription(subscriptionData)) {
+    return res.status(409).json({
+      message: 'Company already has an active subscription - manage it through the customer portal',
+      code: 'SUBSCRIPTION_ACTIVE',
     });
   }
 
-  let companyStripeId = subscriptionData.Company?.stripe_id;
-
   //* Auto-create the Stripe customer on first checkout - removes the need for
   //* a separate create-billing-id round trip on the client
-  if (!companyStripeId) {
-    const companyBillingId = await createCompanyIdInStripe(email, companyId);
-
-    companyStripeId = companyBillingId.id;
-
-    await storeBillingCompanyIdInDb(companyId, companyStripeId);
-  }
+  const companyStripeId = await getCompanyStripeIdInDb(companyId)
+    ?? await createAndStoreCompanyStripeId(email, companyId);
 
   const checkoutSession = await createStripeCheckoutSession(
     companyId,

@@ -1,4 +1,9 @@
-import { brevoClient, companyEmails } from './brevo.js';
+import {
+  brevoClient,
+  commonTemplateParams,
+  companyEmails,
+  templateIds,
+} from './brevo.js';
 import { logError } from '../../../config/loggerFunctions.js';
 
 export const sendTeamInviteToUser = async (userEmail, inviteToken, companyName, inviterEmail) => {
@@ -11,10 +16,11 @@ export const sendTeamInviteToUser = async (userEmail, inviteToken, companyName, 
       to: [{
         email: userEmail,
       }],
-      templateId: 3, //* Direct link to the template --> https://my.brevo.com/camp/template/3/setup
-      //* The clickable link to <frontend>/auth/accept-invite?inviteToken=...
+      templateId: templateIds.teamInvite, //* Brevo dashboard --> https://my.brevo.com/camp/template/<id>/setup
+      //* The clickable link to {{ params.appOrigin }}/auth/accept-invite?inviteToken=...
       //* is built inside the Brevo template body, not in code
       params: {
+        ...commonTemplateParams(),
         inviteToken: inviteToken,
         companyName: companyName,
         inviterEmail: inviterEmail,

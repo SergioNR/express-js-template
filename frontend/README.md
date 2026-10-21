@@ -43,4 +43,4 @@ Because the app is built with Vite, all variables must be provided as build-time
 
 The web app is packaged in a Docker image (nginx serving the built bundle, see `nginx.conf`).
 
-A typical setup offloads image build and public deployment to a platform such as [Koyeb](https://koyeb.com): pushing or merging to the `next` and `latest` branches triggers a build with the `ARG`s above injected at build time, deploys the image and serves it through nginx. Configure the deployment and its environment variables in your platform of choice.
+`npm run docker-build:local` builds the image locally. `docker-build:prod` and `docker-build:dev` build and push the `latest` and `next` tags to Docker Hub; adapt the image names in these scripts to your own registry.

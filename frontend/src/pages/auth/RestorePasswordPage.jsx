@@ -28,6 +28,8 @@ const RestorePasswordPage = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [passwordMismatch, setPasswordMismatch] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   // Get a specific query parameter
   const passwordResetToken = searchParams.get('passwordResetToken');
@@ -37,7 +39,10 @@ const RestorePasswordPage = () => {
   useEffect(() => {
     const checkPasswordResetTokenValidity = async () => {
       try {
-        const response = await apiClient.get(`/api/v1/auth/password-reset?passwordResetToken=${passwordResetToken}`);
+        // `params` URL-encodes the opaque token
+        const response = await apiClient.get('/api/v1/auth/password-reset', {
+          params: { passwordResetToken },
+        });
         setPasswordResetTokenValidity(response.data);
       } catch {
         console.error('Error checking password reset token validity:');
@@ -61,7 +66,8 @@ const RestorePasswordPage = () => {
     }
 
     setPasswordMismatch(false);
-    setLoading(true);
+    setSubmitError(null);
+    setSubmitting(true);
 
     try {
       const formData = {
@@ -73,9 +79,20 @@ const RestorePasswordPage = () => {
       const response = await apiClient.patch(`/api/v1/auth/password-reset`, formData);
 
       setPasswordUpdateResponse(response.data);
-      setLoading(false);
-    } catch {
-      setLoading(false);
+    } catch (err) {
+      const status = err?.response?.status;
+
+      if (status === 400) {
+        setSubmitError(t('auth.restore.errors.expired'));
+      } else if (status === 404) {
+        setSubmitError(t('auth.restore.errors.invalidLink'));
+      } else if (status === 422) {
+        setSubmitError(t('auth.restore.errors.invalid'));
+      } else {
+        setSubmitError(t('auth.restore.errors.generic'));
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -88,7 +105,7 @@ const RestorePasswordPage = () => {
 
       {loading && <PageLoader />}
 
-      {passwordUpdateResponse ? (
+      {!loading && (passwordUpdateResponse ? (
         <Paper shadow="xs" p={20} mt="xl" radius="md">
           <Alert icon={<IconCheck size="1rem" />} color="green" title={t('common.success')}>
             {t('auth.restore.success')}
@@ -135,6 +152,17 @@ const RestorePasswordPage = () => {
                 </Alert>
               )}
 
+              {submitError && (
+                <Alert
+                  icon={<IconAlertCircle size="1rem" />}
+                  title={t('common.error')}
+                  color="red"
+                  mt="md"
+                >
+                  {submitError}
+                </Alert>
+              )}
+
               <Group justify="space-between" mt="lg" className={classes.controls}>
                 <Anchor c="dimmed" component={Link} to="/auth/login" size="sm" className={classes.control}>
                   <Center inline>
@@ -145,7 +173,7 @@ const RestorePasswordPage = () => {
                 <Button
                   type="submit"
                   className={classes.control}
-                  loading={loading}
+                  loading={submitting}
                 >
                   {t('auth.restore.submit')}
                 </Button>
@@ -171,7 +199,7 @@ const RestorePasswordPage = () => {
             </Center>
           </Paper>
         )
-      )}
+      ))}
     </Container>
   );
 };

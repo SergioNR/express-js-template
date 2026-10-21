@@ -97,7 +97,13 @@
       "backToLogin": "Volver al inicio de sesión",
       "invalidLinkTitle": "Enlace inválido",
       "invalidLinkBody": "El enlace para restablecer la contraseña es inválido o ha expirado. Por favor, solicita un nuevo enlace.",
-      "requestNewLink": "Solicitar nuevo enlace"
+      "requestNewLink": "Solicitar nuevo enlace",
+      "errors": {
+        "expired": "El enlace ha caducado o ya se ha usado. Solicita un nuevo enlace para restablecer tu contraseña.",
+        "invalidLink": "El enlace no es válido. Solicita un nuevo enlace para restablecer tu contraseña.",
+        "invalid": "La contraseña no cumple los requisitos o las contraseñas no coinciden. Revisa los datos e inténtalo de nuevo.",
+        "generic": "No se pudo actualizar la contraseña. Por favor, inténtalo de nuevo más tarde."
+      }
     },
     "passwordUpdate": {
       "title": "Cambiar contraseña",

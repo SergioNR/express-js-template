@@ -13,14 +13,89 @@ import { canGrantRole, outranksAllRoles, rolesGrantableBy } from '../utils/compa
 
 const COMPANY_OWNER_ROLE = 'company_owner';
 
-//* Resolves to the created user, or null when the invite could not be
-//* consumed (unknown, expired, already accepted or revoked meanwhile)
+const getCompanyRoleNamesInTx = async (tx, userId) => {
+  const userRoles = await tx.userRole.findMany({
+    where: {
+      user_id: userId,
+    },
+    select: {
+      Role: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  return userRoles.map((userRole) => userRole.Role.name);
+};
+
+//* The caller's roles are only meaningful while they are still a member of
+//* the company - resolves to null when they are not (removed concurrently)
+const getMemberRoleNamesInTx = async (tx, userId, companyId) => {
+  const member = await tx.user.findFirst({
+    where: {
+      id: userId,
+      company_id: companyId,
+    },
+    select: {
+      UserRoles: {
+        select: {
+          Role: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!member) {
+    return null;
+  }
+
+  return member.UserRoles.map((userRole) => userRole.Role.name);
+};
+
+const countCompanyOwnersInTx = (tx, companyId) => tx.user.count({
+  where: {
+    company_id: companyId,
+    UserRoles: {
+      some: {
+        Role: {
+          name: COMPANY_OWNER_ROLE,
+        },
+      },
+    },
+  },
+});
+
+//* Resolves to true while the member still belongs to the company and can
+//* grant the role. Shared by the invite check/accept and the invite resend:
+//* an invite is only as good as its inviter, so once they left the company or
+//* were demoted below the invited role the invite must not grant what they
+//* could no longer grant themselves
+export const canCompanyMemberGrantRoleInDb = async (memberId, companyId, roleName) => {
+  //* Outside a transaction the client itself plays the `tx` role
+  const memberRoleNames = await getMemberRoleNamesInTx(prisma, memberId, companyId);
+
+  return Boolean(memberRoleNames) && canGrantRole(memberRoleNames, roleName);
+};
+
+//* Self-registration resolves to the created user. Invite acceptance resolves
+//* to { status: 'created', user }, { status: 'inviter_invalid' } (the inviter
+//* left or can no longer grant the role - the invite is voided) or
+//* { status: 'invite_invalid' } (unknown, expired, already accepted or
+//* revoked meanwhile)
 export const createUserInDB = async (userData) => {
   const {
     username,
     password,
     companyId,
     roleId,
+    roleName,
+    invitedBy,
     inviteId,
     inviteToken,
     companyName,
@@ -28,12 +103,32 @@ export const createUserInDB = async (userData) => {
 
   //* Invite acceptance path: the user joins an existing company with the
   //* invited role - no nested company/subscription creation, no trial.
-  //* The invite is consumed FIRST, with a conditional delete (matching id
-  //* AND digest AND not expired) - two concurrent accepts of the same link
-  //* serialize on the row and only one sees count === 1, so a link can never
-  //* create an account twice nor stay usable after an acceptance
+  //* The company row is locked first - the same lock role changes and member
+  //* removals take - so the inviter re-check below sees committed role rows
+  //* and a concurrent demotion or removal cannot slip in between the check
+  //* and the user creation. The invite is then consumed with a conditional
+  //* delete (matching id AND digest AND not expired) - two concurrent accepts
+  //* of the same link serialize on the row and only one sees count === 1, so
+  //* a link can never create an account twice nor stay usable after an
+  //* acceptance
   if (companyId && roleId) {
-    const invitedUser = await prisma.$transaction(async (tx) => {
+    const acceptResult = await prisma.$transaction(async (tx) => {
+      await lockCompanyForUpdateInDb(tx, companyId);
+
+      const inviterRoleNames = await getMemberRoleNamesInTx(tx, invitedBy, companyId);
+
+      if (!inviterRoleNames || !canGrantRole(inviterRoleNames, roleName)) {
+        //* Voided in the same commit - a dead inviter cannot be revived by a
+        //* later resend either
+        await tx.teamInvites.deleteMany({
+          where: {
+            id: inviteId,
+          },
+        });
+
+        return { status: 'inviter_invalid' };
+      }
+
       const consumeResult = await tx.teamInvites.deleteMany({
         where: {
           id: inviteId,
@@ -45,10 +140,10 @@ export const createUserInDB = async (userData) => {
       });
 
       if (consumeResult.count !== 1) {
-        return null;
+        return { status: 'invite_invalid' };
       }
 
-      return tx.user.create({
+      const user = await tx.user.create({
         data: {
           email: username,
           password,
@@ -64,17 +159,21 @@ export const createUserInDB = async (userData) => {
           password: true,
         },
       });
+
+      return { status: 'created', user };
     });
 
-    if (!invitedUser) {
-      return null;
+    if (acceptResult.status !== 'created') {
+      return acceptResult;
     }
+
+    const { user: invitedUser } = acceptResult;
 
     logInfo(`User ${invitedUser.id} (${invitedUser.role}) created in DB via team invite`, invitedUser);
 
     posthogUserSignedUp(invitedUser); // Fire-and-forget
 
-    return invitedUser;
+    return acceptResult;
   }
 
   //* Self-registration (onboarding) path: creates a brand-new company with a
@@ -297,64 +396,6 @@ export const countUsersInDb = async (filters = {}) => {
 
   return userCount;
 };
-
-const getCompanyRoleNamesInTx = async (tx, userId) => {
-  const userRoles = await tx.userRole.findMany({
-    where: {
-      user_id: userId,
-    },
-    select: {
-      Role: {
-        select: {
-          name: true,
-        },
-      },
-    },
-  });
-
-  return userRoles.map((userRole) => userRole.Role.name);
-};
-
-//* The caller's roles are only meaningful while they are still a member of
-//* the company - resolves to null when they are not (removed concurrently)
-const getMemberRoleNamesInTx = async (tx, userId, companyId) => {
-  const member = await tx.user.findFirst({
-    where: {
-      id: userId,
-      company_id: companyId,
-    },
-    select: {
-      UserRoles: {
-        select: {
-          Role: {
-            select: {
-              name: true,
-            },
-          },
-        },
-      },
-    },
-  });
-
-  if (!member) {
-    return null;
-  }
-
-  return member.UserRoles.map((userRole) => userRole.Role.name);
-};
-
-const countCompanyOwnersInTx = (tx, companyId) => tx.user.count({
-  where: {
-    company_id: companyId,
-    UserRoles: {
-      some: {
-        Role: {
-          name: COMPANY_OWNER_ROLE,
-        },
-      },
-    },
-  },
-});
 
 //* Every DB step of a user deletion in one transaction: the user row (its
 //* UserRole and reset-token rows cascade), its sessions and - when it was the

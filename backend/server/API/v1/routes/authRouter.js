@@ -147,11 +147,18 @@ authRouter.post('/register', authLimiter, checkSchema(createUserValidationSchema
  *             schema:
  *               $ref: '#/components/schemas/SuccessMessage'
  *       400:
- *         description: Token is missing from the query string, is malformed or has expired
+ *         description: Token is missing from the query string or malformed, has expired (code `INVITE_EXPIRED`), or the inviter left the company or can no longer grant the role (code `INVITER_INVALID`)
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorMessage'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ErrorMessage'
+ *                 - type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       enum: [INVITE_EXPIRED, INVITER_INVALID]
+ *                       description: Absent for malformed-token validation errors
  *       404:
  *         description: Token does not exist
  *         content:
@@ -249,7 +256,7 @@ authRouter.patch('/password-reset', authLimiter, checkSchema(recoverPasswordSche
  *   get:
  *     tags: [Auth]
  *     summary: Check team invite token validity
- *     description: Retrieves the data of a team invite (invited email, company name and offered role) and whether it is still valid. Invite links are single-use per company and email and expire after 7 days.
+ *     description: Retrieves the data of a team invite (invited email, company name and offered role) and whether it is still valid. Invite links are single-use per company and email and expire after 7 days. An invite is only valid while its inviter is still a company member able to grant the invited role.
  *     parameters:
  *       - in: query
  *         name: inviteToken
@@ -295,7 +302,7 @@ authRouter.get('/invite', checkSchema(teamInviteTokenQuerySchema), sanitizerResu
  *   post:
  *     tags: [Auth]
  *     summary: Accept a team invite and create the account
- *     description: Validates the invite token, creates the user in the invited company with the invited company role and the global `user` role, and deletes the invite. No session is established - the new member logs in afterwards.
+ *     description: Validates the invite token, creates the user in the invited company with the invited company role and the global `user` role, and deletes the invite. The inviter is re-checked under the company lock in the same transaction as the user creation - when they left the company or can no longer grant the role the invite is voided (400, code `INVITER_INVALID`). No session is established - the new member logs in afterwards.
  *     requestBody:
  *       required: true
  *       content:
@@ -310,11 +317,18 @@ authRouter.get('/invite', checkSchema(teamInviteTokenQuerySchema), sanitizerResu
  *             schema:
  *               $ref: '#/components/schemas/SuccessMessage'
  *       400:
- *         description: Token is malformed or has expired
+ *         description: Token is malformed, has expired or was consumed/rotated meanwhile (code `INVITE_EXPIRED`), or the inviter left the company or can no longer grant the role - the invite was voided (code `INVITER_INVALID`)
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorMessage'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ErrorMessage'
+ *                 - type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       enum: [INVITE_EXPIRED, INVITER_INVALID]
+ *                       description: Absent for malformed-token validation errors
  *       404:
  *         description: Token does not exist
  *         content:

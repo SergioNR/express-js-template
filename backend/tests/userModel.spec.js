@@ -27,6 +27,9 @@ jest.unstable_mockModule('../server/config/prismaClient.js', () => ({
     role: {
       findUnique: jest.fn(),
     },
+    user: {
+      findFirst: jest.fn(),
+    },
   },
 }));
 
@@ -41,7 +44,12 @@ jest.unstable_mockModule('../server/config/loggerFunctions.js', () => ({
   logPasswordResetTokenCreated: jest.fn(),
 }));
 
-const { createUserInDB, updateCompanyMemberRoleInDb, updateUserPasswordInDB } = await import('../server/models/userModel.js');
+const {
+  canCompanyMemberGrantRoleInDb,
+  createUserInDB,
+  updateCompanyMemberRoleInDb,
+  updateUserPasswordInDB,
+} = await import('../server/models/userModel.js');
 const { prisma } = await import('../server/config/prismaClient.js');
 const { posthogUserSignedUp } = await import('../server/models/posthogModel.js');
 const { hashSecureToken } = await import('../server/utils/secureToken.js');
@@ -51,21 +59,32 @@ const inviteAcceptance = {
   password: '$2a$12$hash',
   companyId: 'company-1',
   roleId: 'role-member',
+  roleName: 'company_member',
+  invitedBy: 'inviter-1',
   inviteId: 'invite-1',
   inviteToken: 'raw-invite-token',
 };
 
+const inviterRow = (roleNames) => ({ UserRoles: roleNames.map((name) => ({ Role: { name } })) });
+
 describe('createUserInDB - invite acceptance', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    tx.user.findFirst.mockResolvedValue(inviterRow(['company_admin']));
   });
 
-  it('consumes the invite conditionally (id + digest + not expired) before creating the user', async () => {
+  it('locks the company, re-checks the inviter, then consumes the invite conditionally before creating the user', async () => {
     tx.teamInvites.deleteMany.mockResolvedValue({ count: 1 });
     tx.user.create.mockResolvedValue({ id: 'new-user', role: 'user' });
 
-    const createdUser = await createUserInDB(inviteAcceptance);
+    const acceptResult = await createUserInDB(inviteAcceptance);
 
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(tx.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'inviter-1', company_id: 'company-1' },
+    }));
+    expect(tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(tx.user.findFirst.mock.invocationCallOrder[0]);
+    expect(tx.user.findFirst.mock.invocationCallOrder[0]).toBeLessThan(tx.teamInvites.deleteMany.mock.invocationCallOrder[0]);
     expect(tx.teamInvites.deleteMany).toHaveBeenCalledWith({
       where: {
         id: 'invite-1',
@@ -78,18 +97,66 @@ describe('createUserInDB - invite acceptance', () => {
       data: expect.objectContaining({ email: 'new@acme.test', company_id: 'company-1', role: 'user' }),
       omit: { password: true },
     }));
-    expect(createdUser).toEqual({ id: 'new-user', role: 'user' });
+    expect(acceptResult).toEqual({ status: 'created', user: { id: 'new-user', role: 'user' } });
     expect(posthogUserSignedUp).toHaveBeenCalled();
   });
 
-  it('creates nothing and resolves to null when the invite was already consumed, revoked or expired', async () => {
-    tx.teamInvites.deleteMany.mockResolvedValue({ count: 0 });
+  it('voids the invite and resolves to inviter_invalid when the inviter left the company under the lock', async () => {
+    tx.user.findFirst.mockResolvedValue(null);
+    tx.teamInvites.deleteMany.mockResolvedValue({ count: 1 });
 
-    const createdUser = await createUserInDB(inviteAcceptance);
+    const acceptResult = await createUserInDB(inviteAcceptance);
 
-    expect(createdUser).toBeNull();
+    expect(acceptResult).toEqual({ status: 'inviter_invalid' });
+    expect(tx.teamInvites.deleteMany).toHaveBeenCalledWith({ where: { id: 'invite-1' } });
     expect(tx.user.create).not.toHaveBeenCalled();
     expect(posthogUserSignedUp).not.toHaveBeenCalled();
+  });
+
+  it('resolves to inviter_invalid when the inviter was demoted below the invited role', async () => {
+    tx.user.findFirst.mockResolvedValue(inviterRow(['company_member']));
+
+    const acceptResult = await createUserInDB({ ...inviteAcceptance, roleName: 'company_admin' });
+
+    expect(acceptResult).toEqual({ status: 'inviter_invalid' });
+    expect(tx.user.create).not.toHaveBeenCalled();
+  });
+
+  it('creates nothing and resolves to invite_invalid when the invite was already consumed, revoked or expired', async () => {
+    tx.teamInvites.deleteMany.mockResolvedValue({ count: 0 });
+
+    const acceptResult = await createUserInDB(inviteAcceptance);
+
+    expect(acceptResult).toEqual({ status: 'invite_invalid' });
+    expect(tx.user.create).not.toHaveBeenCalled();
+    expect(posthogUserSignedUp).not.toHaveBeenCalled();
+  });
+});
+
+describe('canCompanyMemberGrantRoleInDb', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('is false when the member no longer belongs to the company', async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+
+    await expect(canCompanyMemberGrantRoleInDb('inviter-1', 'company-1', 'company_member')).resolves.toBe(false);
+    expect(prisma.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'inviter-1', company_id: 'company-1' },
+    }));
+  });
+
+  it('is false when the member ranks below the role', async () => {
+    prisma.user.findFirst.mockResolvedValue(inviterRow(['company_member']));
+
+    await expect(canCompanyMemberGrantRoleInDb('inviter-1', 'company-1', 'company_admin')).resolves.toBe(false);
+  });
+
+  it('is true when the member holds the role or a superior one', async () => {
+    prisma.user.findFirst.mockResolvedValue(inviterRow(['company_admin']));
+
+    await expect(canCompanyMemberGrantRoleInDb('inviter-1', 'company-1', 'company_admin')).resolves.toBe(true);
   });
 });
 

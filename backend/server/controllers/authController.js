@@ -5,7 +5,7 @@ import passport from '../auth/passportjs.js';
 import { posthogUserSuccessLoggedIn } from '../models/posthogModel.js';
 import {
   getUserByEmail,
-  getOneCompanyMemberInDb,
+  canCompanyMemberGrantRoleInDb,
   updateUserPasswordInDB,
   createUserInDB,
   getUserPassword,
@@ -18,7 +18,6 @@ import {
 } from '../models/passwordResetTokensModel.js';
 import { getTeamInviteByTokenInDb, deleteTeamInviteByIdSafe } from '../models/teamInvitesModel.js';
 import { linkSessionToUser } from '../models/sessionModel.js';
-import { canGrantRole } from '../utils/companyRoleHierarchy.js';
 import { sendResetPasswordTokenToUser } from '../integrations/brevo/transactionalEmails/sendResetPasswordTokenToUser.js';
 import { sendExistingAccountNoticeToUser } from '../integrations/brevo/transactionalEmails/sendExistingAccountNoticeToUser.js';
 
@@ -97,22 +96,24 @@ export const updateRecoveredUserPassword = async (req, res) => {
   return res.status(200).json({});
 };
 
-//* An invite is only as good as its inviter: when they left the company or
-//* were demoted below the invited role in the meantime, the invite must not
-//* grant what they could no longer grant themselves
-const isInviterStillAbleToGrant = async (inviteData) => {
-  const inviter = await getOneCompanyMemberInDb(inviteData.invited_by, inviteData.company_id);
-
-  if (!inviter) {
-    return false;
-  }
-
-  const inviterRoleNames = inviter.UserRoles.map((userRole) => userRole.Role.name);
-
-  return canGrantRole(inviterRoleNames, inviteData.Role.name);
+//* Both 400s of the invite check/accept carry a stable code so the SPA can
+//* tell "ask for a new invite" from "the inviter can no longer vouch for it"
+const INVITE_EXPIRED_RESPONSE = {
+  message: 'Invite expired - Please ask a team admin for a new invite',
+  code: 'INVITE_EXPIRED',
 };
 
-const INVITER_INVALID_MESSAGE = 'Invite is no longer valid - the inviter left the company or lost the required role';
+const INVITER_INVALID_RESPONSE = {
+  message: 'Invite is no longer valid - the inviter left the company or lost the required role',
+  code: 'INVITER_INVALID',
+};
+
+//* Fast path only - acceptance repeats the check under the company lock
+const isInviterStillAbleToGrant = (inviteData) => canCompanyMemberGrantRoleInDb(
+  inviteData.invited_by,
+  inviteData.company_id,
+  inviteData.Role.name,
+);
 
 export const checkTeamInviteValidity = async (req, res) => {
   const { inviteToken } = req.query;
@@ -128,15 +129,11 @@ export const checkTeamInviteValidity = async (req, res) => {
   const { token_expires: tokenExpirationDate } = inviteData;
 
   if (new Date(tokenExpirationDate) < new Date()) {
-    return res.status(400).json({
-      message: 'Invite expired - Please ask a team admin for a new invite',
-    });
+    return res.status(400).json(INVITE_EXPIRED_RESPONSE);
   }
 
   if (!(await isInviterStillAbleToGrant(inviteData))) {
-    return res.status(400).json({
-      message: INVITER_INVALID_MESSAGE,
-    });
+    return res.status(400).json(INVITER_INVALID_RESPONSE);
   }
 
   return res.status(200).json({
@@ -163,18 +160,14 @@ export const acceptTeamInvite = async (req, res) => {
   const { token_expires: tokenExpires } = inviteData;
 
   if (new Date(tokenExpires) < new Date()) {
-    return res.status(400).json({
-      message: 'Invite expired - Please ask a team admin for a new invite',
-    });
+    return res.status(400).json(INVITE_EXPIRED_RESPONSE);
   }
 
   if (!(await isInviterStillAbleToGrant(inviteData))) {
     //* Void it - a dead inviter cannot be revived by a later resend either
     await deleteTeamInviteByIdSafe(inviteData.id);
 
-    return res.status(400).json({
-      message: INVITER_INVALID_MESSAGE,
-    });
+    return res.status(400).json(INVITER_INVALID_RESPONSE);
   }
 
   const existingUser = await getUserByEmail(inviteData.email);
@@ -190,14 +183,19 @@ export const acceptTeamInvite = async (req, res) => {
 
   const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
-  let createdUser;
+  let acceptResult;
 
   try {
-    createdUser = await createUserInDB({
+    acceptResult = await createUserInDB({
       username: inviteData.email,
       password: hashedPassword,
       companyId: inviteData.company_id,
       roleId: inviteData.role_id,
+      //* Re-checked under the company lock, in the same transaction as the
+      //* user creation - a demotion committed after the fast path above
+      //* still voids the invite
+      roleName: inviteData.Role.name,
+      invitedBy: inviteData.invited_by,
       //* Consumed in the same transaction as the user creation, with a
       //* conditional delete on id + digest + expiry - the lookup above is
       //* only a fast path, the transaction is the real guard
@@ -218,10 +216,18 @@ export const acceptTeamInvite = async (req, res) => {
     throw error;
   }
 
-  if (!createdUser) {
-    //* Consumed, revoked or expired between the lookup and the transaction
+  if (acceptResult.status === 'inviter_invalid') {
+    //* The inviter was removed or demoted between the fast path and the
+    //* transaction - the transaction already voided the invite
+    return res.status(400).json(INVITER_INVALID_RESPONSE);
+  }
+
+  if (acceptResult.status !== 'created') {
+    //* Consumed, revoked, rotated or expired between the lookup and the
+    //* transaction - either way the link is dead and a new invite is needed
     return res.status(400).json({
       message: 'Invite is invalid or expired - Please ask a team admin for a new invite',
+      code: 'INVITE_EXPIRED',
     });
   }
 

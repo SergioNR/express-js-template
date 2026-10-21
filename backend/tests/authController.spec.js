@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 
 jest.unstable_mockModule('../server/models/userModel.js', () => ({
   getUserByEmail: jest.fn(),
-  getOneCompanyMemberInDb: jest.fn(),
+  canCompanyMemberGrantRoleInDb: jest.fn(),
   createUserInDB: jest.fn(),
   getUserPassword: jest.fn(),
   updateUserPasswordInDB: jest.fn(),

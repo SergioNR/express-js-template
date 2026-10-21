@@ -2,7 +2,7 @@ import { jest } from '@jest/globals';
 
 jest.unstable_mockModule('../server/models/userModel.js', () => ({
   getUserByEmail: jest.fn(),
-  getOneCompanyMemberInDb: jest.fn(),
+  canCompanyMemberGrantRoleInDb: jest.fn(),
   createUserInDB: jest.fn(),
   getUserPassword: jest.fn(),
   updateUserPasswordInDB: jest.fn(),
@@ -42,7 +42,7 @@ jest.unstable_mockModule('../server/integrations/brevo/transactionalEmails/sendE
 }));
 
 const { checkTeamInviteValidity, acceptTeamInvite } = await import('../server/controllers/authController.js');
-const { getUserByEmail, getOneCompanyMemberInDb, createUserInDB } = await import('../server/models/userModel.js');
+const { getUserByEmail, canCompanyMemberGrantRoleInDb, createUserInDB } = await import('../server/models/userModel.js');
 const { getTeamInviteByTokenInDb, deleteTeamInviteByIdSafe } = await import('../server/models/teamInvitesModel.js');
 
 const mockRes = () => {
@@ -64,37 +64,34 @@ const validInvite = {
   Role: { id: 'role-member', name: 'company_member' },
 };
 
-const inviterWithRoles = (roleNames) => ({
-  id: 'inviter-1',
-  company_id: 'company-1',
-  UserRoles: roleNames.map((name) => ({ Role: { id: `role-${name}`, name } })),
-});
-
 describe('checkTeamInviteValidity', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    getOneCompanyMemberInDb.mockResolvedValue(inviterWithRoles(['company_admin']));
+    canCompanyMemberGrantRoleInDb.mockResolvedValue(true);
   });
 
   it('returns 400 when the inviter is no longer a member of the company', async () => {
     getTeamInviteByTokenInDb.mockResolvedValue(validInvite);
-    getOneCompanyMemberInDb.mockResolvedValue(null);
+    canCompanyMemberGrantRoleInDb.mockResolvedValue(false);
     const res = mockRes();
 
     await checkTeamInviteValidity({ query: { inviteToken: 'invite-token' } }, res);
 
-    expect(getOneCompanyMemberInDb).toHaveBeenCalledWith('inviter-1', 'company-1');
+    expect(canCompanyMemberGrantRoleInDb).toHaveBeenCalledWith('inviter-1', 'company-1', 'company_member');
     expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'INVITER_INVALID' }));
   });
 
   it('returns 400 when the inviter can no longer grant the invited role', async () => {
     getTeamInviteByTokenInDb.mockResolvedValue({ ...validInvite, Role: { id: 'role-admin', name: 'company_admin' } });
-    getOneCompanyMemberInDb.mockResolvedValue(inviterWithRoles(['company_member']));
+    canCompanyMemberGrantRoleInDb.mockResolvedValue(false);
     const res = mockRes();
 
     await checkTeamInviteValidity({ query: { inviteToken: 'invite-token' } }, res);
 
+    expect(canCompanyMemberGrantRoleInDb).toHaveBeenCalledWith('inviter-1', 'company-1', 'company_admin');
     expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'INVITER_INVALID' }));
   });
 
   it('returns 404 when the token does not exist', async () => {
@@ -113,6 +110,7 @@ describe('checkTeamInviteValidity', () => {
     await checkTeamInviteValidity({ query: { inviteToken: 'invite-token' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'INVITE_EXPIRED' }));
   });
 
   it('looks the invite up by the raw token (the model hashes it)', async () => {
@@ -142,29 +140,31 @@ describe('checkTeamInviteValidity', () => {
 describe('acceptTeamInvite', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    getOneCompanyMemberInDb.mockResolvedValue(inviterWithRoles(['company_admin']));
+    canCompanyMemberGrantRoleInDb.mockResolvedValue(true);
   });
 
   it('returns 400 and voids the invite when the inviter left the company', async () => {
     getTeamInviteByTokenInDb.mockResolvedValue(validInvite);
-    getOneCompanyMemberInDb.mockResolvedValue(null);
+    canCompanyMemberGrantRoleInDb.mockResolvedValue(false);
     const res = mockRes();
 
     await acceptTeamInvite({ body: { inviteToken: 'invite-token', password: 'Password123' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'INVITER_INVALID' }));
     expect(deleteTeamInviteByIdSafe).toHaveBeenCalledWith('invite-1');
     expect(createUserInDB).not.toHaveBeenCalled();
   });
 
   it('returns 400 and voids the invite when the inviter was demoted below the invited role', async () => {
     getTeamInviteByTokenInDb.mockResolvedValue({ ...validInvite, Role: { id: 'role-admin', name: 'company_admin' } });
-    getOneCompanyMemberInDb.mockResolvedValue(inviterWithRoles(['company_member']));
+    canCompanyMemberGrantRoleInDb.mockResolvedValue(false);
     const res = mockRes();
 
     await acceptTeamInvite({ body: { inviteToken: 'invite-token', password: 'Password123' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'INVITER_INVALID' }));
     expect(deleteTeamInviteByIdSafe).toHaveBeenCalledWith('invite-1');
     expect(createUserInDB).not.toHaveBeenCalled();
   });
@@ -172,13 +172,30 @@ describe('acceptTeamInvite', () => {
   it('returns 400 when the conditional consumption inside the transaction finds no usable invite', async () => {
     getTeamInviteByTokenInDb.mockResolvedValue(validInvite);
     getUserByEmail.mockResolvedValue(null);
-    createUserInDB.mockResolvedValue(null);
+    createUserInDB.mockResolvedValue({ status: 'invite_invalid' });
     const res = mockRes();
 
     await acceptTeamInvite({ body: { inviteToken: 'invite-token', password: 'Password123' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringMatching(/invalid or expired/) }));
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      message: expect.stringMatching(/invalid or expired/),
+      code: 'INVITE_EXPIRED',
+    }));
+  });
+
+  it('returns 400 INVITER_INVALID when the in-transaction re-check finds the inviter removed or demoted', async () => {
+    getTeamInviteByTokenInDb.mockResolvedValue(validInvite);
+    getUserByEmail.mockResolvedValue(null);
+    createUserInDB.mockResolvedValue({ status: 'inviter_invalid' });
+    const res = mockRes();
+
+    await acceptTeamInvite({ body: { inviteToken: 'invite-token', password: 'Password123' } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'INVITER_INVALID' }));
+    //* The transaction already voided the invite
+    expect(deleteTeamInviteByIdSafe).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the token does not exist', async () => {
@@ -198,6 +215,7 @@ describe('acceptTeamInvite', () => {
     await acceptTeamInvite({ body: { inviteToken: 'invite-token', password: 'Password123' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'INVITE_EXPIRED' }));
     expect(createUserInDB).not.toHaveBeenCalled();
     expect(deleteTeamInviteByIdSafe).not.toHaveBeenCalled();
   });
@@ -217,7 +235,7 @@ describe('acceptTeamInvite', () => {
   it('creates the user in the invited company and consumes the invite in the same transaction', async () => {
     getTeamInviteByTokenInDb.mockResolvedValue(validInvite);
     getUserByEmail.mockResolvedValue(null);
-    createUserInDB.mockResolvedValue({ id: 'new-user' });
+    createUserInDB.mockResolvedValue({ status: 'created', user: { id: 'new-user' } });
     const res = mockRes();
 
     await acceptTeamInvite({ body: { inviteToken: 'invite-token', password: 'Password123' } }, res);
@@ -226,6 +244,8 @@ describe('acceptTeamInvite', () => {
       username: 'new@acme.test',
       companyId: 'company-1',
       roleId: 'role-member',
+      roleName: 'company_member', //* Re-checked against the inviter under the company lock
+      invitedBy: 'inviter-1',
       inviteId: 'invite-1',
       inviteToken: 'invite-token', //* The model consumes by id + digest + expiry
     }));

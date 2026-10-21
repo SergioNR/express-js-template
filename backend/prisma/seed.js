@@ -5,16 +5,14 @@ import { BCRYPT_SALT_ROUNDS, FREE_TRIAL_DURATION_MS } from '../server/config/sec
 const ACME_COMPANY_ID = '5f8b7c2e-1d4a-4f6b-8c3a-2a1b3c4d5e6f';
 const GLOBEX_COMPANY_ID = '9e7d6c5b-4a3f-4e2d-1b0a-7f8e9d0a1b2c';
 
-//* Same deterministic UUIDs as the team_invites_rbac migration so re-running
-//* the seed on a migrated database converges on the same rows
-const COMPANY_OWNER_ROLE_ID = '00000000-0000-4000-8000-000000000001';
-const COMPANY_MEMBER_ROLE_ID = '00000000-0000-4000-8000-000000000003';
-
+//* Role ids are only used when a role row does not exist yet (same
+//* deterministic UUIDs as the team_invites_rbac migration). Assignments always
+//* look the role up by name, so environments seeded with other ids still work
 const roles = [
   {
-    id: COMPANY_OWNER_ROLE_ID,
+    id: '00000000-0000-4000-8000-000000000001',
     name: 'company_owner',
-    permissions: ['team.view', 'team.invite', 'team.remove', 'team.manage_roles', 'files.view', 'files.upload', 'files.delete'],
+    permissions: ['team.view', 'team.invite', 'team.remove', 'team.manage_roles', 'files.view', 'files.upload', 'files.delete', 'billing.manage'],
   },
   {
     id: '00000000-0000-4000-8000-000000000002',
@@ -22,7 +20,7 @@ const roles = [
     permissions: ['team.view', 'team.invite', 'team.remove', 'team.manage_roles', 'files.view', 'files.upload', 'files.delete'],
   },
   {
-    id: COMPANY_MEMBER_ROLE_ID,
+    id: '00000000-0000-4000-8000-000000000003',
     name: 'company_member',
     permissions: ['team.view', 'files.view', 'files.upload'],
   },
@@ -36,6 +34,7 @@ const permissions = [
   { id: '00000000-0000-4000-8000-000000000105', name: 'files.view' },
   { id: '00000000-0000-4000-8000-000000000106', name: 'files.upload' },
   { id: '00000000-0000-4000-8000-000000000107', name: 'files.delete' },
+  { id: '00000000-0000-4000-8000-000000000108', name: 'billing.manage' },
 ];
 
 const companies = [
@@ -78,13 +77,11 @@ const users = [
 
 //* Mirrors the migration backfill: global admins are company owners,
 //* everyone else is a company member
-const companyRoleForUser = (user) => (
-  user.role === 'admin'
-    ? { id: COMPANY_OWNER_ROLE_ID, name: 'company_owner' }
-    : { id: COMPANY_MEMBER_ROLE_ID, name: 'company_member' }
-);
+const companyRoleNameForUser = (user) => (user.role === 'admin' ? 'company_owner' : 'company_member');
 
 async function main() {
+  const roleIdsByName = {};
+
   for (const permission of permissions) {
     await prisma.permission.upsert({
       where: { name: permission.name },
@@ -102,6 +99,8 @@ async function main() {
         name: role.name,
       },
     });
+
+    roleIdsByName[role.name] = createdRole.id;
 
     for (const permissionName of role.permissions) {
       const permissionRecord = await prisma.permission.findUnique({
@@ -151,23 +150,25 @@ async function main() {
       create: { ...rest, password: await bcrypt.hash(password, BCRYPT_SALT_ROUNDS) },
     });
 
-    const companyRole = companyRoleForUser(user);
+    const companyRoleName = companyRoleNameForUser(user);
 
-    await prisma.userRole.upsert({
-      where: {
-        user_id_role_id: {
+    //* Replace (not upsert) the user's company roles: v1 keeps exactly one
+    //* role per user, so re-seeding must never leave duplicate role rows
+    await prisma.$transaction([
+      prisma.userRole.deleteMany({
+        where: {
           user_id: createdUser.id,
-          role_id: companyRole.id,
         },
-      },
-      update: {},
-      create: {
-        user_id: createdUser.id,
-        role_id: companyRole.id,
-      },
-    });
+      }),
+      prisma.userRole.create({
+        data: {
+          user_id: createdUser.id,
+          role_id: roleIdsByName[companyRoleName],
+        },
+      }),
+    ]);
 
-    console.log(`Seeded user ${user.email} (${user.role}, ${companyRole.name})`);
+    console.log(`Seeded user ${user.email} (${user.role}, ${companyRoleName})`);
   }
 }
 

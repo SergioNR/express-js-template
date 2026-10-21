@@ -52,6 +52,10 @@ const CustomerRegistrationForm = () => {
         return setRegisterError({ message: t('auth.register.errors.invalid') });
       }
 
+      if (err.response?.status === 429) {
+        return setRegisterError({ message: t('auth.errors.tooManyAttempts') });
+      }
+
       return setRegisterError({ message: t('auth.register.errors.internal') });
     }
   };

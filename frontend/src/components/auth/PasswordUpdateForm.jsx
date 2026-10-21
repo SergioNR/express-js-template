@@ -15,13 +15,16 @@ const PasswordUpdateForm = () => {
     setLoading(true);
     setErrorMessage(null);
 
+    //* Captured before the await - React reuses the event object afterwards
+    const form = e.currentTarget;
     const passwordUpdateData = {
-      currentPassword: e.target.currentPassword.value,
-      newPassword: e.target.newPassword.value,
+      currentPassword: form.currentPassword.value,
+      newPassword: form.newPassword.value,
     };
 
     try {
       await apiClient.patch('/api/v1/auth/update-user-password', passwordUpdateData);
+      form.reset();
       notifySuccess(t('auth.passwordUpdate.success'));
     } catch (error) {
       const { status, data } = error.response ?? {};

@@ -33,6 +33,8 @@ export function AcceptInvitePage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     const checkInviteValidity = async () => {
       if (!inviteToken) {
         setInvalidReason('notFound');
@@ -46,15 +48,25 @@ export function AcceptInvitePage() {
           params: { inviteToken },
         });
 
-        setInviteData(response.data);
+        if (!cancelled) {
+          setInviteData(response.data);
+        }
       } catch (err) {
-        setInvalidReason(err?.response?.status === 400 ? 'expired' : 'notFound');
+        if (!cancelled) {
+          setInvalidReason(err?.response?.status === 400 ? 'expired' : 'notFound');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     checkInviteValidity();
+
+    return () => {
+      cancelled = true;
+    };
   }, [inviteToken]);
 
   const acceptInvite = async (event) => {
@@ -77,6 +89,8 @@ export function AcceptInvitePage() {
         notifyError(t('auth.acceptInvite.errors.registered'));
       } else if (status === 400) {
         notifyError(t('auth.acceptInvite.errors.expired'));
+      } else if (status === 422) {
+        notifyError(t('auth.acceptInvite.errors.invalidPassword'));
       } else {
         notifyError(t('auth.acceptInvite.errors.generic'));
       }
@@ -94,12 +108,13 @@ export function AcceptInvitePage() {
 
       {!loading && invalidReason && (
         <Paper shadow="xs" p={20} mt="xl" radius="md">
+          {/* invalidReason: 'expired' (400) or 'notFound' (missing/unknown token) */}
           <Alert
             icon={<IconAlertCircle size="1rem" />}
-            title={t('auth.acceptInvite.invalidLinkTitle')}
+            title={t(`auth.acceptInvite.invalid.${invalidReason}.title`)}
             color="red"
           >
-            {t('auth.acceptInvite.invalidLinkBody')}
+            {t(`auth.acceptInvite.invalid.${invalidReason}.body`)}
           </Alert>
 
           <Center mt="xl">

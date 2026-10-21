@@ -27,7 +27,7 @@ describe('checkCompanyPermission', () => {
     await middleware({ user: undefined }, res, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+    expect(res.json).toHaveBeenCalledWith({ message: 'The user is not authenticated' });
     expect(next).not.toHaveBeenCalled();
     expect(getUserCompanyPermissions).not.toHaveBeenCalled();
   });
@@ -66,7 +66,7 @@ describe('checkCompanyPermission', () => {
     await middleware({ user: { id: 'user-1', role: 'user' } }, res, next);
 
     expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+    expect(res.json).toHaveBeenCalledWith({ message: 'User does not have the required permissions' });
     expect(next).not.toHaveBeenCalled();
   });
 

@@ -17,7 +17,7 @@ describe('checkPermissionByRole', () => {
     middleware({ user: undefined }, res, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+    expect(res.json).toHaveBeenCalledWith({});
     expect(next).not.toHaveBeenCalled();
   });
 

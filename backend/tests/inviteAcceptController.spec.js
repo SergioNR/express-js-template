@@ -93,7 +93,6 @@ describe('checkTeamInviteValidity', () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-      success: true,
       email: 'new@acme.test',
       companyName: 'Acme Corp',
       roleName: 'company_member',
@@ -154,7 +153,7 @@ describe('acceptTeamInvite', () => {
     }));
     expect(deleteTeamInviteByTokenSafe).toHaveBeenCalledWith('invite-token');
     expect(res.status).toHaveBeenCalledWith(201);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    expect(res.json).toHaveBeenCalledWith({});
   });
 
   it('maps a concurrent-registration P2002 to 409 and voids the invite', async () => {

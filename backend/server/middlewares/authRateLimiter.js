@@ -11,7 +11,6 @@ export const authLimiter = rateLimit({
   handler: (req, res /* , next, options */) => {
     logRateLimited(req);
     res.status(429).json({
-      success: false,
       message: 'Too many authentication attempts - please try again later',
     });
   },

@@ -11,7 +11,6 @@ export const limiter = rateLimit({
   handler: (req, res /* , next, options */) => {
     logRateLimited(req);
     res.status(429).json({
-      success: false,
       message: 'Too many requests - please try again later',
     });
   },

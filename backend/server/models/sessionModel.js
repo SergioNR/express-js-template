@@ -64,7 +64,6 @@ export const deleteUserSessions = async (userId, exceptSessionId = null) => {
     });
 
     return {
-      success: true,
       deletedCount: deleteResult.count,
     };
   } catch (error) {

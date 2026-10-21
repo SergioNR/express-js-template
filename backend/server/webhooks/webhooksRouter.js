@@ -42,7 +42,6 @@ webhookRouter.post('/v1/stripe', express.raw({ type: 'application/json' }), stri
 
 webhookRouter.use('/*fallback', (req, res) => {
   res.status(404).json({
-    success: false,
     message: 'The requested route is not available or does not exist',
   });
 });

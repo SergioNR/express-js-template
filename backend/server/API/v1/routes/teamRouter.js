@@ -55,8 +55,6 @@ const updateMemberRoleValidation = [
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 members:
  *                   type: array
  *                   items:
@@ -143,8 +141,6 @@ teamRouter.get('/', checkCompanyPermission('team.view'), getTeamData);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 invite:
  *                   type: object
  *                   properties:
@@ -217,8 +213,6 @@ teamRouter.post('/invites', checkCompanyPermission('team.invite'), createInviteV
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 invite:
  *                   type: object
  *       401:
@@ -330,8 +324,6 @@ teamRouter.delete('/invites/:inviteId', checkCompanyPermission('team.invite'), i
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 userId:
  *                   type: string
  *                   format: uuid
@@ -399,8 +391,6 @@ teamRouter.delete('/members/:userId', checkCompanyPermission('team.remove'), use
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 member:
  *                   type: object
  *                   properties:
@@ -452,7 +442,6 @@ teamRouter.patch('/members/:userId', checkCompanyPermission('team.manage_roles')
 
 teamRouter.use('/*fallback', (req, res) => {
   res.status(404).json({
-    success: false,
     message: 'The requested route is not available or does not exist',
   }); //* Will catch failed requests even though they are authenticated & have the appropiate role
 });

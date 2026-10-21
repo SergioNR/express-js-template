@@ -27,8 +27,6 @@ export const billingRouter = Router();
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 subscriptionData:
  *                   type: object
  *                   description: Subscription fields only - internal Stripe ids are never exposed
@@ -131,8 +129,6 @@ billingRouter.post('/', createCompanyBillingId);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 checkoutSessionUrl:
  *                   type: string
  *                   format: uri
@@ -174,8 +170,6 @@ billingRouter.post('/checkout-session', checkSchema(checkoutSessionSchema), sani
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 customerPortalUrl:
  *                   type: string
  *                   format: uri
@@ -202,7 +196,6 @@ billingRouter.post('/customer-portal', getBillingCustomerPortalUrl);
 
 billingRouter.use('/*fallback', (req, res) => {
   res.status(404).json({
-    success: false,
     message: 'The requested route is not available or does not exist',
   }); //* Will catch failed requests even though they are authenticated & have the appropiate role
 });

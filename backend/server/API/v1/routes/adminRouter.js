@@ -83,8 +83,6 @@ const companyListQueryValidation = [
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 userCount:
  *                   type: integer
  *                   description: Total number of users matching the filter
@@ -140,8 +138,6 @@ adminRouter.get('/users', userListQueryValidation, getAllUsers);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 user:
  *                   type: object
  *                   properties:
@@ -209,8 +205,6 @@ adminRouter.get('/users/:userId', userIdParamValidation, getOneUserById);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 userId:
  *                   type: string
  *       401:
@@ -286,8 +280,6 @@ adminRouter.delete('/users/:userId', userIdParamValidation, deleteOneUserById);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 companyCount:
  *                   type: integer
  *                   description: Total number of companies matching the filter
@@ -343,8 +335,6 @@ adminRouter.get('/companies', companyListQueryValidation, getAllCompanies);
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 company:
  *                   type: object
  *                   properties:
@@ -406,8 +396,6 @@ adminRouter.get('/companies/:companyId', companyIdParamValidation, getOneCompany
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 stats:
  *                   type: object
  *                   properties:
@@ -442,7 +430,6 @@ adminRouter.get('/stats', getAdminStats);
 
 adminRouter.use('/*fallback', (req, res) => {
   res.status(404).json({
-    success: false,
     message: 'The requested route is not available or does not exist',
   }); //* Will catch failed requests even though they are authenticated & have the appropiate role
 });

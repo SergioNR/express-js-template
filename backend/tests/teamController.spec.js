@@ -119,7 +119,6 @@ describe('getTeamData', () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-      success: true,
       members: [expect.objectContaining({ email: 'owner@acme.test', companyRoles: ['company_owner'] })],
       invites: [expect.objectContaining({ email: 'new@acme.test', role: 'company_member' })],
       callerPermissions: ['team.view', 'team.invite'],
@@ -221,7 +220,6 @@ describe('createTeamInvite', () => {
     expect(sendTeamInviteToUser).toHaveBeenCalledWith('new@acme.test', 'invite-token', 'Acme Corp', 'owner@acme.test');
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-      success: true,
       invite: expect.objectContaining({ role: 'company_member' }),
     }));
   });

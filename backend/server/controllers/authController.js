@@ -32,7 +32,6 @@ export const requestPasswordResetToken = async (req, res) => {
   //* Not checking / notifying for user existence to prevent security leaks
 
   return res.status(200).json({
-    success: true,
     message: 'If this email exists, a reset link will be sent',
   });
 };
@@ -43,9 +42,7 @@ export const checkPasswordResetTokenValidity = async (req, res) => {
   const passwordResetTokenData = await getPasswordResetTokenData(passwordResetToken);
 
   if (!passwordResetTokenData) {
-    return res.status(404).json({
-      success: false,
-    });
+    return res.status(404).json({});
   }
 
   const {
@@ -54,14 +51,11 @@ export const checkPasswordResetTokenValidity = async (req, res) => {
 
   if (new Date(tokenExpirationDate) < new Date()) {
     return res.status(400).json({
-      success: false,
       message: 'Password reset token expired',
     });
   }
 
-  return res.status(200).json({
-    success: true,
-  });
+  return res.status(200).json({});
 };
 
 export const updateRecoveredUserPassword = async (req, res) => {
@@ -73,9 +67,7 @@ export const updateRecoveredUserPassword = async (req, res) => {
   const passwordResetTokenData = await getPasswordResetTokenData(passwordResetToken);
 
   if (!passwordResetTokenData) {
-    return res.status(404).json({
-      success: false,
-    });
+    return res.status(404).json({});
   }
 
   const {
@@ -85,7 +77,6 @@ export const updateRecoveredUserPassword = async (req, res) => {
 
   if (new Date(tokenExpires) < new Date()) {
     return res.status(400).json({
-      success: false,
       message: 'Password reset token expired',
     });
   }
@@ -99,9 +90,7 @@ export const updateRecoveredUserPassword = async (req, res) => {
   //* Revoke every active session of the user - the old credential is no longer valid
   await deleteUserSessions(userId);
 
-  return res.status(200).json({
-    success: true,
-  });
+  return res.status(200).json({});
 };
 
 export const checkTeamInviteValidity = async (req, res) => {
@@ -111,7 +100,6 @@ export const checkTeamInviteValidity = async (req, res) => {
 
   if (!inviteData) {
     return res.status(404).json({
-      success: false,
       message: 'Team invite does not exist',
     });
   }
@@ -120,13 +108,11 @@ export const checkTeamInviteValidity = async (req, res) => {
 
   if (new Date(tokenExpirationDate) < new Date()) {
     return res.status(400).json({
-      success: false,
       message: 'Invite expired - Please ask a team admin for a new invite',
     });
   }
 
   return res.status(200).json({
-    success: true,
     email: inviteData.email,
     companyName: inviteData.Company?.name,
     roleName: inviteData.Role.name,
@@ -143,7 +129,6 @@ export const acceptTeamInvite = async (req, res) => {
 
   if (!inviteData) {
     return res.status(404).json({
-      success: false,
       message: 'Team invite does not exist',
     });
   }
@@ -152,7 +137,6 @@ export const acceptTeamInvite = async (req, res) => {
 
   if (new Date(tokenExpires) < new Date()) {
     return res.status(400).json({
-      success: false,
       message: 'Invite expired - Please ask a team admin for a new invite',
     });
   }
@@ -164,7 +148,6 @@ export const acceptTeamInvite = async (req, res) => {
     await deleteTeamInviteByTokenSafe(inviteToken);
 
     return res.status(409).json({
-      success: false,
       message: 'Email is already registered - Please log in instead',
     });
   }
@@ -185,7 +168,6 @@ export const acceptTeamInvite = async (req, res) => {
       await deleteTeamInviteByTokenSafe(inviteToken);
 
       return res.status(409).json({
-        success: false,
         message: 'Email is already registered - Please log in instead',
       });
     }
@@ -196,24 +178,19 @@ export const acceptTeamInvite = async (req, res) => {
   await deleteTeamInviteByTokenSafe(inviteToken);
 
   //* No auto-login here - consistent with the register endpoint
-  return res.status(201).json({
-    success: true,
-  });
+  return res.status(201).json({});
 };
 
 export const checkSession = async (req, res) => {
   if (req.user) {
     return res.status(200).json({
-      success: true,
       user: {
         id: req.user.id,
       },
     });
   }
 
-  return res.status(401).json({
-    success: false,
-  });
+  return res.status(401).json({});
 };
 
 export const loginLocal = (req, res, next) => passport.authenticate('local', (err, user) => {
@@ -222,9 +199,7 @@ export const loginLocal = (req, res, next) => passport.authenticate('local', (er
   }
 
   if (!user) { //* Will trigger if user does not exist
-    return res.status(401).json({
-      success: false,
-    });
+    return res.status(401).json({});
   }
 
   // Log the user in and establish a session
@@ -243,7 +218,6 @@ export const loginLocal = (req, res, next) => passport.authenticate('local', (er
     await linkSessionToUser(req.sessionID, user.id);
 
     return res.status(200).json({
-      success: true,
       user: {
         id: user.id,
         role: user.role,
@@ -267,9 +241,7 @@ export const registerUser = async (req, res) => {
 
     //* Responding with the same shape & status as a successful creation
     //* so the endpoint cannot be used to enumerate registered emails
-    return res.status(201).json({
-      success: true,
-    });
+    return res.status(201).json({});
   }
 
   try {
@@ -278,17 +250,13 @@ export const registerUser = async (req, res) => {
     //* Concurrent registrations can beat the existence check - the unique
     //* constraint resolves the race, respond with the same enumeration-safe 201
     if (error.code === 'P2002') {
-      return res.status(201).json({
-        success: true,
-      });
+      return res.status(201).json({});
     }
 
     throw error;
   }
 
-  return res.status(201).json({
-    success: true,
-  });
+  return res.status(201).json({});
 };
 
 export const updateUserPassword = async (req, res) => {
@@ -302,9 +270,7 @@ export const updateUserPassword = async (req, res) => {
   const currentHashedPasswordQuery = await getUserPassword(userId);
 
   if (!currentHashedPasswordQuery) {
-    return res.status(404).json({
-      success: false,
-    });
+    return res.status(404).json({});
   }
 
   const { password: currentHashedPassword } = currentHashedPasswordQuery;
@@ -315,7 +281,6 @@ export const updateUserPassword = async (req, res) => {
   if (!isMatch) {
     //* Both 400s carry a stable code - the SPA maps it to user-facing copy
     return res.status(400).json({
-      success: false,
       message: 'Current password is incorrect',
       code: 'AUTH_CURRENT_PASSWORD_INCORRECT',
     });
@@ -323,7 +288,6 @@ export const updateUserPassword = async (req, res) => {
 
   if (currentPassword === newPassword) {
     return res.status(400).json({
-      success: false,
       message: 'New password must be different from the current password',
       code: 'AUTH_PASSWORD_UNCHANGED',
     });
@@ -339,7 +303,6 @@ export const updateUserPassword = async (req, res) => {
   await deleteUserSessions(userId, req.sessionID);
 
   return res.status(200).json({
-    success: true,
     userId: updatedUser.id,
   });
 };
@@ -360,8 +323,6 @@ export const logoutUser = (req, res, next) => req.logout((err) => {
     // Clear cookie on client side
     res.clearCookie(SESSION_COOKIE_NAME);
 
-    return res.status(200).json({
-      success: true,
-    });
+    return res.status(200).json({});
   });
 });

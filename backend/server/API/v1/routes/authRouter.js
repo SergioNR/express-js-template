@@ -48,8 +48,6 @@ export const authRouter = Router();
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 user:
  *                   type: object
  *                   properties:
@@ -249,8 +247,6 @@ authRouter.patch('/password-reset', checkSchema(recoverPasswordSchema), sanitize
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 email:
  *                   type: string
  *                   format: email
@@ -377,8 +373,6 @@ authRouter.post('/logout', logoutUser);
  *             schema:
  *               type: 'object'
  *               properties:
- *                 success:
- *                   type: boolean
  *                 userId:
  *                   type: string
  *                   format: uuid
@@ -430,8 +424,6 @@ authRouter.patch('/update-user-password', checkSchema(updatePasswordSchema), san
  *             schema:
  *               type: object
  *               properties:
- *                 success:
- *                   type: boolean
  *                 user:
  *                   type: object
  *                   properties:
@@ -449,7 +441,6 @@ authRouter.get('/session', checkSession);
 
 authRouter.use('/*fallback', (req, res) => {
   res.status(404).json({
-    success: false,
     message: 'The requested route is not available or does not exist',
   }); //* Will catch failed requests even though they are authenticated & have the appropiate role
 });

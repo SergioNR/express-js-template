@@ -14,7 +14,6 @@ export const stripeEventHandler = async (req, res) => {
     } catch (err) {
       logError('error in stripe webhook', err);
       return res.status(400).json({
-        success: false,
         message: `Webhook Error: ${err.message}`,
       });
     }
@@ -65,14 +64,10 @@ export const stripeEventHandler = async (req, res) => {
         // logError('Unhandled event type in Stripe webhook.', event.type); //* Activate for debugging
     }
 
-    return res.status(200).json({
-      success: true,
-    });
+    return res.status(200).json({});
   } catch (error) {
     logError('error in stripeEventHandler', error);
-    return res.status(500).json({
-      success: false,
-    });
+    return res.status(500).json({});
   }
 };
 

@@ -90,26 +90,20 @@ const RestorePasswordPage = () => {
 
       {passwordUpdateResponse ? (
         <Paper shadow="xs" p={20} mt="xl" radius="md">
-          <Alert
-            icon={passwordUpdateResponse.success ? <IconCheck size="1rem" /> : <IconAlertCircle size="1rem" />}
-            color={passwordUpdateResponse.success ? 'green' : 'red'}
-            title={passwordUpdateResponse.success ? t('common.success') : t('common.error')}
-          >
-            {passwordUpdateResponse.success ? t('auth.restore.success') : t('auth.restore.invalidLinkBody')}
+          <Alert icon={<IconCheck size="1rem" />} color="green" title={t('common.success')}>
+            {t('auth.restore.success')}
           </Alert>
 
-          {passwordUpdateResponse.success && (
-            <Center mt="xl">
-              <Anchor component={Link} to="/auth/login">
-                <Button variant="outline" leftSection={<IconArrowLeft size="1rem" />}>
-                  {t('auth.restore.backToLogin')}
-                </Button>
-              </Anchor>
-            </Center>
-          )}
+          <Center mt="xl">
+            <Anchor component={Link} to="/auth/login">
+              <Button variant="outline" leftSection={<IconArrowLeft size="1rem" />}>
+                {t('auth.restore.backToLogin')}
+              </Button>
+            </Anchor>
+          </Center>
         </Paper>
       ) : (
-        passwordResetTokenValidity?.success ? (
+        passwordResetTokenValidity ? (
           <Paper withBorder shadow="md" p={30} radius="md" mt="xl">
             <form onSubmit={updateRecoveredPassword}>
               <PasswordInput

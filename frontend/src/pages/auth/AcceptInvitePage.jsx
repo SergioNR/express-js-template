@@ -112,7 +112,7 @@ export function AcceptInvitePage() {
         </Paper>
       )}
 
-      {!loading && inviteData?.success && (
+      {!loading && inviteData && (
         <Paper withBorder shadow="md" p={30} radius="md" mt="xl">
           <Stack gap="sm" mb="md">
             <Group justify="space-between">

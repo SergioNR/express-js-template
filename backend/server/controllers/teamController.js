@@ -72,7 +72,6 @@ export const getTeamData = async (req, res) => {
     : rolesGrantableBy(await getUserCompanyRoleNames(userId));
 
   return res.status(200).json({
-    success: true,
     members: companyMembers.map(toMemberShape),
     invites: companyInvites.map((invite) => toInviteShape(invite, invite.Role.name)),
     callerPermissions,
@@ -94,7 +93,6 @@ export const createTeamInvite = async (req, res) => {
 
   if (existingUser) {
     return res.status(409).json({
-      success: false,
       message: 'Email is already registered - the person should log in instead',
     });
   }
@@ -103,7 +101,6 @@ export const createTeamInvite = async (req, res) => {
 
   if (existingInvite) {
     return res.status(409).json({
-      success: false,
       message: 'An invite is already pending for this email - resend it instead',
     });
   }
@@ -112,7 +109,6 @@ export const createTeamInvite = async (req, res) => {
 
   if (!role) {
     return res.status(404).json({
-      success: false,
       message: 'Role does not exist',
     });
   }
@@ -124,7 +120,6 @@ export const createTeamInvite = async (req, res) => {
 
     if (!canGrantRole(callerRoleNames, roleName)) {
       return res.status(403).json({
-        success: false,
         message: 'You can only invite users to roles you hold yourself',
       });
     }
@@ -144,7 +139,6 @@ export const createTeamInvite = async (req, res) => {
     //* company+email constraint resolves the race
     if (error.code === 'P2002') {
       return res.status(409).json({
-        success: false,
         message: 'An invite is already pending for this email - resend it instead',
       });
     }
@@ -159,7 +153,6 @@ export const createTeamInvite = async (req, res) => {
   sendTeamInviteToUser(email, invite.id, company?.name, inviterEmail);
 
   return res.status(201).json({
-    success: true,
     invite: toInviteShape(invite, role.name),
   });
 };
@@ -177,7 +170,6 @@ export const resendTeamInvite = async (req, res) => {
 
   if (!invite) {
     return res.status(404).json({
-      success: false,
       message: 'Invite does not exist',
     });
   }
@@ -189,7 +181,6 @@ export const resendTeamInvite = async (req, res) => {
     await deleteTeamInviteInDb(inviteId, companyId);
 
     return res.status(409).json({
-      success: false,
       message: 'Email is already registered - the invite is no longer valid',
     });
   }
@@ -208,7 +199,6 @@ export const resendTeamInvite = async (req, res) => {
   sendTeamInviteToUser(invite.email, rotatedInvite.id, company?.name, inviterEmail); // Fire-and-forget
 
   return res.status(200).json({
-    success: true,
     invite: toInviteShape(rotatedInvite, invite.Role.name),
   });
 };
@@ -222,16 +212,13 @@ export const revokeTeamInvite = async (req, res) => {
 
   if (!invite) {
     return res.status(404).json({
-      success: false,
       message: 'Invite does not exist',
     });
   }
 
   await deleteTeamInviteInDb(inviteId, companyId);
 
-  return res.status(200).json({
-    success: true,
-  });
+  return res.status(200).json({});
 };
 
 export const removeTeamMember = async (req, res) => {
@@ -244,7 +231,6 @@ export const removeTeamMember = async (req, res) => {
 
   if (userId === callerId) {
     return res.status(409).json({
-      success: false,
       message: 'You cannot remove yourself - delete your account from the profile page instead',
     });
   }
@@ -253,14 +239,12 @@ export const removeTeamMember = async (req, res) => {
 
   if (!targetMember) {
     return res.status(404).json({
-      success: false,
       message: 'Member not found in your company',
     });
   }
 
   if (targetMember.role === 'admin') {
     return res.status(409).json({
-      success: false,
       message: 'Platform admins cannot be managed from the team endpoint',
     });
   }
@@ -272,7 +256,6 @@ export const removeTeamMember = async (req, res) => {
 
     if (ownerCount <= 1) {
       return res.status(409).json({
-        success: false,
         message: 'The last company owner cannot be removed',
       });
     }
@@ -285,7 +268,6 @@ export const removeTeamMember = async (req, res) => {
   await cleanupAfterUserDeletion(deletedUser);
 
   return res.status(200).json({
-    success: true,
     userId,
   });
 };
@@ -302,7 +284,6 @@ export const updateTeamMemberRole = async (req, res) => {
 
   if (userId === callerId) {
     return res.status(409).json({
-      success: false,
       message: 'You cannot change your own role',
     });
   }
@@ -311,14 +292,12 @@ export const updateTeamMemberRole = async (req, res) => {
 
   if (!targetMember) {
     return res.status(404).json({
-      success: false,
       message: 'Member not found in your company',
     });
   }
 
   if (targetMember.role === 'admin') {
     return res.status(409).json({
-      success: false,
       message: 'Platform admins cannot be managed from the team endpoint',
     });
   }
@@ -327,7 +306,6 @@ export const updateTeamMemberRole = async (req, res) => {
 
   if (!role) {
     return res.status(404).json({
-      success: false,
       message: 'Role does not exist',
     });
   }
@@ -337,7 +315,6 @@ export const updateTeamMemberRole = async (req, res) => {
 
     if (!canGrantRole(callerRoleNames, roleName)) {
       return res.status(403).json({
-        success: false,
         message: 'You can only assign roles you hold yourself',
       });
     }
@@ -350,7 +327,6 @@ export const updateTeamMemberRole = async (req, res) => {
 
     if (ownerCount <= 1) {
       return res.status(409).json({
-        success: false,
         message: 'The last company owner cannot be demoted',
       });
     }
@@ -359,7 +335,6 @@ export const updateTeamMemberRole = async (req, res) => {
   const updatedMember = await updateUserCompanyRolesInDb(userId, role.id);
 
   return res.status(200).json({
-    success: true,
     member: toMemberShape(updatedMember),
   });
 };

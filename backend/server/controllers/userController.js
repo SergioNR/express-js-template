@@ -8,13 +8,10 @@ export const getUserProfile = async (req, res) => {
   const userProfile = await getUserById(userId);
 
   if (!userProfile) {
-    return res.status(404).json({
-      success: false,
-    });
+    return res.status(404).json({});
   }
 
   return res.status(200).json({
-    success: true,
     user: userProfile,
   });
 };
@@ -29,14 +26,11 @@ export const deleteUser = async (req, res) => {
     return req.session.destroy(() => {
       res.clearCookie(SESSION_COOKIE_NAME);
 
-      return res.status(200).json({
-        success: true,
-      });
+      return res.status(200).json({});
     });
   } catch (error) {
     if (error.code === 'P2003') {
       return res.status(409).json({
-        success: false,
         message: 'User deletion failed - Related DB entries exist',
       });
     }

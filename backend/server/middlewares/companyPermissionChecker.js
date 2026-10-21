@@ -3,7 +3,6 @@ import { getUserCompanyPermissions } from '../models/roleModel.js';
 export const checkCompanyPermission = (permissionName) => async (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
-      success: false,
       message: 'The user is not authenticated',
     });
   }
@@ -21,7 +20,6 @@ export const checkCompanyPermission = (permissionName) => async (req, res, next)
   }
 
   return res.status(403).json({
-    success: false,
     message: 'User does not have the required permissions',
   });
 };

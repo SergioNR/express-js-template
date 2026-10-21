@@ -48,7 +48,6 @@ export const deletePasswordResetTokens = async (userId) => {
     });
 
     return {
-      success: true,
       deletedCount: deleteResult.count,
     };
   } catch (error) {

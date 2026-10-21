@@ -13,3 +13,14 @@ export const startCronJobs = () => {
     logError('error on startCronJobs', error);
   }
 };
+
+//* Called on graceful shutdown so no tick starts while resources are closing
+export const stopCronJobs = () => {
+  try {
+    deletePasswordResetTokensScheduler.stop();
+    deleteTeamInvitesScheduler.stop();
+    deletePendingFileUploadsScheduler.stop();
+  } catch (error) {
+    logError('error on stopCronJobs', error);
+  }
+};

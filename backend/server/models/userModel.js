@@ -82,11 +82,14 @@ export const createUserInDB = async (userData) => {
         },
       },
     },
+    omit: {
+      password: true,
+    },
   });
 
   logInfo(`User ${createUserInDbQuery.id} (${createUserInDbQuery.role}) created in DB`, createUserInDbQuery);
 
-  posthogUserSignedUp(createUserInDbQuery); // Fire-and-forget
+  posthogUserSignedUp(createUserInDbQuery, { createdCompany: true }); // Fire-and-forget
 
   return createUserInDbQuery;
 };

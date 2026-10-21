@@ -1,16 +1,21 @@
 import { client } from '../config/posthog-node.js';
 import { logError } from '../config/loggerFunctions.js';
 
-export const posthogUserSignedUp = async (user) => {
+//* `createdCompany` is true only for self-registration, where the signup
+//* also created a brand-new company. Invite acceptance joins an existing
+//* company, whose group properties must not be overwritten with defaults
+export const posthogUserSignedUp = async (user, { createdCompany = false } = {}) => {
   try {
-    client.groupIdentify({
-      groupType: 'company',
-      groupKey: user.company_id,
-      properties: {
-        name: 'unknown',
-        subscription: 'free trial',
-      },
-    });
+    if (createdCompany) {
+      client.groupIdentify({
+        groupType: 'company',
+        groupKey: user.company_id,
+        properties: {
+          name: 'unknown',
+          subscription: 'free trial',
+        },
+      });
+    }
 
     client.capture({
       distinctId: user.id,

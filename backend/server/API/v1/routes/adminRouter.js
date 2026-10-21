@@ -386,7 +386,7 @@ adminRouter.get('/companies/:companyId', companyIdParamValidation, getOneCompany
  *   get:
  *     tags: [Admin]
  *     summary: Platform counters for the admin overview (admin only)
- *     description: Returns aggregated counts - users (total, admins, new in the last 7 days), companies, subscriptions (total and active) and active sessions. A subscription is active when its `expires_at` is in the future.
+ *     description: Returns aggregated counts - users (total, superadmins, new in the last 7 days), companies, subscriptions (total and active) and active sessions. A subscription is active when its `expires_at` is in the future.
  *     security:
  *       - sessionCookie: []
  *     responses:
@@ -402,7 +402,7 @@ adminRouter.get('/companies/:companyId', companyIdParamValidation, getOneCompany
  *                   properties:
  *                     totalUsers:
  *                       type: integer
- *                     totalAdmins:
+ *                     totalSuperadmins:
  *                       type: integer
  *                     newUsersLastWeek:
  *                       type: integer

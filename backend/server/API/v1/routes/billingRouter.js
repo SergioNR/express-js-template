@@ -12,7 +12,7 @@ import { checkoutSessionSchema } from '../../../utils/validators/checkoutSession
 
 export const billingRouter = Router();
 
-//* Authentication and the global role happen at the apiRouter mounting level.
+//* Authentication, the platform role and company membership are checked at the apiRouter mounting level.
 //* Reading the subscription status is open to every company member; anything
 //* that creates Stripe objects requires the `billing.manage` company permission
 const requireBillingManage = checkCompanyPermission('billing.manage');

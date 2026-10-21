@@ -432,7 +432,7 @@ authRouter.patch('/update-user-password', checkSchema(updatePasswordSchema), san
  *   get:
  *     tags: [Auth]
  *     summary: Check whether the current session is valid
- *     description: Returns the logged-in user id and global role when the session cookie is valid.
+ *     description: Returns the logged-in user id and platform role (`user` / `superadmin`) when the session cookie is valid.
  *     security:
  *       - sessionCookie: []
  *     responses:

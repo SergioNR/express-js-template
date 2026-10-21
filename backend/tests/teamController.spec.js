@@ -186,7 +186,7 @@ describe('createTeamInvite', () => {
     expect(res.status).toHaveBeenCalledWith(404);
   });
 
-  it('returns 403 when a non-superuser invites to a role they do not hold', async () => {
+  it('returns 403 when the caller invites to a role they do not hold', async () => {
     getUserByEmail.mockResolvedValue(null);
     getTeamInviteByCompanyAndEmailInDb.mockResolvedValue(null);
     getRoleByName.mockResolvedValue({ id: 'role-owner', name: 'company_owner' });
@@ -490,7 +490,7 @@ describe('updateTeamMemberRole', () => {
     expect(res.status).toHaveBeenCalledWith(404);
   });
 
-  it('returns 403 when a non-superuser assigns a role they do not hold', async () => {
+  it('returns 403 when the caller assigns a role they do not hold', async () => {
     getOneCompanyMemberInDb.mockResolvedValue(memberRecord('target', 'peer@acme.test', ['company_member']));
     getRoleByName.mockResolvedValue({ id: 'role-owner', name: 'company_owner' });
     getUserCompanyRoleNames.mockResolvedValue(['company_member']);

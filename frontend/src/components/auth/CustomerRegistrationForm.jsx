@@ -1,8 +1,9 @@
 import { useTranslation, Trans } from 'react-i18next';
 import apiClient from '../../config/API/axiosConfig.mjs';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import {
+  Alert,
   Anchor,
   Button,
   Container,
@@ -12,6 +13,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
+import { IconAlertCircle, IconCheck } from '@tabler/icons-react';
 import classes from './AuthenticationTitle.module.css';
 import { useNavigate } from 'react-router';
 import Seo from '../Seo.jsx';
@@ -21,6 +23,10 @@ const CustomerRegistrationForm = () => {
   const [registerResponse, setRegisterResponse] = useState(null);
   const [registerError, setRegisterError] = useState(null);
   const navigate = useNavigate();
+  const redirectTimerRef = useRef(null);
+
+  // Cancel the pending post-registration redirect if the user leaves first
+  useEffect(() => () => clearTimeout(redirectTimerRef.current), []);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -37,11 +43,11 @@ const CustomerRegistrationForm = () => {
 
       setRegisterError(null);
 
-      setTimeout(() => navigate('/auth/login'), 3000);
+      redirectTimerRef.current = setTimeout(() => navigate('/auth/login'), 3000);
     } catch (err) {
       setRegisterResponse(null);
 
-      if (err.status === 422) {
+      if (err.response?.status === 422) {
         return setRegisterError({ message: t('auth.register.errors.invalid') });
       }
 
@@ -64,15 +70,15 @@ const CustomerRegistrationForm = () => {
         </Text>
 
         {registerResponse && (
-          <Paper shadow="xs" p={10} mt={20} radius="sm" style={{ backgroundColor: '#ccffcc' }}>
+          <Alert icon={<IconCheck size={16} />} color="green" mt={20}>
             {registerResponse.message}
-          </Paper>
+          </Alert>
         )}
 
         {registerError && (
-          <Paper shadow="xs" p={10} mt={20} radius="sm" style={{ backgroundColor: '#ffcccc' }}>
+          <Alert icon={<IconAlertCircle size={16} />} color="red" mt={20}>
             {registerError.message}
-          </Paper>
+          </Alert>
         )}
         <Paper withBorder shadow="md" p={30} mt={30} radius="md">
           <form onSubmit={handleRegister}>

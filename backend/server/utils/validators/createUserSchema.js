@@ -35,7 +35,6 @@ export const createUserValidationSchema = {
       },
       errorMessage: 'Email must not exceed 254 characters',
     },
-    escape: true,
   },
   password: {
     notEmpty: {

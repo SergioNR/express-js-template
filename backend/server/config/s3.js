@@ -60,9 +60,24 @@ export const s3Client = isS3Configured()
 
 export const S3_MAX_FILE_SIZE_BYTES = (Number.parseInt(process.env.S3_MAX_FILE_SIZE_MB, 10) || DEFAULT_MAX_FILE_SIZE_MB) * 1024 * 1024;
 
-export const S3_ALLOWED_MIME_TYPES = (process.env.S3_ALLOWED_MIME_TYPES
+//* Active content is never accepted, however the allowlist is configured: a
+//* presigned GET of an HTML/SVG/XML object served from the bucket origin is a
+//* stored-XSS vector, so these families are stripped even when S3_ALLOWED_MIME_TYPES
+//* lists them explicitly
+const BLOCKED_MIME_TYPE_PATTERN = /html|svg|xml/i;
+
+export const isBlockedMimeType = (mimeType) => BLOCKED_MIME_TYPE_PATTERN.test(mimeType);
+
+const configuredMimeTypes = process.env.S3_ALLOWED_MIME_TYPES
   ? process.env.S3_ALLOWED_MIME_TYPES.split(',').map((mimeType) => mimeType.trim()).filter(Boolean)
-  : DEFAULT_ALLOWED_MIME_TYPES);
+  : DEFAULT_ALLOWED_MIME_TYPES;
+
+export const S3_ALLOWED_MIME_TYPES = configuredMimeTypes.filter((mimeType) => !isBlockedMimeType(mimeType));
+
+//* Unconfirmed uploads a company may hold open at once - bounds the number of
+//* presigned PUT URLs (and pending catalog rows) an abusive client can mint
+//* before the hourly cleanup reclaims them
+export const MAX_PENDING_UPLOADS_PER_COMPANY = 20;
 
 //* Presigned URLs are throwaway - short TTLs, regenerated on every request
 export const S3_UPLOAD_URL_TTL_SECONDS = 300;

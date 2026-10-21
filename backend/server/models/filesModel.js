@@ -61,14 +61,31 @@ export const getFileByIdInDb = async (fileId, companyId, status = undefined) => 
   return getFileByIdQuery;
 };
 
-export const deleteFileInDb = async (fileId) => {
-  const deleteFileQuery = await prisma.file.delete({
+//* Company-scoped conditional delete - resolves to false when the row did not
+//* exist (or belonged to another company), so callers can answer 404 instead
+//* of touching the bucket for a file they do not own
+export const deleteFileInDb = async (fileId, companyId) => {
+  const deleteResult = await prisma.file.deleteMany({
     where: {
       id: fileId,
+      company_id: companyId,
     },
   });
 
-  return deleteFileQuery;
+  return deleteResult.count > 0;
+};
+
+//* Unconfirmed uploads of a company - bounds the number of presigned URLs a
+//* company can hold open at once (see MAX_PENDING_UPLOADS_PER_COMPANY)
+export const countPendingFilesInDb = async (companyId) => {
+  const pendingCount = await prisma.file.count({
+    where: {
+      company_id: companyId,
+      status: 'pending',
+    },
+  });
+
+  return pendingCount;
 };
 
 //* Used by the company-deletion cleanup: the keys are collected before the

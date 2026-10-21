@@ -1,12 +1,21 @@
 import { jest } from '@jest/globals';
 
 jest.unstable_mockModule('../server/models/filesModel.js', () => ({
+  countPendingFilesInDb: jest.fn(),
   createFileInDb: jest.fn(),
   getFilesInDb: jest.fn(),
   getFileByIdInDb: jest.fn(),
   deleteFileInDb: jest.fn(),
   getFileKeysForCompanyInDb: jest.fn(),
   markFileReadyInDb: jest.fn(),
+}));
+
+jest.unstable_mockModule('../server/config/s3.js', () => ({
+  MAX_PENDING_UPLOADS_PER_COMPANY: 20,
+}));
+
+jest.unstable_mockModule('../server/config/loggerFunctions.js', () => ({
+  logWarn: jest.fn(),
 }));
 
 jest.unstable_mockModule('../server/integrations/s3/headS3Object.js', () => ({
@@ -33,6 +42,7 @@ const {
   getFiles,
 } = await import('../server/controllers/filesController.js');
 const {
+  countPendingFilesInDb,
   createFileInDb,
   deleteFileInDb,
   getFileByIdInDb,
@@ -43,6 +53,7 @@ const { headS3Object } = await import('../server/integrations/s3/headS3Object.js
 const { presignGetObject } = await import('../server/integrations/s3/presignGetObject.js');
 const { presignPutObject } = await import('../server/integrations/s3/presignPutObject.js');
 const { deleteS3Objects } = await import('../server/integrations/s3/deleteS3Objects.js');
+const { logWarn } = await import('../server/config/loggerFunctions.js');
 
 const mockRes = () => {
   const res = {
@@ -75,6 +86,26 @@ const fileRecord = (overrides = {}) => ({
 describe('createFileUpload', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    countPendingFilesInDb.mockResolvedValue(0);
+    deleteS3Objects.mockResolvedValue({ deletedCount: 1, failedKeys: [] });
+  });
+
+  it('answers 409 with a stable code when the company has too many unconfirmed uploads', async () => {
+    countPendingFilesInDb.mockResolvedValue(20);
+
+    const req = {
+      user: caller,
+      body: { filename: 'a.txt', contentType: 'text/plain', sizeBytes: 1 },
+    };
+    const res = mockRes();
+
+    await createFileUpload(req, res);
+
+    expect(countPendingFilesInDb).toHaveBeenCalledWith('company-1');
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'FILE_PENDING_UPLOAD_LIMIT' }));
+    expect(presignPutObject).not.toHaveBeenCalled();
+    expect(createFileInDb).not.toHaveBeenCalled();
   });
 
   it('presigns the derived key, registers the row and returns 201', async () => {
@@ -155,6 +186,8 @@ describe('confirmFileUpload', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    deleteS3Objects.mockResolvedValue({ deletedCount: 1, failedKeys: [] });
+    deleteFileInDb.mockResolvedValue(true);
   });
 
   it('answers 404 when the file does not exist in the caller company', async () => {
@@ -197,8 +230,10 @@ describe('confirmFileUpload', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'FILE_UPLOAD_MISMATCH' }));
+    //* Row first (company-scoped), then the object
+    expect(deleteFileInDb).toHaveBeenCalledWith('file-1', 'company-1');
     expect(deleteS3Objects).toHaveBeenCalledWith(['company-1/file-1/report.pdf']);
-    expect(deleteFileInDb).toHaveBeenCalledWith('file-1');
+    expect(deleteFileInDb.mock.invocationCallOrder[0]).toBeLessThan(deleteS3Objects.mock.invocationCallOrder[0]);
     expect(markFileReadyInDb).not.toHaveBeenCalled();
   });
 
@@ -209,7 +244,7 @@ describe('confirmFileUpload', () => {
     const res = await confirm();
 
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(deleteFileInDb).toHaveBeenCalledWith('file-1');
+    expect(deleteFileInDb).toHaveBeenCalledWith('file-1', 'company-1');
   });
 
   it('marks the file ready when size and content type match', async () => {
@@ -291,7 +326,7 @@ describe('getFileDownloadUrl', () => {
     expect(presignGetObject).not.toHaveBeenCalled();
   });
 
-  it('returns a presigned download URL for a company file', async () => {
+  it('returns a presigned download URL pinned to the catalog filename and verified MIME type', async () => {
     getFileByIdInDb.mockResolvedValue(fileRecord());
     presignGetObject.mockResolvedValue('https://bucket.s3/download-url');
 
@@ -300,7 +335,10 @@ describe('getFileDownloadUrl', () => {
 
     await getFileDownloadUrl(req, res);
 
-    expect(presignGetObject).toHaveBeenCalledWith('company-1/file-1/report.pdf');
+    expect(presignGetObject).toHaveBeenCalledWith('company-1/file-1/report.pdf', {
+      filename: 'report.pdf',
+      contentType: 'application/pdf',
+    });
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ url: 'https://bucket.s3/download-url' });
   });
@@ -309,6 +347,7 @@ describe('getFileDownloadUrl', () => {
 describe('deleteOneFileById', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    deleteS3Objects.mockResolvedValue({ deletedCount: 1, failedKeys: [] });
   });
 
   it('answers 404 when the file does not exist in the caller company', async () => {
@@ -324,34 +363,46 @@ describe('deleteOneFileById', () => {
     expect(deleteFileInDb).not.toHaveBeenCalled();
   });
 
-  it('removes the object best-effort before deleting the row', async () => {
+  it('deletes the row (company-scoped) first and the object best-effort afterwards', async () => {
     getFileByIdInDb.mockResolvedValue(fileRecord());
-    deleteS3Objects.mockResolvedValue({ deletedCount: 1, failedKeys: [] });
-    deleteFileInDb.mockResolvedValue(fileRecord());
+    deleteFileInDb.mockResolvedValue(true);
 
     const req = { user: caller, params: { fileId: 'file-1' } };
     const res = mockRes();
 
     await deleteOneFileById(req, res);
 
+    expect(deleteFileInDb).toHaveBeenCalledWith('file-1', 'company-1');
     expect(deleteS3Objects).toHaveBeenCalledWith(['company-1/file-1/report.pdf']);
-    expect(deleteS3Objects.mock.invocationCallOrder[0]).toBeLessThan(deleteFileInDb.mock.invocationCallOrder[0]);
-    expect(deleteFileInDb).toHaveBeenCalledWith('file-1');
+    expect(deleteFileInDb.mock.invocationCallOrder[0]).toBeLessThan(deleteS3Objects.mock.invocationCallOrder[0]);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ fileId: 'file-1' });
   });
 
-  it('still deletes the row when the object delete fails', async () => {
+  it('answers 404 and never touches the bucket when the row was deleted concurrently', async () => {
     getFileByIdInDb.mockResolvedValue(fileRecord());
-    deleteS3Objects.mockResolvedValue({ deletedCount: 0, failedKeys: ['company-1/file-1/report.pdf'] });
-    deleteFileInDb.mockResolvedValue(fileRecord());
+    deleteFileInDb.mockResolvedValue(false);
 
     const req = { user: caller, params: { fileId: 'file-1' } };
     const res = mockRes();
 
     await deleteOneFileById(req, res);
 
-    expect(deleteFileInDb).toHaveBeenCalledWith('file-1');
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(deleteS3Objects).not.toHaveBeenCalled();
+  });
+
+  it('still answers 200 and logs when the object delete fails', async () => {
+    getFileByIdInDb.mockResolvedValue(fileRecord());
+    deleteFileInDb.mockResolvedValue(true);
+    deleteS3Objects.mockResolvedValue({ deletedCount: 0, failedKeys: ['company-1/file-1/report.pdf'] });
+
+    const req = { user: caller, params: { fileId: 'file-1' } };
+    const res = mockRes();
+
+    await deleteOneFileById(req, res);
+
     expect(res.status).toHaveBeenCalledWith(200);
+    expect(logWarn).toHaveBeenCalled();
   });
 });

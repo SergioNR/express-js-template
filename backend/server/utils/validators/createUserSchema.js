@@ -36,6 +36,24 @@ export const createUserValidationSchema = {
       errorMessage: 'Email must not exceed 254 characters',
     },
   },
+  companyName: {
+    isString: {
+      errorMessage: 'Company name is required',
+      bail: true,
+    },
+    trim: true,
+    notEmpty: {
+      errorMessage: 'Company name is required',
+      bail: true,
+    },
+    isLength: {
+      options: {
+        min: 2,
+        max: 100,
+      },
+      errorMessage: 'Company name must be between 2-100 characters long',
+    },
+  },
   password: {
     notEmpty: {
       errorMessage: 'Password is required',

@@ -240,7 +240,7 @@ export const loginLocal = (req, res, next) => passport.authenticate('local', (er
 //* are indistinguishable in response body, status AND timing (the bcrypt
 //* hash and the multi-row create would otherwise only run for new emails).
 //* Swallows its own errors - they are logged, never surfaced to the client
-const registerUserInBackground = async (email, password) => {
+const registerUserInBackground = async (email, password, companyName) => {
   try {
     const existingUser = await getUserByEmail(email);
 
@@ -253,9 +253,11 @@ const registerUserInBackground = async (email, password) => {
 
     const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
+    //* The registrant founds the company and becomes its company owner
     await createUserInDB({
       username: email,
       password: hashedPassword,
+      companyName,
     });
   } catch (error) {
     //* Concurrent registrations can beat the existence check - the unique
@@ -269,9 +271,9 @@ const registerUserInBackground = async (email, password) => {
 };
 
 export const registerUser = async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, companyName } = req.body;
 
-  registerUserInBackground(username, password); // Fire-and-forget
+  registerUserInBackground(username, password, companyName); // Fire-and-forget
 
   //* Same shape & status for new and already-registered emails so the
   //* endpoint cannot be used to enumerate registered emails

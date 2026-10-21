@@ -1,22 +1,29 @@
-# Express.js Template
+# Full-Stack Template
 
-Full-stack template: an Express.js backend API with a frontend placeholder.
+Full-stack template: an Express.js backend API with a React (Vite + Mantine) SPA.
 
 ## Layout
 
 | Path | Contents |
 | --- | --- |
 | `backend/` | Express.js server — auth, billing, PostgreSQL/Prisma, Docker. See [backend/README.md](backend/README.md) |
-| `frontend/` | Front-end application placeholder |
+| `frontend/` | React SPA — public site, auth, user/admin areas. See [frontend/README.md](frontend/README.md) |
 
 ## Quick start
 
 ```bash
+# Backend
 cd backend
 cp .env.example .env
 npm ci
 docker compose up -d database
 npx prisma migrate deploy
+npm run start:local
+
+# Frontend (in a second terminal)
+cd frontend
+cp .env.example .env
+npm ci
 npm run start:local
 ```
 

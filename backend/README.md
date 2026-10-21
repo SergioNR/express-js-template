@@ -5,6 +5,7 @@ A production-ready Express.js backend template with authentication, billing, and
 ## Features
 
 - **Authentication** — Passport.js local strategy with session-based auth (stored in PostgreSQL), password reset flow via email tokens, and role-based access control (`user` / `admin`)
+- **Team management** — company member invites (single-use email tokens), member removal and role changes
 - **Database** — PostgreSQL with Prisma ORM, migrations, and a Prisma-backed session store
 - **Billing** — Stripe subscriptions (checkout sessions, customer portal, webhook handling)
 - **Email** — Brevo transactional emails
@@ -16,7 +17,7 @@ A production-ready Express.js backend template with authentication, billing, and
 
 ## Requirements
 
-- Node.js 24.x
+- Node.js 26.x
 - Docker (for the database, or provide your own PostgreSQL)
 
 ## Getting started
@@ -85,10 +86,11 @@ All routes are versioned under `/api/v1`. Interactive documentation is served by
 | --- | --- |
 | Health | `GET /` |
 | Docs | `GET /api/docs` (Swagger UI), `GET /api/docs.json` (OpenAPI spec) |
-| Auth | `POST /api/v1/auth/login`, `POST /api/v1/auth/register`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/session`, password reset (`GET/POST/PATCH /api/v1/auth/password-reset`), `PATCH /api/v1/auth/update-user-password` |
+| Auth | `POST /api/v1/auth/login`, `POST /api/v1/auth/register`, `POST /api/v1/auth/logout`, `GET /api/v1/auth/session`, password reset (`GET/POST/PATCH /api/v1/auth/password-reset`), `PATCH /api/v1/auth/update-user-password`, team invites (`GET /api/v1/auth/invite`, `POST /api/v1/auth/invite-accept`) |
 | User | `GET /api/v1/user`, `DELETE /api/v1/user` |
 | Billing | `GET/POST /api/v1/billing`, `POST /api/v1/billing/checkout-session`, `POST /api/v1/billing/customer-portal` |
-| Admin | `GET /api/v1/admin`, `GET /api/v1/admin/:userId`, `DELETE /api/v1/admin/:userId` |
+| Team | `GET /api/v1/team`, `POST /api/v1/team/invites`, `POST /api/v1/team/invites/:inviteId/resend`, `DELETE /api/v1/team/invites/:inviteId`, `DELETE/PATCH /api/v1/team/members/:userId` |
+| Admin | `GET /api/v1/admin/users`, `GET /api/v1/admin/users/:userId`, `DELETE /api/v1/admin/users/:userId`, `GET /api/v1/admin/companies`, `GET /api/v1/admin/companies/:companyId`, `GET /api/v1/admin/stats` |
 | Webhooks | `POST /webhooks/v1/stripe` |
 
 ## Architecture

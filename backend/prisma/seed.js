@@ -3,7 +3,6 @@ import { prisma } from '../server/config/prismaClient.js';
 import { BCRYPT_SALT_ROUNDS, FREE_TRIAL_DURATION_MS } from '../server/config/security.js';
 
 const ACME_COMPANY_ID = '5f8b7c2e-1d4a-4f6b-8c3a-2a1b3c4d5e6f';
-const PLATFORM_COMPANY_ID = '3c2b1a0f-9e8d-4c7b-a6f5-e4d3c2b1a0f9';
 
 //* Role ids are only used when a role row does not exist yet (same
 //* deterministic UUIDs as the team_invites_rbac migration). Assignments always
@@ -42,23 +41,19 @@ const companies = [
     id: ACME_COMPANY_ID,
     name: 'Acme Corp',
   },
-  {
-    //* Internal company holding the platform admin - User.company_id is
-    //* required, and keeping the admin out of tenant companies keeps it
-    //* out of their team lists
-    id: PLATFORM_COMPANY_ID,
-    name: 'Platform',
-  },
 ];
 
-//* Mirrors the onboarding flow: the owner is the account that registered the
-//* company, the user is a regular member who joined it afterwards
+//* Two independent role layers:
+//* - `role` is the platform role (User.role): `user` for every tenant
+//*   account, `superadmin` for SaaS-provider staff
+//* - `companyRole` is the role inside the tenant company (UserRole)
+//* The superadmin belongs to no company and holds no company role
 const users = [
   {
-    email: 'owner@acme.test',
+    email: 'admin@acme.test',
     password: 'Password123!',
     role: 'user',
-    companyRole: 'company_owner',
+    companyRole: 'company_admin',
     company_id: ACME_COMPANY_ID,
   },
   {
@@ -69,12 +64,11 @@ const users = [
     company_id: ACME_COMPANY_ID,
   },
   {
-    //* Platform admin: the global `admin` role unlocks /api/v1/admin
-    email: 'admin@platform.test',
+    email: 'superadmin@platform.test',
     password: 'Password123!',
-    role: 'admin',
-    companyRole: 'company_owner',
-    company_id: PLATFORM_COMPANY_ID,
+    role: 'superadmin',
+    companyRole: null,
+    company_id: null,
   },
 ];
 
@@ -145,27 +139,31 @@ async function main() {
     const { password, companyRole: companyRoleName, ...rest } = user;
     const createdUser = await prisma.user.upsert({
       where: { email: user.email },
-      update: {},
+      //* Re-seeding also repairs the role layers of rows from older seeds
+      update: { role: rest.role, company_id: rest.company_id },
       create: { ...rest, password: await bcrypt.hash(password, BCRYPT_SALT_ROUNDS) },
     });
 
-    //* Replace (not upsert) the user's company roles: v1 keeps exactly one
-    //* role per user, so re-seeding must never leave duplicate role rows
+    //* Replace (not upsert) the user's company roles: v1 keeps at most one
+    //* role per user, so re-seeding must never leave duplicate role rows.
+    //* Users without a company (superadmins) end up with none
     await prisma.$transaction([
       prisma.userRole.deleteMany({
         where: {
           user_id: createdUser.id,
         },
       }),
-      prisma.userRole.create({
-        data: {
-          user_id: createdUser.id,
-          role_id: roleIdsByName[companyRoleName],
-        },
-      }),
+      ...(companyRoleName
+        ? [prisma.userRole.create({
+          data: {
+            user_id: createdUser.id,
+            role_id: roleIdsByName[companyRoleName],
+          },
+        })]
+        : []),
     ]);
 
-    console.log(`Seeded user ${user.email} (${user.role}, ${companyRoleName})`);
+    console.log(`Seeded user ${user.email} (${user.role}, ${companyRoleName ?? 'no company'})`);
   }
 }
 

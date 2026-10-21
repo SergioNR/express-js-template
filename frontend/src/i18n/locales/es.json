@@ -306,9 +306,6 @@
   "user": {
     "panelTitle": "Panel de control",
     "backToSite": "Volver al sitio",
-    "profile": {
-      "loadError": "No se pudo cargar tu perfil. Por favor, inténtalo de nuevo más tarde."
-    },
     "noSubscriptionBanner": {
       "title": "Suscripción inactiva",
       "body": "No tienes una suscripción activa. Activa un plan para continuar usando la plataforma.",
@@ -521,8 +518,7 @@
   },
   "loading": {
     "default": "Cargando...",
-    "billing": "Cargando información de facturación...",
-    "user": "Cargando usuario..."
+    "billing": "Cargando información de facturación..."
   },
   "errors": {
     "logoutFailed": "No se pudo cerrar la sesión. Por favor, inténtalo de nuevo."

@@ -20,7 +20,8 @@ Rules describe how this codebase is written today. Follow them for all new and m
 
 - Single route tree in `src/main.jsx` — add new pages there, colocated with their area wrapper.
 - Area wrappers own session guarding: call `GET /api/v1/auth/session`; on failure `navigate('/auth/login')`; render `<Outlet />` only after the check (`UserWrapper.jsx` is the reference).
-- Post-login routing by role: `admin` → `/admin`, `user` → `/dashboard`.
+- Post-login routing by role: `superadmin` → `/admin`, `user` → `/dashboard`. The user area is one pathless layout route (`<Route element={<UserWrapper />}>` with `dashboard` and `user/*` children) so the wrapper stays mounted across it; `/user` redirects to `/dashboard`.
+- Wrappers redirect to login only on a 401; any other session-check failure renders `SessionCheckError` with a retry. `UserWrapper` sends superadmins to `/admin`; `AdminDashboardWrapper` exposes the signed-in admin via `<Outlet context={{ sessionUser }} />`.
 
 ## API access
 
@@ -35,7 +36,8 @@ Rules describe how this codebase is written today. Follow them for all new and m
 - UI copy lives in `src/i18n/locales/es.json` — never as literals in JSX. Use `useTranslation()`/`t('key')` (or `<Trans>` when copy contains links/components); `t` from `i18next` in class components. Spanish only (`lng: 'es'`); code, identifiers, and comments are English.
 - One-off action feedback (saves, checkout/portal, logout) → toasts via `notifySuccess`/`notifyError` from `src/utils/notifications.js` (`<Notifications />` is mounted in `main.jsx`). Errors tied to a form the user is fixing → inline `Alert`.
 - Permission-locked actions render disabled with an explanatory tooltip, never hidden: gate only the `disabled` prop and wrap the locked control in a `Tooltip` around a `<span>` (disabled controls don't fire pointer events). `Team.jsx` is the reference. Route-level role gating (area wrappers, `main.jsx`) is separate and stays as-is.
-- Every page renders `<Seo>` (`src/components/Seo.jsx`, React 19 meta hoisting): public pages pass `title`/`description`/`path`; internal pages pass `title` only. Static defaults live in `index.html`.
+- Every page renders `<Seo>` (`src/components/Seo.jsx`, React 19 meta hoisting): public pages pass `title`/`description`/`path`; internal pages pass `title` only. `index.html` only carries a fallback `<title>` — description, canonical and `og:*` come from `Seo` alone. Sections embedded in several pages (`pages/index/sections/*`) never render `<Seo>`; the route page does (`FAQPage.jsx`).
+- Prices are never hardcoded in copy: render them from `PLANS` (`src/config/plans.js`) through `formatPlanPrice` (`src/utils/formatPrice.js`, `Intl.NumberFormat('es-ES')`).
 - Full-page/wrapper loads → `PageLoader` (`src/components/PageLoader.jsx`); in-content loads → inline `Skeleton` (`UserDashboard.jsx` is the reference).
 - `ErrorBoundary` (`src/components/ErrorBoundary.jsx`, wired in `main.jsx` via `RoutedErrorBoundary`) catches render errors app-wide, shows the Spanish fallback and reports to PostHog when analytics are enabled; navigation resets it.
 - Server state pattern: context provider + `useX()` hook + `refresh` function (`SubscriptionContext.jsx` + `useSubscription.js` is the reference — keep the context object and hook out of the `.jsx` provider file for Fast Refresh). No global state library.

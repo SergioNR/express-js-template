@@ -11,6 +11,16 @@ export const notifySuccess = (message, title) => {
   });
 };
 
+//* Neutral outcome (e.g. a cancelled checkout) - neither success nor failure
+export const notifyInfo = (message, title) => {
+  notifications.show({
+    message,
+    title,
+    color: 'gray',
+    autoClose: 5000,
+  });
+};
+
 export const notifyError = (message, title) => {
   notifications.show({
     message,

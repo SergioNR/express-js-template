@@ -3,6 +3,7 @@
     "siteName": "Your App",
     "error": "Error",
     "success": "Correcto",
+    "retry": "Reintentar",
     "logoAlt": "logo"
   },
   "nav": {
@@ -11,8 +12,8 @@
     "faq": "Preguntas frecuentes",
     "login": "Iniciar sesión",
     "register": "Pruébalo gratis",
-    "registerLink": "Registrarse",
     "logout": "Cerrar sesión",
+    "menu": "Menú de navegación",
     "user": {
       "navigation": "Navegación",
       "dashboard": "Dashboard",
@@ -36,13 +37,7 @@
       "terms": "Términos y condiciones",
       "contact": "Contacto"
     },
-    "copyright": "© {{year}} {{siteName}}. Todos los derechos reservados.",
-    "admin": {
-      "title": "Pie de página de administración",
-      "columnOne": ["Elemento 3", "Elemento 4"],
-      "columnTwo": ["Elemento 5", "Elemento 6", "Elemento 7", "Elemento 8"],
-      "columnThree": ["Elemento 9", "Elemento 10", "Elemento 11", "Elemento 12"]
-    }
+    "copyright": "© {{year}} {{siteName}}. Todos los derechos reservados."
   },
   "auth": {
     "fields": {
@@ -55,14 +50,15 @@
       "companyNamePlaceholder": "Acme S.L."
     },
     "backToLoginSmall": "Volver a la página de inicio de sesión",
+    "errors": {
+      "tooManyAttempts": "Demasiados intentos. Espera unos minutos e inténtalo de nuevo."
+    },
     "login": {
       "title": "¡Bienvenido de nuevo!",
       "noAccount": "¿Aún no tienes una cuenta?",
       "createAccount": "Crear cuenta",
       "forgotPassword": "¿Olvidaste tu contraseña?",
       "submit": "Iniciar sesión",
-      "participantTitle": "Inicio de sesión de participante",
-      "participantBody": "El inicio de sesión de participante aún no está disponible. Por favor, contacta con soporte para más información.",
       "errors": {
         "invalidCredentials": "La combinación de email y contraseña es incorrecta",
         "internal": "Error interno, por favor inténtalo de nuevo más tarde"
@@ -135,12 +131,21 @@
       "passwordHint": "Mínimo 8 caracteres, con al menos una mayúscula, una minúscula y un número.",
       "submit": "Crear cuenta y unirme",
       "success": "Cuenta creada correctamente. Ya puedes iniciar sesión.",
-      "invalidLinkTitle": "Invitación inválida",
-      "invalidLinkBody": "La invitación no existe o ha caducado. Pide al equipo que te envíe una nueva.",
+      "invalid": {
+        "expired": {
+          "title": "Invitación caducada",
+          "body": "Esta invitación ha caducado. Pide al equipo que te envíe una nueva."
+        },
+        "notFound": {
+          "title": "Invitación inválida",
+          "body": "La invitación no existe o ya se ha utilizado. Pide al equipo que te envíe una nueva."
+        }
+      },
       "backToLogin": "Volver al inicio de sesión",
       "errors": {
         "expired": "La invitación ha caducado. Pide una nueva invitación.",
         "registered": "Ese email ya tiene una cuenta. Inicia sesión.",
+        "invalidPassword": "La contraseña no cumple los requisitos: mínimo 8 caracteres, con al menos una mayúscula, una minúscula y un número.",
         "generic": "No se pudo aceptar la invitación. Inténtalo de nuevo."
       }
     }
@@ -233,6 +238,8 @@
     "pricing": {
       "title": "Planes y precios",
       "subtitle": "Un único plan simple para empezar hoy mismo. Sin complicaciones, cancela cuando quieras.",
+      "pricePerMonth": "{{price}}/mes",
+      "vatIncluded": "IVA incluido",
       "plans": {
         "pro": {
           "name": "Pro",
@@ -329,6 +336,7 @@
       "plan": {
         "title": "Estado de tu plan",
         "activeDescription": "Tu suscripción está activa. Consulta el progreso del periodo actual.",
+        "trialDescription": "Estás en el periodo de prueba gratuito. Elige un plan antes de que termine para no perder el acceso.",
         "inactiveDescription": "Activa un plan para desbloquear todas las funciones de la plataforma.",
         "periodStart": "Inicio del periodo",
         "periodEnd": "Renovación / fin del periodo",
@@ -348,8 +356,11 @@
         "renewal": {
           "title": "Renovación automática",
           "renewsOn": "Se renovará {{date}}",
+          "trialEndsIn_one": "Tu prueba gratuita termina en {{count}} día",
+          "trialEndsIn_other": "Tu prueba gratuita termina en {{count}} días",
           "unavailable": "Disponible al activar un plan",
           "enabled": "Activada",
+          "trial": "Prueba",
           "disabled": "Inactiva"
         }
       },
@@ -382,16 +393,21 @@
   "billing": {
     "status": "Estado de la suscripción:",
     "statusActive": "Activa",
+    "statusTrial": "Prueba gratuita",
     "statusInactive": "Inactiva",
     "expiresAt": "Finaliza el:",
+    "trialEndsAt": "La prueba termina el:",
     "monthly": {
       "title": "Suscripción Mensual",
-      "price": "€29/mes",
+      "pricePerMonth": "{{price}}/mes",
       "vatIncluded": "IVA incluido",
       "saveHint": "Ahorra 17%",
       "description": "Utiliza la plataforma sin límites.",
-      "alreadySubscribed": "Ya tienes una suscripción activa",
       "choose": "Elegir mensual"
+    },
+    "checkout": {
+      "paid": "Pago completado. Estamos activando tu suscripción.",
+      "cancelled": "Has cancelado el pago. Puedes elegir un plan cuando quieras."
     },
     "invoices": {
       "title": "Historial de facturas",
@@ -405,7 +421,8 @@
       "checkout": "Se ha producido un error generando el enlace de pago. Por favor, inténtalo más tarde",
       "portal": "Se ha producido un error obteniendo el área de usuario. Por favor, inténtalo más tarde",
       "forbidden": "Solo el propietario de la empresa puede gestionar la facturación.",
-      "subscriptionActive": "Tu empresa ya tiene una suscripción activa. Gestiónala desde el portal del cliente."
+      "subscriptionActive": "Tu empresa ya tiene una suscripción activa. Gestiónala desde el portal del cliente.",
+      "membershipRequired": "Tu cuenta no pertenece a ninguna empresa, así que no tiene facturación asociada."
     },
     "locked": {
       "manage": "Solo el propietario de la empresa puede gestionar la facturación"
@@ -481,11 +498,13 @@
       "deletedToast": "Usuario {{email}} eliminado correctamente.",
       "deleteError": "No se pudo eliminar el usuario. Inténtalo de nuevo.",
       "deleteConflict": "No se puede eliminar esta cuenta desde aquí. Si es tu propia cuenta, usa tu perfil.",
+      "deleteLastOwner": "Este usuario es el único propietario de su empresa y aún hay otros miembros. Asigna otro propietario antes de eliminarlo.",
       "deleteNotFound": "El usuario ya no existe.",
+      "deleteSelfLocked": "No puedes eliminar tu propia cuenta desde aquí. Usa tu perfil.",
       "deleteModal": {
         "title": "Eliminar usuario",
         "description": "¿Seguro que quieres eliminar la cuenta de {{email}}? Esta acción no se puede deshacer.",
-        "adminWarning": "Vas a eliminar una cuenta de superadministrador.",
+        "superadminWarning": "Vas a eliminar una cuenta de superadministrador.",
         "cancel": "Cancelar",
         "confirm": "Eliminar"
       }
@@ -524,7 +543,8 @@
     "billing": "Cargando información de facturación..."
   },
   "errors": {
-    "logoutFailed": "No se pudo cerrar la sesión. Por favor, inténtalo de nuevo."
+    "logoutFailed": "No se pudo cerrar la sesión. Por favor, inténtalo de nuevo.",
+    "sessionCheck": "No se pudo comprobar tu sesión. Revisa tu conexión e inténtalo de nuevo."
   },
   "seo": {
     "defaultTitle": "Your App",
@@ -611,10 +631,12 @@
     "locked": {
       "invite": "No tienes permiso para invitar miembros al equipo",
       "remove": "No tienes permiso para eliminar miembros",
-      "manageRoles": "No tienes permiso para cambiar los roles de los miembros"
+      "manageRoles": "No tienes permiso para cambiar los roles de los miembros",
+      "roleNotAssignable": "No puedes cambiar el rol de este miembro"
     },
     "errors": {
       "loadError": "No se pudo cargar la información del equipo. Inténtalo de nuevo.",
+      "membershipRequired": "Tu cuenta no pertenece a ninguna empresa, así que no tiene equipo.",
       "inviteConflict": "Ese email ya está registrado o ya tiene una invitación pendiente.",
       "removeConflict": "No se puede eliminar a este miembro.",
       "roleConflict": "No se puede cambiar el rol de este miembro.",

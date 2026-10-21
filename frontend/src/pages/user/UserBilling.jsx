@@ -1,16 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../config/API/axiosConfig.mjs';
-import { Container, Stack, Card, Title, Text, Group, Button, SimpleGrid, Alert, Tooltip } from '@mantine/core';
+import { Container, Stack, Card, Title, Text, Group, Button, SimpleGrid, Alert, Badge, Tooltip } from '@mantine/core';
 import { useSubscription } from '../../contexts/useSubscription.js';
 import PageLoader from '../../components/PageLoader.jsx';
 import Seo from '../../components/Seo.jsx';
-import { notifyError } from '../../utils/notifications.js';
+import { notifyError, notifyInfo, notifySuccess } from '../../utils/notifications.js';
 import { PLANS } from '../../config/plans.js';
+import { formatPlanPrice } from '../../utils/formatPrice.js';
+import { formatDateTime } from '../../utils/formatDate.js';
 
 const CHECKOUT_URL_PREFIX = 'https://checkout.stripe.com/';
 const PORTAL_URL_PREFIX = 'https://billing.stripe.com/';
 const BILLING_PERMISSION = 'billing.manage';
+
+//* Stripe redirects back here with ?status=paid|cancelled. The webhook that
+//* activates the subscription may land a few seconds after the redirect, so
+//* a paid return re-fetches the subscription a few times before giving up
+const CHECKOUT_STATUS_PARAM = 'status';
+const PAID_POLL_INTERVAL_MS = 2000;
+const PAID_POLL_MAX_ATTEMPTS = 5;
 
 //* Only navigate to Stripe-hosted pages - never to an arbitrary URL from the API
 const redirectToStripe = (url, expectedPrefix) => {
@@ -24,10 +34,60 @@ const redirectToStripe = (url, expectedPrefix) => {
 
 const UserBilling = () => {
   const { t } = useTranslation();
-  const { subscription, loading, error, hasActiveSubscription, hasBillingId } = useSubscription();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const {
+    subscription,
+    loading,
+    error,
+    hasPaidSubscription,
+    isTrial,
+    hasBillingId,
+    refresh,
+  } = useSubscription();
   // null while unknown - the backend still enforces the permission (403)
   const [canManageBilling, setCanManageBilling] = useState(null);
-  const [redirecting, setRedirecting] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [paidPollsLeft, setPaidPollsLeft] = useState(0);
+  //* Guards the one-off toast against StrictMode's double effect run
+  const handledStatusRef = useRef(false);
+
+  const checkoutStatus = searchParams.get(CHECKOUT_STATUS_PARAM);
+
+  useEffect(() => {
+    if (!checkoutStatus || handledStatusRef.current) {
+      return;
+    }
+
+    handledStatusRef.current = true;
+
+    if (checkoutStatus === 'paid') {
+      notifySuccess(t('billing.checkout.paid'));
+      refresh({ silent: true });
+      setPaidPollsLeft(PAID_POLL_MAX_ATTEMPTS);
+    } else if (checkoutStatus === 'cancelled') {
+      notifyInfo(t('billing.checkout.cancelled'));
+    }
+
+    //* Strip the param so a reload doesn't replay the toast
+    setSearchParams((params) => {
+      params.delete(CHECKOUT_STATUS_PARAM);
+      return params;
+    }, { replace: true });
+  }, [checkoutStatus, refresh, setSearchParams, t]);
+
+  useEffect(() => {
+    if (paidPollsLeft === 0 || hasPaidSubscription) {
+      return undefined;
+    }
+
+    const timer = setTimeout(async () => {
+      await refresh({ silent: true });
+      setPaidPollsLeft((left) => left - 1);
+    }, PAID_POLL_INTERVAL_MS);
+
+    return () => clearTimeout(timer);
+  }, [paidPollsLeft, hasPaidSubscription, refresh]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -56,7 +116,7 @@ const UserBilling = () => {
       planBillingCycle: planBillingCycle,
     };
 
-    setRedirecting(true);
+    setCheckoutLoading(true);
 
     try {
       const response = await apiClient.post('/api/v1/billing/checkout-session', planData);
@@ -81,11 +141,11 @@ const UserBilling = () => {
       }
     }
 
-    setRedirecting(false);
+    setCheckoutLoading(false);
   };
 
   const handleBillingCustomerPortal = async () => {
-    setRedirecting(true);
+    setPortalLoading(true);
 
     try {
       const response = await apiClient.post('/api/v1/billing/customer-portal');
@@ -103,7 +163,7 @@ const UserBilling = () => {
       }
     }
 
-    setRedirecting(false);
+    setPortalLoading(false);
   };
 
   if (loading) {
@@ -124,6 +184,12 @@ const UserBilling = () => {
     );
   }
 
+  const statusLabel = hasPaidSubscription
+    ? t('billing.statusActive')
+    : isTrial
+      ? t('billing.statusTrial')
+      : t('billing.statusInactive');
+
   return (
     <Container size="sm">
       <Seo title={t('seo.pages.billing')} />
@@ -131,24 +197,27 @@ const UserBilling = () => {
 
         <Card withBorder p="lg" radius="md">
           <Stack gap="sm" mt="sm">
-            <Text fw={500}>
-              <b>{t('billing.status')}</b> {hasActiveSubscription ? t('billing.statusActive') : t('billing.statusInactive')}
-            </Text>
-            {subscription.expires_at && (
+            <Group gap="xs">
+              <Text fw={700}>{t('billing.status')}</Text>
+              <Badge
+                color={hasPaidSubscription ? 'teal' : isTrial ? 'yellow' : 'red'}
+                variant="light"
+              >
+                {statusLabel}
+              </Badge>
+            </Group>
+            {subscription?.expires_at && (
               <Text fw={500}>
-                <b>{t('billing.expiresAt')}</b> {new Date(subscription.expires_at).toLocaleDateString('es-ES', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
+                <b>{isTrial ? t('billing.trialEndsAt') : t('billing.expiresAt')}</b>{' '}
+                {formatDateTime(subscription.expires_at)}
               </Text>
             )}
           </Stack>
         </Card>
 
-        { !hasActiveSubscription &&
+        {/* The plan card stays visible during the free trial - that's when
+            the user needs to pick a plan */}
+        { !hasPaidSubscription &&
           <SimpleGrid cols={1} spacing="lg">
             <Card
               withBorder
@@ -158,7 +227,9 @@ const UserBilling = () => {
             >
               <Title order={3}>{t('billing.monthly.title')}</Title>
               <Group align="center" mt="xs">
-                <Text fw={700} size="xl">{t('billing.monthly.price')}</Text>
+                <Text fw={700} size="xl">
+                  {t('billing.monthly.pricePerMonth', { price: formatPlanPrice(PLANS.PRO) })}
+                </Text>
                 <Text size="sm" c="dimmed">{t('billing.monthly.vatIncluded')}</Text>
               </Group>
               {/* hidden placeholder to keep cards identical in height distribution */}
@@ -176,11 +247,11 @@ const UserBilling = () => {
                     mt="md"
                     fullWidth
                     variant='outline'
-                    disabled={hasActiveSubscription || billingLocked}
-                    loading={redirecting}
+                    disabled={billingLocked}
+                    loading={checkoutLoading}
                     onClick={() => handlePriceLink(PLANS.PRO.id, 'monthly')}
                   >
-                    { hasActiveSubscription ? t('billing.monthly.alreadySubscribed') : t('billing.monthly.choose') }
+                    {t('billing.monthly.choose')}
                   </Button>
                 </span>
               </Tooltip>
@@ -205,7 +276,7 @@ const UserBilling = () => {
                 <Button
                   onClick={handleBillingCustomerPortal}
                   disabled={!hasBillingId || billingLocked}
-                  loading={redirecting}
+                  loading={portalLoading}
                 >
                   {t('billing.invoices.openPortal')}
                 </Button>

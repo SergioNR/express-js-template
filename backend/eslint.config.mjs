@@ -47,6 +47,13 @@ export default [
     },
   },
   {
+    //* Tooling config files run only in development, so importing devDependencies is expected
+    files: ['eslint.config.mjs'],
+    rules: {
+      'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
+    },
+  },
+  {
     files: ['**/*Scheduler.js'],
     rules: {
       'no-await-in-loop': 'off', // Disable the rule for await inside loops in Scheduler files

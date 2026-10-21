@@ -5,7 +5,7 @@ Rules describe how this codebase is written today. Follow them for all new and m
 ## Stack & runtime
 
 - Node.js >= 26, ESM only (`"type": "module"`), plain `.js` executed via `tsx`.
-- ESLint 10 flat config (`eslint.config.mjs`) extending `airbnb-base`: 4-space indent, single quotes, semicolons, trailing commas. Run `npx eslint .` from `backend/`.
+- ESLint 10 flat config (`eslint.config.mjs`) extending `airbnb-base`: 2-space indent, single quotes, semicolons, trailing commas. Run `npx eslint .` from `backend/`.
 - TypeScript is used only for Prisma config (`prisma.config.ts`) and the generated client; server code stays `.js`.
 
 ## Architecture — layer rules (strict)
@@ -36,8 +36,11 @@ Request flow: `server/app.js` → middlewares → routers → controllers → mo
 
 ## Security rules (non-negotiable — outcomes of past audits)
 
-- **Enumeration-safe auth**: `register` and `password-reset` return an identical response shape and status whether or not the account exists. Never leak account existence.
+- **Enumeration-safe auth**: `register` and `password-reset` return an identical response shape and status whether or not the account exists, and respond before doing account-dependent work (lookup/create/email run detached) so timing doesn't leak either. Never leak account existence.
 - **Timing-equalized login**: nonexistent users are compared against `DUMMY_PASSWORD_HASH` (`auth/strategies/passportLocalStrategy.js`). Keep it.
+- **CSRF / request shape**: state-changing requests must carry an allowlisted `Origin` (fallback `Referer`) — `middlewares/originChecker.js`, allowlist shared with CORS in `config/allowedOrigins.js` (localhost origins only when `DEPLOY_ENVIRONMENT=localhost`). `/api` bodies must be `application/json` (`jsonContentTypeChecker.js`, 415). Never re-add `express.urlencoded`. `/webhooks` and docs mount before these checks and the global limiter.
+- **Secret tokens** (invite, password reset): `crypto.randomBytes(32)` base64url via `utils/secureToken.js`; store only the SHA-256 in `token_hash`, send the raw token only by email, never return it in an API response. Row `id` is a public handle. Consume tokens inside a `$transaction` (conditional `deleteMany`, require `count === 1`).
+- **Atomic invariants**: checks that guard a write (last company owner, caller outranks every role the target holds) run in the same `$transaction` as the write, with the company row locked (`SELECT ... FOR UPDATE`). Deletion cleanup does all DB steps in one transaction and calls Stripe/S3 only after commit.
 - **Fire-and-forget side effects**: emails (Brevo), PostHog events, and `last_login_at` updates must not change the response's shape or timing — the integration/model function swallows its own errors and is called without `await`.
 - **Stripe webhook**: raw body (`express.raw`) — never mount `express.json()` in front of `/webhooks`. DB writes inside the handler are `await`-ed so failures return 500 and Stripe retries.
 - **Redaction**: sensitive fields are redacted in two places — `sanitizerResult.js` (`sensitiveFields`) and `logger.js` pino `redact.paths`. Update both when adding a sensitive field. Never log passwords or reset tokens.
@@ -45,13 +48,14 @@ Request flow: `server/app.js` → middlewares → routers → controllers → mo
 - **Passwords**: bcrypt with `BCRYPT_SALT_ROUNDS` (12) from `config/security.js`. Queries returning users must `omit: { password: true }` (only `getUserPassword` selects it).
 - **Query whitelist**: never pass `req.query`/`req.body` through to Prisma — whitelist explicit fields (see `getAllUsers` role filter).
 - **Admin self-protection**: admins cannot delete their own account via `/api/v1/admin` (409) — route them to the user endpoint.
-- **Required env vars fail fast at startup** (pattern: `SESSION_SECRET` check in `storeExpressSessions.js`).
+- **Required env vars fail fast at startup** (pattern: `SESSION_SECRET` check in `storeExpressSessions.js`). `TRUST_PROXY` and `FRONT_WEB_APP_ORIGIN_URL` are required outside localhost; never hard-code `trust proxy`.
 - New env vars must be added to `.env.example` and the README table in the same change.
 
 ## Validation
 
 - One express-validator schema per request shape in `server/utils/validators/`, mounted as `checkSchema(...)` followed by `sanitizerResult` (rejects with 422 before any controller runs).
-- Login, register, and invite-accept routes share the `authLimiter` budget (10 req / 15 min per IP). The password-reset request route gets its own `passwordResetLimiter` (5 req / 1 hour per IP) so reset emails are throttled independently of login failures. Global limiter (100 req / 15 min) applies everywhere except local dev and docs.
+- Login, register, invite-accept and the password-reset check/submit (GET/PATCH) routes share the `authLimiter` budget (10 req / 15 min per IP). Login additionally has `loginAccountLimiter` (5 failed attempts / 15 min per normalized username). The password-reset request route gets its own `passwordResetLimiter` (5 req / 1 hour per IP) so reset emails are throttled independently of login failures. Global limiter (100 req / 15 min) + capped slow-down apply everywhere except local dev, `/webhooks` and docs. Limiters are in-memory per process.
+- Don't `escape` emails, passwords or filenames in validators — it corrupts stored data (`o'brien@x.com`); escape on output instead.
 
 ## Sessions & auth
 

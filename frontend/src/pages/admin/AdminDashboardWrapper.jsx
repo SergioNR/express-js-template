@@ -1,12 +1,13 @@
-import { Outlet, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { useState, useEffect } from 'react';
-import { Container } from '@mantine/core';
-import AdminNavBar from '../../components/partials/AdminNavBar.jsx';
+import { useTranslation } from 'react-i18next';
+import { IconLayoutDashboard, IconUsers, IconBuilding } from '@tabler/icons-react';
 import apiClient from '../../config/API/axiosConfig.mjs';
 import PageLoader from '../../components/PageLoader.jsx';
-import { SiteFooter } from '../../components/partials/SiteFooter';
+import AreaShell from '../../components/partials/AreaShell.jsx';
 
 export const AdminDashboardWrapper = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [authorized, setAuthorized] = useState(false);
 
@@ -44,15 +45,13 @@ export const AdminDashboardWrapper = () => {
     return <PageLoader />;
   }
 
-  return (
-    <div>
-      <AdminNavBar />
-      <Container size="xl" px="md" py="lg">
-        <Outlet />
-      </Container>
-      <SiteFooter />
-    </div>
-  );
+  const links = [
+    { to: '/admin', label: t('admin.nav.overview'), icon: IconLayoutDashboard, end: true },
+    { to: '/admin/users', label: t('admin.nav.users'), icon: IconUsers },
+    { to: '/admin/companies', label: t('admin.nav.companies'), icon: IconBuilding },
+  ];
+
+  return <AreaShell homeTo="/admin" title={t('admin.areaTitle')} links={links} />;
 };
 
 export default AdminDashboardWrapper;

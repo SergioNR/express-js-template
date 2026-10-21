@@ -13,9 +13,9 @@
     "register": "Pruébalo gratis",
     "registerLink": "Registrarse",
     "logout": "Cerrar sesión",
+    "navigation": "Navegación",
+    "menu": "Menú de navegación",
     "user": {
-      "navigation": "Navegación",
-      "menu": "Menú de navegación",
       "dashboard": "Dashboard",
       "profile": "Cambiar contraseña",
       "plans": "Planes",
@@ -416,8 +416,7 @@
     "nav": {
       "overview": "Resumen",
       "users": "Usuarios",
-      "companies": "Empresas",
-      "menu": "Menú de navegación"
+      "companies": "Empresas"
     },
     "roles": {
       "user": "Usuario",

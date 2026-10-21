@@ -6,9 +6,15 @@ import {
   logInfo,
 } from '../config/loggerFunctions.js';
 import { lockCompanyForUpdateInDb } from './companyModel.js';
+import { deleteUserSessionsInTx } from './sessionModel.js';
+import { deleteUserPasswordResetTokensInTx } from './passwordResetTokensModel.js';
+import { hashSecureToken } from '../utils/secureToken.js';
+import { canGrantRole, outranksAllRoles, rolesGrantableBy } from '../utils/companyRoleHierarchy.js';
 
 const COMPANY_OWNER_ROLE = 'company_owner';
 
+//* Resolves to the created user, or null when the invite could not be
+//* consumed (unknown, expired, already accepted or revoked meanwhile)
 export const createUserInDB = async (userData) => {
   const {
     username,
@@ -16,16 +22,33 @@ export const createUserInDB = async (userData) => {
     companyId,
     roleId,
     inviteId,
+    inviteToken,
     companyName,
   } = userData;
 
   //* Invite acceptance path: the user joins an existing company with the
   //* invited role - no nested company/subscription creation, no trial.
-  //* The invite is consumed in the same transaction so a link can never
-  //* create an account and stay usable
+  //* The invite is consumed FIRST, with a conditional delete (matching id
+  //* AND digest AND not expired) - two concurrent accepts of the same link
+  //* serialize on the row and only one sees count === 1, so a link can never
+  //* create an account twice nor stay usable after an acceptance
   if (companyId && roleId) {
-    const [invitedUser] = await prisma.$transaction([
-      prisma.user.create({
+    const invitedUser = await prisma.$transaction(async (tx) => {
+      const consumeResult = await tx.teamInvites.deleteMany({
+        where: {
+          id: inviteId,
+          token_hash: hashSecureToken(inviteToken),
+          token_expires: {
+            gt: new Date(),
+          },
+        },
+      });
+
+      if (consumeResult.count !== 1) {
+        return null;
+      }
+
+      return tx.user.create({
         data: {
           email: username,
           password,
@@ -40,13 +63,12 @@ export const createUserInDB = async (userData) => {
         omit: {
           password: true,
         },
-      }),
-      prisma.teamInvites.deleteMany({
-        where: {
-          id: inviteId,
-        },
-      }),
-    ]);
+      });
+    });
+
+    if (!invitedUser) {
+      return null;
+    }
 
     logInfo(`User ${invitedUser.id} (${invitedUser.role}) created in DB via team invite`, invitedUser);
 
@@ -63,6 +85,12 @@ export const createUserInDB = async (userData) => {
       name: COMPANY_OWNER_ROLE,
     },
   });
+
+  if (!ownerRole) {
+    //* Migrations seed the role - a missing row is a broken deployment, not
+    //* a request error, so it surfaces as a clear 500 instead of a TypeError
+    throw new Error(`Company owner role (${COMPANY_OWNER_ROLE}) not seeded - run the database migrations`);
+  }
 
   const createUserInDbQuery = await prisma.user.create({
     data: {
@@ -205,17 +233,34 @@ export const getUserDetailInDb = async (userId) => {
   };
 };
 
-export const updateUserPasswordInDB = async (userId, newPassword) => {
-  const updatePasswordQuery = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      password: newPassword,
-    },
+//* Password change + revocation in one commit: the new hash, the deletion of
+//* every outstanding reset token and of every other session of the user land
+//* together, so a failure can never leave a changed password with live
+//* sessions (or the reverse). Errors propagate - nothing is swallowed here
+export const updateUserPasswordInDB = async (userId, newPassword, options = {}) => {
+  const { keepSessionId = null } = options;
+
+  const updatedUser = await prisma.$transaction(async (tx) => {
+    const updatePasswordQuery = await tx.user.update({
+      where: { id: userId },
+      data: {
+        password: newPassword,
+      },
+      omit: {
+        password: true,
+      },
+    });
+
+    await deleteUserPasswordResetTokensInTx(tx, userId);
+
+    await deleteUserSessionsInTx(tx, userId, keepSessionId);
+
+    return updatePasswordQuery;
   });
 
   logInfo(`Password updated successfully for User ${userId}`);
 
-  return updatePasswordQuery;
+  return updatedUser;
 };
 
 export const getAllUsersInDb = async (filters = {}, pagination = {}) => {
@@ -253,6 +298,51 @@ export const countUsersInDb = async (filters = {}) => {
   return userCount;
 };
 
+const getCompanyRoleNamesInTx = async (tx, userId) => {
+  const userRoles = await tx.userRole.findMany({
+    where: {
+      user_id: userId,
+    },
+    select: {
+      Role: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  return userRoles.map((userRole) => userRole.Role.name);
+};
+
+//* The caller's roles are only meaningful while they are still a member of
+//* the company - resolves to null when they are not (removed concurrently)
+const getMemberRoleNamesInTx = async (tx, userId, companyId) => {
+  const member = await tx.user.findFirst({
+    where: {
+      id: userId,
+      company_id: companyId,
+    },
+    select: {
+      UserRoles: {
+        select: {
+          Role: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!member) {
+    return null;
+  }
+
+  return member.UserRoles.map((userRole) => userRole.Role.name);
+};
+
 const countCompanyOwnersInTx = (tx, companyId) => tx.user.count({
   where: {
     company_id: companyId,
@@ -280,8 +370,9 @@ const countCompanyOwnersInTx = (tx, companyId) => tx.user.count({
 //* - companyId: only delete when the user belongs to this company
 //* - protectLastOwner: refuse to delete the last company owner while other
 //*   members remain (they would be left without anyone able to manage them)
-//* - allowedTargetRoleNames: refuse when the user holds a role outside this
-//*   list (re-checks the caller's role rank inside the lock)
+//* - callerId: refuse unless the caller - a member of the same company whose
+//*   role rows are re-read under the lock - outranks every role the user
+//*   holds (a stale pre-check outside the lock can never be trusted)
 //*
 //* Resolves to { status: 'not_found' | 'last_owner' | 'forbidden' } or
 //* { status: 'deleted', deletedUser, companyDeleted, subscription, fileKeys }
@@ -289,7 +380,7 @@ export const deleteUserWithCompanyDataInDb = async (userId, options = {}) => {
   const {
     companyId,
     protectLastOwner = false,
-    allowedTargetRoleNames,
+    callerId,
   } = options;
 
   const deletionResult = await prisma.$transaction(async (tx) => {
@@ -340,24 +431,14 @@ export const deleteUserWithCompanyDataInDb = async (userId, options = {}) => {
     await lockCompanyForUpdateInDb(tx, userCompanyId);
 
     //* Role rows are read after the lock so they reflect committed changes
-    const userRoles = await tx.userRole.findMany({
-      where: {
-        user_id: userId,
-      },
-      select: {
-        Role: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    });
+    const userRoleNames = await getCompanyRoleNamesInTx(tx, userId);
 
-    const userRoleNames = userRoles.map((userRole) => userRole.Role.name);
+    if (callerId) {
+      const callerRoleNames = await getMemberRoleNamesInTx(tx, callerId, userCompanyId);
 
-    if (allowedTargetRoleNames
-      && !userRoleNames.every((roleName) => allowedTargetRoleNames.includes(roleName))) {
-      return { status: 'forbidden' };
+      if (!callerRoleNames || !outranksAllRoles(callerRoleNames, userRoleNames)) {
+        return { status: 'forbidden' };
+      }
     }
 
     if (protectLastOwner && userRoleNames.includes(COMPANY_OWNER_ROLE)) {
@@ -385,6 +466,13 @@ export const deleteUserWithCompanyDataInDb = async (userId, options = {}) => {
     await tx.session.deleteMany({
       where: {
         user_id: userId,
+      },
+    });
+
+    //* Invites only stay valid while their inviter can still vouch for them
+    await tx.teamInvites.deleteMany({
+      where: {
+        invited_by: userId,
       },
     });
 
@@ -512,44 +600,32 @@ export const getOneCompanyMemberInDb = async (userId, companyId) => {
 //* lock so the last-owner check and the write are atomic.
 //*
 //* Options:
-//* - allowedTargetRoleNames: refuse when the member currently holds a role
-//*   outside this list (re-checks the caller's role rank inside the lock)
+//* - callerId: refuse unless the caller - a member of the same company whose
+//*   role rows are re-read under the lock - outranks every role the member
+//*   currently holds AND may grant the new role
 //*
 //* Resolves to { status: 'not_found' | 'last_owner' | 'forbidden' } or
 //* { status: 'updated', member }
 export const updateCompanyMemberRoleInDb = async (userId, companyId, role, options = {}) => {
-  const { allowedTargetRoleNames } = options;
+  const { callerId } = options;
 
   return prisma.$transaction(async (tx) => {
     await lockCompanyForUpdateInDb(tx, companyId);
 
-    const targetMember = await tx.user.findFirst({
-      where: {
-        id: userId,
-        company_id: companyId,
-      },
-      select: {
-        UserRoles: {
-          select: {
-            Role: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    const targetRoleNames = await getMemberRoleNamesInTx(tx, userId, companyId);
 
-    if (!targetMember) {
+    if (!targetRoleNames) {
       return { status: 'not_found' };
     }
 
-    const targetRoleNames = targetMember.UserRoles.map((userRole) => userRole.Role.name);
+    if (callerId) {
+      const callerRoleNames = await getMemberRoleNamesInTx(tx, callerId, companyId);
 
-    if (allowedTargetRoleNames
-      && !targetRoleNames.every((roleName) => allowedTargetRoleNames.includes(roleName))) {
-      return { status: 'forbidden' };
+      if (!callerRoleNames
+        || !outranksAllRoles(callerRoleNames, targetRoleNames)
+        || !canGrantRole(callerRoleNames, role.name)) {
+        return { status: 'forbidden' };
+      }
     }
 
     if (targetRoleNames.includes(COMPANY_OWNER_ROLE) && role.name !== COMPANY_OWNER_ROLE) {
@@ -576,6 +652,19 @@ export const updateCompanyMemberRoleInDb = async (userId, companyId, role, optio
         password: true,
       },
       include: companyMemberInclude,
+    });
+
+    //* A demoted member can no longer vouch for invites to roles above their
+    //* new rank - those pending invites die with the demotion
+    await tx.teamInvites.deleteMany({
+      where: {
+        invited_by: userId,
+        Role: {
+          name: {
+            notIn: rolesGrantableBy([role.name]),
+          },
+        },
+      },
     });
 
     return {

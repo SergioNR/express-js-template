@@ -21,25 +21,30 @@ const inviteOmit = {
 //* Returns the created row together with the raw token. The raw token only
 //* ever goes into the invite email; the row stores its sha256 digest.
 //* A pending invite for the same company+email makes the create fail with
-//* P2002 (unique company_id+email) - callers map it to 409
+//* P2002 (unique company_id+email) - callers map it to 409.
+//* `id` and `tokenExpires` may be supplied by the caller so the public
+//* invite shape can be answered before the row exists (see createTeamInvite)
 export const createTeamInviteInDb = async (inviteData) => {
   const {
+    id,
     email,
     companyId,
     roleId,
     invitedBy,
+    tokenExpires,
   } = inviteData;
 
   const inviteToken = generateSecureToken();
 
   const createTeamInviteQuery = await prisma.teamInvites.create({
     data: {
+      ...(id ? { id } : {}),
       email,
       company_id: companyId,
       role_id: roleId,
       invited_by: invitedBy,
       token_hash: hashSecureToken(inviteToken),
-      token_expires: new Date(Date.now() + INVITE_EXPIRY_DURATION_MS),
+      token_expires: tokenExpires ?? new Date(Date.now() + INVITE_EXPIRY_DURATION_MS),
     },
     omit: inviteOmit,
   });
@@ -52,9 +57,10 @@ export const createTeamInviteInDb = async (inviteData) => {
 
 //* Rotation is a single UPDATE on the existing row, so it is atomic and the
 //* invite id (the public handle for resend/revoke) never changes. The old
-//* link stops working the moment the new digest is written. Returns null when
-//* the invite was revoked or accepted concurrently
-export const rotateTeamInviteTokenInDb = async (inviteId, companyId, invitedBy) => {
+//* link stops working the moment the new digest is written. The original
+//* inviter stays on the row - a resend never re-attributes the invite.
+//* Returns null when the invite was revoked or accepted concurrently
+export const rotateTeamInviteTokenInDb = async (inviteId, companyId) => {
   const inviteToken = generateSecureToken();
 
   try {
@@ -64,7 +70,6 @@ export const rotateTeamInviteTokenInDb = async (inviteId, companyId, invitedBy) 
         company_id: companyId,
       },
       data: {
-        invited_by: invitedBy,
         token_hash: hashSecureToken(inviteToken),
         token_expires: new Date(Date.now() + INVITE_EXPIRY_DURATION_MS),
       },

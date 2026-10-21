@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   getCompanyMembersInDb,
   getOneCompanyMemberInDb,
@@ -19,8 +20,11 @@ import {
 } from '../models/roleModel.js';
 import { getCompanyByIdInDb } from '../models/companyModel.js';
 import { deleteUserAndCleanup } from '../utils/userDeletionCleanup.js';
-import { canGrantRole, rolesGrantableBy } from '../utils/companyRoleHierarchy.js';
+import { canGrantRole, outranksAllRoles, rolesGrantableBy } from '../utils/companyRoleHierarchy.js';
+import { INVITE_EXPIRY_DURATION_MS } from '../config/security.js';
+import { logError, logWarn } from '../config/loggerFunctions.js';
 import { sendTeamInviteToUser } from '../integrations/brevo/transactionalEmails/sendTeamInviteToUser.js';
+import { sendExistingAccountNoticeToUser } from '../integrations/brevo/transactionalEmails/sendExistingAccountNoticeToUser.js';
 
 const toMemberShape = (member) => ({
   id: member.id,
@@ -39,9 +43,6 @@ const toInviteShape = (invite, roleName) => ({
   token_expires: invite.token_expires,
   created_at: invite.created_at,
 });
-
-//* The endpoint is authenticated so enumeration rules do not apply - a clear
-//* 409 beats a vague generic error when inviting an already-registered email
 
 export const getTeamData = async (req, res) => {
   const {
@@ -67,6 +68,43 @@ export const getTeamData = async (req, res) => {
   });
 };
 
+//* Detached from the request, like registerUser: the account lookup, the
+//* invite row and the email all run after the response was sent, so neither
+//* the body nor the timing of the response reveals whether the invited email
+//* already has an account (the endpoint is authenticated, but any company
+//* member with team.invite could otherwise enumerate the whole user base).
+//* An already-registered address gets no invite - only the existing-account
+//* notice, when one is configured. Swallows its own errors
+const issueTeamInviteInBackground = async (inviteDraft, inviterEmail) => {
+  try {
+    const existingUser = await getUserByEmail(inviteDraft.email);
+
+    if (existingUser) {
+      sendExistingAccountNoticeToUser(existingUser.email); // Fire-and-forget
+
+      return;
+    }
+
+    const { invite, inviteToken } = await createTeamInviteInDb(inviteDraft);
+
+    const company = await getCompanyByIdInDb(invite.company_id);
+
+    //* The function swallows its own errors so an email provider outage is
+    //* only ever logged
+    await sendTeamInviteToUser(invite.email, inviteToken, company?.name, inviterEmail);
+  } catch (error) {
+    //* A concurrent invite for the same company+email beat the pending check
+    //* - the unique constraint resolves the race, nothing else to do
+    if (error.code === 'P2002') {
+      logWarn(`Team invite ${inviteDraft.id} lost a concurrent-creation race`, error);
+
+      return;
+    }
+
+    logError('Background team invite creation failed', error);
+  }
+};
+
 export const createTeamInvite = async (req, res) => {
   const { email, roleName } = req.body;
 
@@ -76,14 +114,8 @@ export const createTeamInvite = async (req, res) => {
     id: inviterId,
   } = req.user;
 
-  const existingUser = await getUserByEmail(email);
-
-  if (existingUser) {
-    return res.status(409).json({
-      message: 'Email is already registered - the person should log in instead',
-    });
-  }
-
+  //* Every check that can change the response is company-scoped or about the
+  //* caller - nothing below depends on the invited account existing
   const existingInvite = await getTeamInviteByCompanyAndEmailInDb(companyId, email);
 
   if (existingInvite) {
@@ -110,38 +142,49 @@ export const createTeamInvite = async (req, res) => {
     });
   }
 
-  let createdInvite;
+  //* The public handle and expiry are fixed up front so the response is
+  //* identical whether or not a row gets created in the background
+  const inviteDraft = {
+    id: randomUUID(),
+    email,
+    companyId,
+    roleId: role.id,
+    invitedBy: inviterId,
+    tokenExpires: new Date(Date.now() + INVITE_EXPIRY_DURATION_MS),
+  };
 
-  try {
-    createdInvite = await createTeamInviteInDb({
-      email,
-      companyId,
-      roleId: role.id,
-      invitedBy: inviterId,
-    });
-  } catch (error) {
-    //* Concurrent invites can beat the pending check - the unique
-    //* company+email constraint resolves the race
-    if (error.code === 'P2002') {
-      return res.status(409).json({
-        message: 'An invite is already pending for this email - resend it instead',
-      });
-    }
-
-    throw error;
-  }
-
-  const { invite, inviteToken } = createdInvite;
-
-  const company = await getCompanyByIdInDb(companyId);
-
-  //* Fire-and-forget - the function swallows its own errors so an email
-  //* provider outage never changes this response
-  sendTeamInviteToUser(invite.email, inviteToken, company?.name, inviterEmail);
+  issueTeamInviteInBackground(inviteDraft, inviterEmail); // Fire-and-forget
 
   return res.status(201).json({
-    invite: toInviteShape(invite, role.name),
+    invite: toInviteShape({
+      id: inviteDraft.id,
+      email: inviteDraft.email,
+      token_expires: inviteDraft.tokenExpires,
+      created_at: new Date(),
+    }, role.name),
   });
+};
+
+//* Detached from the request: whether the invitee registered on their own in
+//* the meantime decides between emailing the rotated link and voiding the
+//* invite, but never changes the response. Swallows its own errors
+const deliverRotatedInviteInBackground = async (rotatedInvite, inviteToken, companyId, inviterEmail) => {
+  try {
+    const invitedUser = await getUserByEmail(rotatedInvite.email);
+
+    if (invitedUser) {
+      //* The invitee registered on their own in the meantime - the invite is void
+      await deleteTeamInviteInDb(rotatedInvite.id, companyId);
+
+      return;
+    }
+
+    const company = await getCompanyByIdInDb(companyId);
+
+    await sendTeamInviteToUser(rotatedInvite.email, inviteToken, company?.name, inviterEmail);
+  } catch (error) {
+    logError('Background team invite delivery failed', error);
+  }
 };
 
 export const resendTeamInvite = async (req, res) => {
@@ -150,7 +193,7 @@ export const resendTeamInvite = async (req, res) => {
   const {
     company_id: companyId,
     email: inviterEmail,
-    id: inviterId,
+    id: callerId,
   } = req.user;
 
   const invite = await getTeamInviteByIdInDb(inviteId, companyId);
@@ -161,14 +204,13 @@ export const resendTeamInvite = async (req, res) => {
     });
   }
 
-  const invitedUser = await getUserByEmail(invite.email);
+  //* Resending re-issues the invite's role, so the caller must be able to
+  //* grant it - an admin cannot keep an owner invite alive
+  const callerRoleNames = await getUserCompanyRoleNames(callerId);
 
-  if (invitedUser) {
-    //* The invitee registered on their own in the meantime - the invite is void
-    await deleteTeamInviteInDb(inviteId, companyId);
-
-    return res.status(409).json({
-      message: 'Email is already registered - the invite is no longer valid',
+  if (!canGrantRole(callerRoleNames, invite.Role.name)) {
+    return res.status(403).json({
+      message: 'You can only resend invites to roles you hold yourself',
     });
   }
 
@@ -176,8 +218,8 @@ export const resendTeamInvite = async (req, res) => {
 
   try {
     //* Single atomic UPDATE - the previous link stops working, the expiry
-    //* window resets and the invite id stays the same
-    rotation = await rotateTeamInviteTokenInDb(inviteId, companyId, inviterId);
+    //* window resets and the invite id (and original inviter) stay the same
+    rotation = await rotateTeamInviteTokenInDb(inviteId, companyId);
   } catch (error) {
     if (error.code === 'P2002') {
       return res.status(409).json({
@@ -197,9 +239,7 @@ export const resendTeamInvite = async (req, res) => {
 
   const { invite: rotatedInvite, inviteToken } = rotation;
 
-  const company = await getCompanyByIdInDb(companyId);
-
-  sendTeamInviteToUser(rotatedInvite.email, inviteToken, company?.name, inviterEmail); // Fire-and-forget
+  deliverRotatedInviteInBackground(rotatedInvite, inviteToken, companyId, inviterEmail); // Fire-and-forget
 
   return res.status(200).json({
     invite: toInviteShape(rotatedInvite, invite.Role.name),
@@ -209,7 +249,10 @@ export const resendTeamInvite = async (req, res) => {
 export const revokeTeamInvite = async (req, res) => {
   const { inviteId } = req.params;
 
-  const { company_id: companyId } = req.user;
+  const {
+    company_id: companyId,
+    id: callerId,
+  } = req.user;
 
   const invite = await getTeamInviteByIdInDb(inviteId, companyId);
 
@@ -219,19 +262,26 @@ export const revokeTeamInvite = async (req, res) => {
     });
   }
 
+  //* Same rank rule as creating the invite: nobody revokes invites to roles
+  //* above their own
+  const callerRoleNames = await getUserCompanyRoleNames(callerId);
+
+  if (!canGrantRole(callerRoleNames, invite.Role.name)) {
+    return res.status(403).json({
+      message: 'You can only revoke invites to roles you hold yourself',
+    });
+  }
+
   await deleteTeamInviteInDb(inviteId, companyId);
 
   return res.status(200).json({});
 };
 
-//* Callers may only manage members whose every current role they could grant
-//* themselves - a company admin can never demote or remove an owner.
-//* Returns the role names the caller may act on
-const getManageableRoleNames = async (callerId) => rolesGrantableBy(await getUserCompanyRoleNames(callerId));
-
-const outranksCaller = (targetMember, manageableRoleNames) => targetMember.UserRoles.some(
-  (userRole) => !manageableRoleNames.includes(userRole.Role.name),
-);
+//* Callers may only manage members they outrank - every role the target
+//* holds must rank strictly below the caller's own, so an admin can never
+//* demote or remove an owner nor another admin. This pre-check only answers
+//* early; the model repeats it under the company lock with fresh role rows
+const targetRoleNames = (targetMember) => targetMember.UserRoles.map((userRole) => userRole.Role.name);
 
 export const removeTeamMember = async (req, res) => {
   const { userId } = req.params;
@@ -255,17 +305,11 @@ export const removeTeamMember = async (req, res) => {
     });
   }
 
-  if (targetMember.role === 'superadmin') {
-    return res.status(409).json({
-      message: 'Superadmins cannot be managed from the team endpoint',
-    });
-  }
+  const callerRoleNames = await getUserCompanyRoleNames(callerId);
 
-  const manageableRoleNames = await getManageableRoleNames(callerId);
-
-  if (outranksCaller(targetMember, manageableRoleNames)) {
+  if (!outranksAllRoles(callerRoleNames, targetRoleNames(targetMember))) {
     return res.status(403).json({
-      message: 'You cannot remove a member whose role outranks your own',
+      message: 'You can only remove members whose every role ranks below your own',
     });
   }
 
@@ -274,7 +318,7 @@ export const removeTeamMember = async (req, res) => {
   const deletionResult = await deleteUserAndCleanup(userId, {
     companyId,
     protectLastOwner: true,
-    allowedTargetRoleNames: manageableRoleNames,
+    callerId,
   });
 
   if (deletionResult.status === 'not_found') {
@@ -285,7 +329,7 @@ export const removeTeamMember = async (req, res) => {
 
   if (deletionResult.status === 'forbidden') {
     return res.status(403).json({
-      message: 'You cannot remove a member whose role outranks your own',
+      message: 'You can only remove members whose every role ranks below your own',
     });
   }
 
@@ -323,12 +367,6 @@ export const updateTeamMemberRole = async (req, res) => {
     });
   }
 
-  if (targetMember.role === 'superadmin') {
-    return res.status(409).json({
-      message: 'Superadmins cannot be managed from the team endpoint',
-    });
-  }
-
   const role = await getRoleByName(roleName);
 
   if (!role) {
@@ -337,24 +375,26 @@ export const updateTeamMemberRole = async (req, res) => {
     });
   }
 
-  const manageableRoleNames = await getManageableRoleNames(callerId);
+  const callerRoleNames = await getUserCompanyRoleNames(callerId);
 
-  if (manageableRoleNames && !manageableRoleNames.includes(roleName)) {
+  //* Granting is "at or below own rank", managing the current holder is
+  //* "strictly below" - both must hold
+  if (!canGrantRole(callerRoleNames, roleName)) {
     return res.status(403).json({
       message: 'You can only assign roles you hold yourself',
     });
   }
 
-  if (outranksCaller(targetMember, manageableRoleNames)) {
+  if (!outranksAllRoles(callerRoleNames, targetRoleNames(targetMember))) {
     return res.status(403).json({
-      message: 'You cannot change the role of a member whose role outranks your own',
+      message: 'You can only change the role of members whose every role ranks below your own',
     });
   }
 
   //* The rank and last-owner checks are repeated inside the transaction,
   //* under the company lock, together with the write itself
   const updateResult = await updateCompanyMemberRoleInDb(userId, companyId, role, {
-    allowedTargetRoleNames: manageableRoleNames,
+    callerId,
   });
 
   if (updateResult.status === 'not_found') {
@@ -365,7 +405,7 @@ export const updateTeamMemberRole = async (req, res) => {
 
   if (updateResult.status === 'forbidden') {
     return res.status(403).json({
-      message: 'You cannot change the role of a member whose role outranks your own',
+      message: 'You can only change the role of members whose every role ranks below your own',
     });
   }
 

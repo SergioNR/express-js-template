@@ -424,7 +424,7 @@ authRouter.patch('/update-user-password', checkSchema(updatePasswordSchema), san
  *   get:
  *     tags: [Auth]
  *     summary: Check whether the current session is valid
- *     description: Returns the logged-in user id when the session cookie is valid.
+ *     description: Returns the logged-in user id and global role when the session cookie is valid.
  *     security:
  *       - sessionCookie: []
  *     responses:
@@ -441,6 +441,9 @@ authRouter.patch('/update-user-password', checkSchema(updatePasswordSchema), san
  *                     id:
  *                       type: string
  *                       format: uuid
+ *                     role:
+ *                       type: string
+ *                       enum: [user, admin]
  *       401:
  *         description: Session is invalid
  *         content:

@@ -187,6 +187,7 @@ export const checkSession = async (req, res) => {
     return res.status(200).json({
       user: {
         id: req.user.id,
+        role: req.user.role,
       },
     });
   }

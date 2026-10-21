@@ -15,17 +15,24 @@ const redactOptions = {
   censor: '[REDACTED]',
 };
 
-const transport = pino.transport({
-  targets: [
-    {
-      target: 'pino-pretty',
-      options: {
-        destination: 1,
-        colorize: true,
+//* Human-readable output only for local development. Deployed environments
+//* emit plain JSON lines on stdout so the log collector can parse them, and
+//* pino-pretty (a devDependency) is never loaded there
+const isLocalhost = process.env.DEPLOY_ENVIRONMENT === 'localhost';
+
+const transport = isLocalhost
+  ? pino.transport({
+    targets: [
+      {
+        target: 'pino-pretty',
+        options: {
+          destination: 1,
+          colorize: true,
+        },
       },
-    },
-  ],
-});
+    ],
+  })
+  : undefined;
 
 // Apply redaction at the logger level so sensitive fields are removed
 export const logger = pino(

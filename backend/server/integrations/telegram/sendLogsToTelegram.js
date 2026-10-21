@@ -1,7 +1,6 @@
 import { sendTelegramMessage } from '../../config/telegramBotConfig.js';
 
 const chatIds = {
-  info: process.env.TELEGRAM_INFO_CHAT_ID,
   errors: process.env.TELEGRAM_ERRORS_CHAT_ID,
 };
 
@@ -37,6 +36,8 @@ export const escapeHtml = (value) => {
   return truncated.replace(/[&<>"]/g, (char) => HTML_ENTITIES[char]);
 };
 
+//* Only errors reach Telegram - info and warnings stay in pino (see
+//* config/loggerFunctions.js), so there is no info chat sender anymore
 export const sendErrorLogsToTelegram = async (errorMessage, error = {}, additionalInfo = 'N/A') => {
   const telegramMessage = `
   🚨 <b>New error logged at ${new Date().toISOString()}</b> 🚨
@@ -47,13 +48,4 @@ export const sendErrorLogsToTelegram = async (errorMessage, error = {}, addition
   `;
 
   await sendTelegramMessage(chatIds.errors, telegramMessage);
-};
-
-export const sendInfoLogsToTelegram = async (message) => {
-  const telegramMessage = `
-  ✅ <b>New event logged at ${new Date().toISOString()}</b> ✅
-  \n<b>event Name</b>: ${escapeHtml(message)}
-  `;
-
-  await sendTelegramMessage(chatIds.info, telegramMessage);
 };

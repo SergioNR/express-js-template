@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import pino from 'pino';
 
 const redactOptions = {
@@ -20,7 +21,20 @@ const redactOptions = {
 //* pino-pretty (a devDependency) is never loaded there
 const isLocalhost = process.env.DEPLOY_ENVIRONMENT === 'localhost';
 
-const transport = isLocalhost
+//* The prod image omits devDependencies, so running it locally with
+//* DEPLOY_ENVIRONMENT=localhost would crash the transport worker - fall back
+//* to JSON whenever pino-pretty cannot be resolved
+const isPinoPrettyInstalled = () => {
+  try {
+    createRequire(import.meta.url).resolve('pino-pretty');
+
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const transport = isLocalhost && isPinoPrettyInstalled()
   ? pino.transport({
     targets: [
       {

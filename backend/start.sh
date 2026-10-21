@@ -1,6 +1,11 @@
 #!/bin/sh
 set -e
 
+#* prisma.config.ts falls back to a placeholder URL when the variable is
+#* missing (needed for `prisma generate` at build time) - at runtime that
+#* would surface as an obscure connection error, so fail fast with a clear one
+: "${PRISMA_POSTGRES_DIRECT_URL:?PRISMA_POSTGRES_DIRECT_URL is required}"
+
 npx prisma migrate deploy # for LATEST and NEXT builds
 
 echo "Starting application"

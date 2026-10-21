@@ -43,5 +43,5 @@ Rules describe how this codebase is written today. Follow them for all new and m
 ## Environment & build
 
 - Vite vars are `VITE_*`, baked at build time (Docker `ARG`s). New vars must be added to `.env.example` and the README table.
-- Prod bundle: `vite build` → `dist/`, served by nginx (`nginx.conf`, SPA history fallback). Image builds via the `docker-build:*` scripts.
+- Prod bundle: `vite build` → `dist/` (fails without `VITE_SITE_BASE_URL`), served by unprivileged nginx on port 8080 (`nginx/default.conf.template` + `nginx/security-headers.inc.template`, rendered by envsubst; SPA history fallback, CSP/security headers). Any `location` that sets `add_header` must re-include `security-headers.inc`. Image builds via the `docker-build:*` scripts.
 - No test framework yet — do not invent one without discussion.

@@ -31,16 +31,17 @@ Adapt the image names in these scripts to your own Docker registry.
 
 ## Environment variables
 
-Because the app is built with Vite, all variables must be provided as build-time `ARG`s when building the Docker image (see `Dockerfile`). An example list lives in `.env.example`.
+Because the app is built with Vite, all `VITE_*` variables are baked in at build time and must be provided as `--build-arg`s when building the Docker image (see `Dockerfile`). The `docker-build:prod`/`docker-build:dev` scripts forward them from your shell environment (`export VITE_API_BASE_URL=...` first); the image build fails if a required one is missing. An example list lives in `.env.example`.
 
-| Variable | Purpose |
-| --- | --- |
-| `VITE_API_BASE_URL` | Base URL of the backend API |
-| `VITE_PUBLIC_POSTHOG_KEY` | Optional PostHog project key. Analytics stay disabled when unset |
-| `VITE_SITE_BASE_URL` | Public URL of the deployed frontend |
+| Variable | When | Purpose |
+| --- | --- | --- |
+| `VITE_API_BASE_URL` | Build (required in Docker) | Base URL of the backend API |
+| `VITE_PUBLIC_POSTHOG_KEY` | Build (optional) | PostHog project key. Analytics stay disabled when unset |
+| `VITE_SITE_BASE_URL` | Build (required for `npm run build`) | Public URL of the deployed frontend (canonical / `og:url`). The dev server defaults to `http://localhost:5173` |
+| `NGINX_CSP_API_ORIGIN` | Container runtime (optional) | API origin allowed in the CSP `connect-src`. Defaults to the `VITE_API_BASE_URL` build arg; override with `docker run -e NGINX_CSP_API_ORIGIN=https://api.example.com` |
 
 ## Docker & deployment
 
-The web app is packaged in a Docker image (nginx serving the built bundle, see `nginx.conf`).
+The web app is packaged in a Docker image: an unprivileged nginx (`nginxinc/nginx-unprivileged`, runs as non-root) serving the built bundle on **port 8080**. The server config lives in `nginx/*.template` and is rendered with `envsubst` at container start (SPA history fallback, security headers incl. CSP, `no-cache` for `index.html`, immutable caching for `/assets/`, gzip).
 
-`npm run docker-build:local` builds the image locally. `docker-build:prod` and `docker-build:dev` build and push the `latest` and `next` tags to Docker Hub; adapt the image names in these scripts to your own registry.
+`npm run docker-build:local` builds the image locally; run it with `docker run --rm -p 8080:8080 expressjs-template-front:local` and open http://localhost:8080. `docker-build:prod` and `docker-build:dev` build and push the `latest` and `next` tags to Docker Hub; adapt the image names in these scripts to your own registry.

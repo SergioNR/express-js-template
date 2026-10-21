@@ -33,6 +33,7 @@ const CustomerRegistrationForm = () => {
 
     const data = {
       username: e.target.username.value,
+      companyName: e.target.companyName.value,
       password: e.target.password.value,
     };
 
@@ -87,6 +88,16 @@ const CustomerRegistrationForm = () => {
               label={t('auth.fields.email')}
               placeholder={t('auth.fields.emailPlaceholderAlt')}
               required
+            />
+            <TextInput
+              name="companyName"
+              label={t('auth.fields.companyName')}
+              placeholder={t('auth.fields.companyNamePlaceholder')}
+              description={t('auth.register.companyNameHint')}
+              minLength={2}
+              maxLength={100}
+              required
+              mt="md"
             />
             <PasswordInput
               name="password"

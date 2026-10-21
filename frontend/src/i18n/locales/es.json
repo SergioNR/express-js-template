@@ -50,7 +50,9 @@
       "emailPlaceholder": "tu@email.com",
       "emailPlaceholderAlt": "tu@ejemplo.com",
       "password": "Contraseña",
-      "passwordPlaceholder": "Tu contraseña"
+      "passwordPlaceholder": "Tu contraseña",
+      "companyName": "Nombre de la empresa",
+      "companyNamePlaceholder": "Acme S.L."
     },
     "backToLoginSmall": "Volver a la página de inicio de sesión",
     "login": {
@@ -71,10 +73,11 @@
       "hasAccount": "¿Ya tienes una cuenta?",
       "loginLink": "Iniciar sesión",
       "submit": "Crear cuenta",
+      "companyNameHint": "Crearemos tu empresa y serás su propietario. Podrás invitar a tu equipo después.",
       "success": "Usuario creado correctamente - Redirigiendo al inicio de sesión",
       "terms": "Al registrarte, aceptas estar de acuerdo con los <1>términos y condiciones</1>",
       "errors": {
-        "invalid": "Por favor, proporcione un correo electrónico y contraseña válidos",
+        "invalid": "Por favor, proporcione un correo electrónico, nombre de empresa y contraseña válidos",
         "internal": "Error interno, por favor intentálo en unos minutos"
       }
     },

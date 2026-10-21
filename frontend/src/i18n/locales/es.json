@@ -14,9 +14,9 @@
     "login": "Iniciar sesión",
     "register": "Pruébalo gratis",
     "logout": "Cerrar sesión",
+    "navigation": "Navegación",
     "menu": "Menú de navegación",
     "user": {
-      "navigation": "Navegación",
       "dashboard": "Dashboard",
       "profile": "Cambiar contraseña",
       "plans": "Planes",
@@ -319,7 +319,6 @@
   },
   "user": {
     "panelTitle": "Panel de control",
-    "backToSite": "Volver al sitio",
     "noSubscriptionBanner": {
       "title": "Suscripción inactiva",
       "body": "No tienes una suscripción activa. Activa un plan para continuar usando la plataforma.",
@@ -434,12 +433,10 @@
   },
   "admin": {
     "areaTitle": "Panel de administración",
-    "backToSite": "Volver al sitio",
     "nav": {
       "overview": "Resumen",
       "users": "Usuarios",
-      "companies": "Empresas",
-      "menu": "Menú de navegación"
+      "companies": "Empresas"
     },
     "roles": {
       "user": "Usuario",

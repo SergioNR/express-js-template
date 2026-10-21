@@ -1,12 +1,15 @@
-import { Outlet, Link } from 'react-router';
-import NavbarSimple from '../../components/partials/UserNavBar';
 import { useNavigate } from 'react-router';
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../config/API/axiosConfig.mjs';
 import { usePostHog } from 'posthog-js/react';
-import { AppShell, Anchor, Burger, Group, Image, Text } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import {
+  IconHomeFilled,
+  IconUserCircle,
+  IconCreditCardFilled,
+  IconUsersGroup
+} from '@tabler/icons-react';
+import AreaShell from '../../components/partials/AreaShell.jsx';
 import PageLoader from '../../components/PageLoader.jsx';
 import SessionCheckError from '../../components/SessionCheckError.jsx';
 import { SubscriptionProvider } from '../../contexts/SubscriptionContext.jsx';
@@ -18,7 +21,6 @@ const UserWrapper = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [opened, { toggle }] = useDisclosure();
   const [userId, setUserId] = useState(null);
   //* `navigate` changes identity on every pathname change; reading it through
   //* a ref keeps the session check from re-running (and unmounting the whole
@@ -83,6 +85,13 @@ const UserWrapper = () => {
     }
   }, [userId, posthog]);
 
+  const links = [
+    { to: '/dashboard', label: t('nav.user.dashboard'), icon: IconHomeFilled },
+    { to: '/user/profile', label: t('nav.user.profile'), icon: IconUserCircle },
+    { to: '/user/billing', label: t('nav.user.plans'), icon: IconCreditCardFilled },
+    { to: '/user/team', label: t('nav.user.team'), icon: IconUsersGroup },
+  ];
+
   //* Nothing (including SubscriptionProvider's billing fetch) mounts until the
   //* session check passes
   if (loading) {
@@ -95,49 +104,7 @@ const UserWrapper = () => {
 
   return (
     <SubscriptionProvider>
-      <AppShell
-        header={{ height: 60 }}
-        navbar={{
-          width: 300,
-          breakpoint: 'sm',
-          collapsed: { mobile: !opened },
-        }}
-        padding="md"
-      >
-        <AppShell.Header>
-          <Group h="100%" px="md" justify="space-between" wrap="nowrap">
-            <Group gap="sm" wrap="nowrap">
-              <Burger
-                opened={opened}
-                onClick={toggle}
-                hiddenFrom="sm"
-                size="sm"
-                aria-label={t('nav.menu')}
-              />
-              <Anchor component={Link} to="/dashboard" underline="never" inherit>
-                <Group gap="xs" wrap="nowrap">
-                  <Image src="/logo.svg" alt={t('common.logoAlt')} h={28} w={28} />
-                  <Text fw={600} size="lg" component="span">{t('user.panelTitle')}</Text>
-                </Group>
-              </Anchor>
-            </Group>
-
-            <Group gap="lg" wrap="nowrap" visibleFrom="xs">
-              <Anchor component={Link} to="/" size="sm" c="dimmed">
-                {t('user.backToSite')}
-              </Anchor>
-            </Group>
-          </Group>
-        </AppShell.Header>
-
-        <AppShell.Navbar p="md">
-          <NavbarSimple />
-        </AppShell.Navbar>
-
-        <AppShell.Main>
-          <Outlet />
-        </AppShell.Main>
-      </AppShell>
+      <AreaShell homeTo="/dashboard" title={t('user.panelTitle')} links={links} />
     </SubscriptionProvider>
   );
 };

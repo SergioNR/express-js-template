@@ -362,7 +362,15 @@
       "title": "Acciones de la cuenta",
       "description": "Gestiona las opciones y preferencias de tu cuenta",
       "delete": "Eliminar mi cuenta",
-      "deleteError": "No se pudo eliminar tu cuenta. Por favor, inténtalo de nuevo."
+      "deleteError": "No se pudo eliminar tu cuenta. Por favor, inténtalo de nuevo.",
+      "deleteConfirmModal": {
+        "title": "Eliminar cuenta",
+        "description": "Se eliminará tu cuenta y se cerrarán todas tus sesiones. Esta acción no se puede deshacer.",
+        "cancel": "Cancelar",
+        "confirm": "Eliminar mi cuenta"
+      },
+      "deletedToast": "Tu cuenta se ha eliminado correctamente.",
+      "deleteLastOwner": "Eres el único propietario de la empresa y aún hay otros miembros. Asigna el rol de propietario a otro miembro antes de eliminar tu cuenta."
     }
   },
   "billing": {

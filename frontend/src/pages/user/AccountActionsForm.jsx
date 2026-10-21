@@ -1,30 +1,53 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { usePostHog } from 'posthog-js/react';
 import apiClient from '../../config/API/axiosConfig.mjs';
 
 import {
   Card,
   Button,
+  Modal,
+  Stack,
   Title,
   Text,
   Group,
 } from '@mantine/core';
-import { notifyError } from '../../utils/notifications.js';
+import { notifyError, notifySuccess } from '../../utils/notifications.js';
+
+const analyticsEnabled = Boolean(import.meta.env.VITE_PUBLIC_POSTHOG_KEY);
 
 export const AccountActionsForm = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const posthog = usePostHog();
+  const [confirmOpened, setConfirmOpened] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const deleteUser = async () => {
-    try {
-      const response = await apiClient.delete(`/api/v1/user`);
+    setDeleting(true);
 
-      if (response.status === 200) {
-        navigate('/');
+    try {
+      await apiClient.delete('/api/v1/user');
+
+      if (analyticsEnabled) {
+        posthog?.reset();
       }
+
+      notifySuccess(t('user.accountActions.deletedToast'));
+      navigate('/', { replace: true });
     } catch (err) {
       console.error('Account deletion failed:', err);
-      notifyError(t('user.accountActions.deleteError'));
+
+      //* The last company owner cannot leave while other members remain
+      if (err?.response?.status === 409 && err?.response?.data?.code === 'USER_LAST_COMPANY_OWNER') {
+        notifyError(t('user.accountActions.deleteLastOwner'));
+      } else {
+        notifyError(t('user.accountActions.deleteError'));
+      }
+
+      setDeleting(false);
+      setConfirmOpened(false);
     }
   };
 
@@ -38,11 +61,31 @@ export const AccountActionsForm = () => {
       <Group justify="left" mt="md">
         <Button
           color="red"
-          onClick={deleteUser}
+          onClick={() => setConfirmOpened(true)}
         >
           {t('user.accountActions.delete')}
         </Button>
       </Group>
+
+      <Modal
+        opened={confirmOpened}
+        onClose={() => setConfirmOpened(false)}
+        title={t('user.accountActions.deleteConfirmModal.title')}
+      >
+        <Stack>
+          <Text size="sm">
+            {t('user.accountActions.deleteConfirmModal.description')}
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setConfirmOpened(false)} disabled={deleting}>
+              {t('user.accountActions.deleteConfirmModal.cancel')}
+            </Button>
+            <Button color="red" onClick={deleteUser} loading={deleting}>
+              {t('user.accountActions.deleteConfirmModal.confirm')}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Card>
   );
 };

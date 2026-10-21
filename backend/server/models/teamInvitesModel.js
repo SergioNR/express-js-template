@@ -21,30 +21,25 @@ const inviteOmit = {
 //* Returns the created row together with the raw token. The raw token only
 //* ever goes into the invite email; the row stores its sha256 digest.
 //* A pending invite for the same company+email makes the create fail with
-//* P2002 (unique company_id+email) - callers map it to 409.
-//* `id` and `tokenExpires` may be supplied by the caller so the public
-//* invite shape can be answered before the row exists (see createTeamInvite)
+//* P2002 (unique company_id+email) - callers map it to 409
 export const createTeamInviteInDb = async (inviteData) => {
   const {
-    id,
     email,
     companyId,
     roleId,
     invitedBy,
-    tokenExpires,
   } = inviteData;
 
   const inviteToken = generateSecureToken();
 
   const createTeamInviteQuery = await prisma.teamInvites.create({
     data: {
-      ...(id ? { id } : {}),
       email,
       company_id: companyId,
       role_id: roleId,
       invited_by: invitedBy,
       token_hash: hashSecureToken(inviteToken),
-      token_expires: tokenExpires ?? new Date(Date.now() + INVITE_EXPIRY_DURATION_MS),
+      token_expires: new Date(Date.now() + INVITE_EXPIRY_DURATION_MS),
     },
     omit: inviteOmit,
   });

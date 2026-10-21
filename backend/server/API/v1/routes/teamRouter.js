@@ -44,7 +44,7 @@ const updateMemberRoleValidation = [
  *   get:
  *     tags: [Team]
  *     summary: Get the members and pending invites of the caller's company
- *     description: Returns the company members (with their company roles), the pending invites, the caller's effective permissions and the roles the caller can assign. Requires the `team.view` company permission.
+ *     description: Returns the caller's id, the company members (with their company roles), the pending invites, the caller's effective permissions and the roles the caller can assign. Each member and invite carries a `manageable` flag that mirrors the server-side rules - a member is manageable when the caller outranks every company role the member holds and the member is not the caller; an invite is manageable (resend/revoke) when the caller can grant its role. The write endpoints re-check both. Requires the `team.view` company permission.
  *     security:
  *       - sessionCookie: []
  *     responses:
@@ -55,6 +55,10 @@ const updateMemberRoleValidation = [
  *             schema:
  *               type: object
  *               properties:
+ *                 callerId:
+ *                   type: string
+ *                   format: uuid
+ *                   description: Id of the authenticated caller
  *                 members:
  *                   type: array
  *                   items:
@@ -76,6 +80,9 @@ const updateMemberRoleValidation = [
  *                         type: array
  *                         items:
  *                           type: string
+ *                       manageable:
+ *                         type: boolean
+ *                         description: The caller outranks every company role of this member and the member is not the caller (remove / change role allowed)
  *                 invites:
  *                   type: array
  *                   items:
@@ -95,6 +102,9 @@ const updateMemberRoleValidation = [
  *                       created_at:
  *                         type: string
  *                         format: date-time
+ *                       manageable:
+ *                         type: boolean
+ *                         description: The caller can grant this invite's role (resend / revoke allowed)
  *                 callerPermissions:
  *                   type: array
  *                   items:
@@ -124,7 +134,7 @@ teamRouter.get('/', checkCompanyPermission('team.view'), getTeamData);
  *   post:
  *     tags: [Team]
  *     summary: Invite a new member to the caller's company by email
- *     description: Creates a team invite (valid for 7 days) and emails the invite link. The secret invite token only travels inside the email - it is never part of any API response (only its sha256 digest is stored); `id` is the public handle for resend/revoke. Requires the `team.invite` company permission; the inviter must hold the invited role themselves. Enumeration-safe - the response is identical whether or not the email already has an account (the invite row and the email are created after the response, and an already-registered address receives no invite), so a resend/revoke of the returned `id` may answer 404.
+ *     description: Creates a team invite (valid for 7 days) and emails the invite link. The secret invite token only travels inside the email - it is never part of any API response (only its sha256 digest is stored); `id` is the public handle for resend/revoke. Requires the `team.invite` company permission; the inviter must hold the invited role themselves. Enumeration-safe - the invite row is created before the response for every address, so the response, `GET /api/v1/team`, a repeated invite (409) and resend/revoke behave identically whether or not the email already has an account. Only the email differs and is decided after the response - an already-registered address receives no email (accepting would answer 409).
  *     security:
  *       - sessionCookie: []
  *     requestBody:
@@ -135,7 +145,7 @@ teamRouter.get('/', checkCompanyPermission('team.view'), getTeamData);
  *             $ref: '#/components/schemas/TeamInviteRequest'
  *     responses:
  *       201:
- *         description: Invite accepted - the row and the email are created in the background (no row for an already-registered email)
+ *         description: Invite created - the email is sent in the background (none for an already-registered address)
  *         content:
  *           application/json:
  *             schema:
@@ -153,6 +163,9 @@ teamRouter.get('/', checkCompanyPermission('team.view'), getTeamData);
  *                     role:
  *                       type: string
  *                     token_expires:
+ *                       type: string
+ *                       format: date-time
+ *                     created_at:
  *                       type: string
  *                       format: date-time
  *       401:
@@ -194,7 +207,7 @@ teamRouter.post('/invites', checkCompanyPermission('team.invite'), createInviteV
  *   post:
  *     tags: [Team]
  *     summary: Resend a pending invite
- *     description: Atomically rotates the secret invite token (the previous link becomes unusable), resets the 7-day expiry and re-sends the email. The invite id and the original inviter are unchanged and the token is never returned. Requires the `team.invite` company permission and the caller must be able to grant the invite's role. Only invites of the caller's company can be resent. Enumeration-safe - whether the invitee registered in the meantime (in which case the invite is voided instead of emailed) never changes the response.
+ *     description: Atomically rotates the secret invite token (the previous link becomes unusable), resets the 7-day expiry and re-sends the email. The invite id and the original inviter are unchanged and the token is never returned. Requires the `team.invite` company permission and the caller must be able to grant the invite's role. The original inviter must still be a company member able to grant the role - otherwise the new link would be refused on click, so the resend answers 409 with code `INVITER_INVALID` (revoke it and send a new invite). Only invites of the caller's company can be resent. Enumeration-safe - the row is rotated and kept for every address; whether the invitee is registered only decides, after the response, whether an email goes out.
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -249,11 +262,18 @@ teamRouter.post('/invites', checkCompanyPermission('team.invite'), createInviteV
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  *       409:
- *         description: The token rotation collided - retry
+ *         description: The original inviter left the company or can no longer grant the invite's role (code `INVITER_INVALID`), or the token rotation collided - retry
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorMessage'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ErrorMessage'
+ *                 - type: object
+ *                   properties:
+ *                     code:
+ *                       type: string
+ *                       enum: [INVITER_INVALID]
+ *                       description: Only present when the original inviter can no longer vouch for the invite
  *       422:
  *         description: Validation errors
  *         content:

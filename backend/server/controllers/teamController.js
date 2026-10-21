@@ -1,5 +1,5 @@
-import { randomUUID } from 'node:crypto';
 import {
+  canCompanyMemberGrantRoleInDb,
   getCompanyMembersInDb,
   getOneCompanyMemberInDb,
   getUserByEmail,
@@ -21,10 +21,10 @@ import {
 import { getCompanyByIdInDb } from '../models/companyModel.js';
 import { deleteUserAndCleanup } from '../utils/userDeletionCleanup.js';
 import { canGrantRole, outranksAllRoles, rolesGrantableBy } from '../utils/companyRoleHierarchy.js';
-import { INVITE_EXPIRY_DURATION_MS } from '../config/security.js';
-import { logError, logWarn } from '../config/loggerFunctions.js';
+import { logError } from '../config/loggerFunctions.js';
 import { sendTeamInviteToUser } from '../integrations/brevo/transactionalEmails/sendTeamInviteToUser.js';
-import { sendExistingAccountNoticeToUser } from '../integrations/brevo/transactionalEmails/sendExistingAccountNoticeToUser.js';
+
+const targetRoleNames = (targetMember) => targetMember.UserRoles.map((userRole) => userRole.Role.name);
 
 const toMemberShape = (member) => ({
   id: member.id,
@@ -60,49 +60,51 @@ export const getTeamData = async (req, res) => {
 
   const assignableRoles = rolesGrantableBy(callerRoleNames);
 
+  //* `manageable` mirrors the server-side rules so the SPA only offers the
+  //* actions that can succeed: members follow the strict "outrank every
+  //* role, never yourself" rule, invites the "at or below own rank" rule.
+  //* The write endpoints re-check both - these flags are hints, not guards
   return res.status(200).json({
-    members: companyMembers.map(toMemberShape),
-    invites: companyInvites.map((invite) => toInviteShape(invite, invite.Role.name)),
+    callerId: userId,
+    members: companyMembers.map((member) => ({
+      ...toMemberShape(member),
+      manageable: outranksAllRoles(callerRoleNames, targetRoleNames(member)) && member.id !== userId,
+    })),
+    invites: companyInvites.map((invite) => ({
+      ...toInviteShape(invite, invite.Role.name),
+      manageable: canGrantRole(callerRoleNames, invite.Role.name),
+    })),
     callerPermissions,
     assignableRoles,
   });
 };
 
-//* Detached from the request, like registerUser: the account lookup, the
-//* invite row and the email all run after the response was sent, so neither
-//* the body nor the timing of the response reveals whether the invited email
-//* already has an account (the endpoint is authenticated, but any company
-//* member with team.invite could otherwise enumerate the whole user base).
-//* An already-registered address gets no invite - only the existing-account
-//* notice, when one is configured. Swallows its own errors
-const issueTeamInviteInBackground = async (inviteDraft, inviterEmail) => {
+//* Detached from the request: only the email side effect depends on whether
+//* the invited address already has an account, so the lookup runs after the
+//* response was sent. An unregistered address gets the invite link; a
+//* registered one gets nothing (accepting would answer 409 anyway, and the
+//* existing-account notice is worded for registration attempts). Swallows
+//* its own errors
+const deliverInviteInBackground = async (invite, inviteToken, companyId, inviterEmail) => {
   try {
-    const existingUser = await getUserByEmail(inviteDraft.email);
+    const existingUser = await getUserByEmail(invite.email);
 
     if (existingUser) {
-      sendExistingAccountNoticeToUser(existingUser.email); // Fire-and-forget
-
       return;
     }
 
-    const { invite, inviteToken } = await createTeamInviteInDb(inviteDraft);
-
-    const company = await getCompanyByIdInDb(invite.company_id);
+    const company = await getCompanyByIdInDb(companyId);
 
     //* The function swallows its own errors so an email provider outage is
     //* only ever logged
     await sendTeamInviteToUser(invite.email, inviteToken, company?.name, inviterEmail);
   } catch (error) {
-    //* A concurrent invite for the same company+email beat the pending check
-    //* - the unique constraint resolves the race, nothing else to do
-    if (error.code === 'P2002') {
-      logWarn(`Team invite ${inviteDraft.id} lost a concurrent-creation race`, error);
-
-      return;
-    }
-
-    logError('Background team invite creation failed', error);
+    logError(`Background delivery of team invite ${invite.id} failed`, error);
   }
+};
+
+const PENDING_INVITE_CONFLICT = {
+  message: 'An invite is already pending for this email - resend it instead',
 };
 
 export const createTeamInvite = async (req, res) => {
@@ -115,13 +117,11 @@ export const createTeamInvite = async (req, res) => {
   } = req.user;
 
   //* Every check that can change the response is company-scoped or about the
-  //* caller - nothing below depends on the invited account existing
+  //* caller - nothing here depends on the invited account existing
   const existingInvite = await getTeamInviteByCompanyAndEmailInDb(companyId, email);
 
   if (existingInvite) {
-    return res.status(409).json({
-      message: 'An invite is already pending for this email - resend it instead',
-    });
+    return res.status(409).json(PENDING_INVITE_CONFLICT);
   }
 
   const role = await getRoleByName(roleName);
@@ -142,49 +142,36 @@ export const createTeamInvite = async (req, res) => {
     });
   }
 
-  //* The public handle and expiry are fixed up front so the response is
-  //* identical whether or not a row gets created in the background
-  const inviteDraft = {
-    id: randomUUID(),
-    email,
-    companyId,
-    roleId: role.id,
-    invitedBy: inviterId,
-    tokenExpires: new Date(Date.now() + INVITE_EXPIRY_DURATION_MS),
-  };
+  //* The row is written synchronously for every address - registered or
+  //* not - so GET /team, a repeated POST (409) and resend/revoke behave the
+  //* same either way and cannot be used to probe for accounts. Only the
+  //* email differs, and it runs detached (deliverInviteInBackground)
+  let creation;
 
-  issueTeamInviteInBackground(inviteDraft, inviterEmail); // Fire-and-forget
-
-  return res.status(201).json({
-    invite: toInviteShape({
-      id: inviteDraft.id,
-      email: inviteDraft.email,
-      token_expires: inviteDraft.tokenExpires,
-      created_at: new Date(),
-    }, role.name),
-  });
-};
-
-//* Detached from the request: whether the invitee registered on their own in
-//* the meantime decides between emailing the rotated link and voiding the
-//* invite, but never changes the response. Swallows its own errors
-const deliverRotatedInviteInBackground = async (rotatedInvite, inviteToken, companyId, inviterEmail) => {
   try {
-    const invitedUser = await getUserByEmail(rotatedInvite.email);
-
-    if (invitedUser) {
-      //* The invitee registered on their own in the meantime - the invite is void
-      await deleteTeamInviteInDb(rotatedInvite.id, companyId);
-
-      return;
+    creation = await createTeamInviteInDb({
+      email,
+      companyId,
+      roleId: role.id,
+      invitedBy: inviterId,
+    });
+  } catch (error) {
+    //* A concurrent invite for the same company+email beat the pending check
+    //* - the unique constraint resolves the race
+    if (error.code === 'P2002') {
+      return res.status(409).json(PENDING_INVITE_CONFLICT);
     }
 
-    const company = await getCompanyByIdInDb(companyId);
-
-    await sendTeamInviteToUser(rotatedInvite.email, inviteToken, company?.name, inviterEmail);
-  } catch (error) {
-    logError('Background team invite delivery failed', error);
+    throw error;
   }
+
+  const { invite, inviteToken } = creation;
+
+  deliverInviteInBackground(invite, inviteToken, companyId, inviterEmail); // Fire-and-forget
+
+  return res.status(201).json({
+    invite: toInviteShape(invite, role.name),
+  });
 };
 
 export const resendTeamInvite = async (req, res) => {
@@ -214,6 +201,16 @@ export const resendTeamInvite = async (req, res) => {
     });
   }
 
+  //* The rotated link would be refused on click (accept re-checks the
+  //* original inviter), so refuse up front instead of mailing a dead link -
+  //* the caller can revoke it and issue a fresh invite under their own name
+  if (!(await canCompanyMemberGrantRoleInDb(invite.invited_by, companyId, invite.Role.name))) {
+    return res.status(409).json({
+      message: 'The original inviter left the company or can no longer grant this role - revoke the invite and send a new one',
+      code: 'INVITER_INVALID',
+    });
+  }
+
   let rotation;
 
   try {
@@ -239,7 +236,9 @@ export const resendTeamInvite = async (req, res) => {
 
   const { invite: rotatedInvite, inviteToken } = rotation;
 
-  deliverRotatedInviteInBackground(rotatedInvite, inviteToken, companyId, inviterEmail); // Fire-and-forget
+  //* The row is never deleted here, registered invitee or not - the same
+  //* detached delivery as on creation decides whether an email goes out
+  deliverInviteInBackground(rotatedInvite, inviteToken, companyId, inviterEmail); // Fire-and-forget
 
   return res.status(200).json({
     invite: toInviteShape(rotatedInvite, invite.Role.name),
@@ -279,10 +278,9 @@ export const revokeTeamInvite = async (req, res) => {
 
 //* Callers may only manage members they outrank - every role the target
 //* holds must rank strictly below the caller's own, so an admin can never
-//* demote or remove an owner nor another admin. This pre-check only answers
-//* early; the model repeats it under the company lock with fresh role rows
-const targetRoleNames = (targetMember) => targetMember.UserRoles.map((userRole) => userRole.Role.name);
-
+//* demote or remove an owner nor another admin. The controller checks only
+//* answer early; the model repeats them under the company lock with fresh
+//* role rows
 export const removeTeamMember = async (req, res) => {
   const { userId } = req.params;
 

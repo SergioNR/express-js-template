@@ -1,6 +1,7 @@
 import { jest } from '@jest/globals';
 
 jest.unstable_mockModule('../server/models/userModel.js', () => ({
+  canCompanyMemberGrantRoleInDb: jest.fn(),
   getUserByEmail: jest.fn(),
   getCompanyMembersInDb: jest.fn(),
   getOneCompanyMemberInDb: jest.fn(),
@@ -54,6 +55,7 @@ const {
   updateTeamMemberRole,
 } = await import('../server/controllers/teamController.js');
 const {
+  canCompanyMemberGrantRoleInDb,
   getUserByEmail,
   getCompanyMembersInDb,
   getOneCompanyMemberInDb,
@@ -75,7 +77,7 @@ const {
 } = await import('../server/models/roleModel.js');
 const { getCompanyByIdInDb } = await import('../server/models/companyModel.js');
 const { deleteUserAndCleanup } = await import('../server/utils/userDeletionCleanup.js');
-const { logError, logWarn } = await import('../server/config/loggerFunctions.js');
+const { logError } = await import('../server/config/loggerFunctions.js');
 const { sendTeamInviteToUser } = await import('../server/integrations/brevo/transactionalEmails/sendTeamInviteToUser.js');
 const { sendExistingAccountNoticeToUser } = await import('../server/integrations/brevo/transactionalEmails/sendExistingAccountNoticeToUser.js');
 
@@ -105,14 +107,12 @@ const memberRecord = (id, email, companyRoles, role = 'user') => ({
   UserRoles: companyRoles.map((name) => ({ Role: { id: `role-${name}`, name } })),
 });
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-
 describe('getTeamData', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('returns members, invites, caller permissions and assignable roles', async () => {
+  it('returns the caller id, members, invites, caller permissions and assignable roles', async () => {
     getCompanyMembersInDb.mockResolvedValue([memberRecord('caller-id', 'owner@acme.test', ['company_owner'])]);
     getCompanyPendingInvitesInDb.mockResolvedValue([
       {
@@ -128,11 +128,73 @@ describe('getTeamData', () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+      callerId: 'caller-id',
       members: [expect.objectContaining({ email: 'owner@acme.test', companyRoles: ['company_owner'] })],
       invites: [expect.objectContaining({ email: 'new@acme.test', role: 'company_member' })],
       callerPermissions: ['team.view', 'team.invite'],
       assignableRoles: ['company_admin', 'company_member', 'company_owner'],
     }));
+  });
+
+  it('flags members as manageable only when the caller outranks all their roles and they are not the caller', async () => {
+    getCompanyMembersInDb.mockResolvedValue([
+      memberRecord('caller-id', 'admin@acme.test', ['company_admin']),
+      memberRecord('owner-id', 'owner@acme.test', ['company_owner']),
+      memberRecord('peer-id', 'peer@acme.test', ['company_admin']),
+      memberRecord('member-id', 'member@acme.test', ['company_member']),
+    ]);
+    getCompanyPendingInvitesInDb.mockResolvedValue([]);
+    getUserCompanyPermissions.mockResolvedValue(['team.view']);
+    getUserCompanyRoleNames.mockResolvedValue(['company_admin']);
+
+    const res = mockRes();
+
+    await getTeamData({ user: caller }, res);
+
+    const { members } = res.json.mock.calls[0][0];
+    expect(members.map(({ id, manageable }) => ({ id, manageable }))).toEqual([
+      { id: 'caller-id', manageable: false },
+      { id: 'owner-id', manageable: false },
+      { id: 'peer-id', manageable: false },
+      { id: 'member-id', manageable: true },
+    ]);
+  });
+
+  it('never flags the caller as manageable, even when their role would allow it', async () => {
+    getCompanyMembersInDb.mockResolvedValue([memberRecord('caller-id', 'owner@acme.test', ['company_member'])]);
+    getCompanyPendingInvitesInDb.mockResolvedValue([]);
+    getUserCompanyPermissions.mockResolvedValue(['team.view']);
+    getUserCompanyRoleNames.mockResolvedValue(['company_owner']);
+
+    const res = mockRes();
+
+    await getTeamData({ user: caller }, res);
+
+    expect(res.json.mock.calls[0][0].members[0].manageable).toBe(false);
+  });
+
+  it('flags invites as manageable when the caller can grant their role', async () => {
+    getCompanyMembersInDb.mockResolvedValue([]);
+    getCompanyPendingInvitesInDb.mockResolvedValue([
+      {
+        id: 'invite-owner', email: 'o@acme.test', token_expires: '2026-01-08', created_at: '2026-01-01', Role: { name: 'company_owner' },
+      },
+      {
+        id: 'invite-admin', email: 'a@acme.test', token_expires: '2026-01-08', created_at: '2026-01-01', Role: { name: 'company_admin' },
+      },
+    ]);
+    getUserCompanyPermissions.mockResolvedValue(['team.view']);
+    getUserCompanyRoleNames.mockResolvedValue(['company_admin']);
+
+    const res = mockRes();
+
+    await getTeamData({ user: caller }, res);
+
+    const { invites } = res.json.mock.calls[0][0];
+    expect(invites.map(({ id, manageable }) => ({ id, manageable }))).toEqual([
+      { id: 'invite-owner', manageable: false },
+      { id: 'invite-admin', manageable: true },
+    ]);
   });
 
   it('derives permissions from company roles only, even for superadmins', async () => {
@@ -156,6 +218,24 @@ describe('getTeamData', () => {
 describe('createTeamInvite', () => {
   const inviteBody = { email: 'new@acme.test', roleName: 'company_member' };
 
+  const createdInvite = {
+    id: 'invite-1',
+    email: 'new@acme.test',
+    company_id: 'company-1',
+    token_expires: new Date('2026-01-08T00:00:00.000Z'),
+    created_at: new Date('2026-01-01T00:00:00.000Z'),
+  };
+
+  const expectedResponse = {
+    invite: {
+      id: 'invite-1',
+      email: 'new@acme.test',
+      role: 'company_member',
+      token_expires: createdInvite.token_expires,
+      created_at: createdInvite.created_at,
+    },
+  };
+
   const allowCreation = () => {
     getTeamInviteByCompanyAndEmailInDb.mockResolvedValue(null);
     getRoleByName.mockResolvedValue({ id: 'role-member', name: 'company_member' });
@@ -165,16 +245,7 @@ describe('createTeamInvite', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     getCompanyByIdInDb.mockResolvedValue({ id: 'company-1', name: 'Acme Corp' });
-    createTeamInviteInDb.mockImplementation(async (inviteDraft) => ({
-      invite: {
-        id: inviteDraft.id,
-        email: inviteDraft.email,
-        company_id: inviteDraft.companyId,
-        token_expires: inviteDraft.tokenExpires,
-        created_at: new Date(),
-      },
-      inviteToken: 'raw-secret-token',
-    }));
+    createTeamInviteInDb.mockResolvedValue({ invite: createdInvite, inviteToken: 'raw-secret-token' });
   });
 
   it('returns 409 when an invite is already pending for the email (company-scoped, not an enumeration)', async () => {
@@ -222,7 +293,7 @@ describe('createTeamInvite', () => {
     expect(createTeamInviteInDb).not.toHaveBeenCalled();
   });
 
-  it('responds 201 with the invite shape before the account lookup resolves', async () => {
+  it('persists the row before responding and only looks the account up afterwards', async () => {
     allowCreation();
     let resolveLookup;
     getUserByEmail.mockReturnValue(new Promise((resolve) => { resolveLookup = resolve; }));
@@ -230,25 +301,24 @@ describe('createTeamInvite', () => {
 
     await createTeamInvite({ user: caller, body: inviteBody }, res);
 
-    expect(res.status).toHaveBeenCalledWith(201);
-    expect(res.json).toHaveBeenCalledWith({
-      invite: {
-        id: expect.stringMatching(UUID_PATTERN),
-        email: 'new@acme.test',
-        role: 'company_member',
-        token_expires: expect.any(Date),
-        created_at: expect.any(Date),
-      },
+    expect(createTeamInviteInDb).toHaveBeenCalledWith({
+      email: 'new@acme.test',
+      companyId: 'company-1',
+      roleId: 'role-member',
+      invitedBy: 'caller-id',
     });
-    expect(createTeamInviteInDb).not.toHaveBeenCalled();
+    expect(createTeamInviteInDb.mock.invocationCallOrder[0]).toBeLessThan(res.status.mock.invocationCallOrder[0]);
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith(expectedResponse);
+    expect(sendTeamInviteToUser).not.toHaveBeenCalled();
 
     resolveLookup(null);
     await flushBackgroundWork();
 
-    expect(createTeamInviteInDb).toHaveBeenCalledTimes(1);
+    expect(sendTeamInviteToUser).toHaveBeenCalledTimes(1);
   });
 
-  it('creates the row under the pre-announced id in the background, emails the raw token and never returns it', async () => {
+  it('emails the raw token to an unregistered address and never returns it', async () => {
     allowCreation();
     getUserByEmail.mockResolvedValue(null);
     const res = mockRes();
@@ -256,22 +326,12 @@ describe('createTeamInvite', () => {
     await createTeamInvite({ user: caller, body: inviteBody }, res);
     await flushBackgroundWork();
 
-    const announcedInvite = res.json.mock.calls[0][0].invite;
-
-    expect(createTeamInviteInDb).toHaveBeenCalledWith({
-      id: announcedInvite.id,
-      email: 'new@acme.test',
-      companyId: 'company-1',
-      roleId: 'role-member',
-      invitedBy: 'caller-id',
-      tokenExpires: announcedInvite.token_expires,
-    });
     expect(sendTeamInviteToUser).toHaveBeenCalledWith('new@acme.test', 'raw-secret-token', 'Acme Corp', 'owner@acme.test');
     expect(sendExistingAccountNoticeToUser).not.toHaveBeenCalled();
     expect(JSON.stringify(res.json.mock.calls)).not.toContain('raw-secret-token');
   });
 
-  it('answers an already-registered email with the identical 201 shape and creates nothing', async () => {
+  it('creates the row for an already-registered email too, answers the identical 201 and sends no email', async () => {
     allowCreation();
     getUserByEmail.mockResolvedValue({ id: 'existing-user', email: 'new@acme.test' });
     const res = mockRes();
@@ -279,37 +339,40 @@ describe('createTeamInvite', () => {
     await createTeamInvite({ user: caller, body: inviteBody }, res);
     await flushBackgroundWork();
 
-    expect(res.status).toHaveBeenCalledWith(201);
-    expect(res.json).toHaveBeenCalledWith({
-      invite: {
-        id: expect.stringMatching(UUID_PATTERN),
-        email: 'new@acme.test',
-        role: 'company_member',
-        token_expires: expect.any(Date),
-        created_at: expect.any(Date),
-      },
+    expect(createTeamInviteInDb).toHaveBeenCalledWith({
+      email: 'new@acme.test',
+      companyId: 'company-1',
+      roleId: 'role-member',
+      invitedBy: 'caller-id',
     });
-    expect(createTeamInviteInDb).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith(expectedResponse);
     expect(sendTeamInviteToUser).not.toHaveBeenCalled();
-    expect(sendExistingAccountNoticeToUser).toHaveBeenCalledWith('new@acme.test');
+    expect(sendExistingAccountNoticeToUser).not.toHaveBeenCalled();
   });
 
-  it('swallows a concurrent-creation P2002 in the background', async () => {
+  it('maps a concurrent-creation P2002 to the same 409 as a pending invite', async () => {
     allowCreation();
-    getUserByEmail.mockResolvedValue(null);
     createTeamInviteInDb.mockRejectedValue(Object.assign(new Error('unique'), { code: 'P2002' }));
     const res = mockRes();
 
     await createTeamInvite({ user: caller, body: inviteBody }, res);
     await flushBackgroundWork();
 
-    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(getUserByEmail).not.toHaveBeenCalled();
     expect(sendTeamInviteToUser).not.toHaveBeenCalled();
-    expect(logWarn).toHaveBeenCalled();
-    expect(logError).not.toHaveBeenCalled();
   });
 
-  it('logs other background failures without affecting the response', async () => {
+  it('rethrows other creation errors', async () => {
+    allowCreation();
+    createTeamInviteInDb.mockRejectedValue(new Error('db down'));
+    const res = mockRes();
+
+    await expect(createTeamInvite({ user: caller, body: inviteBody }, res)).rejects.toThrow('db down');
+  });
+
+  it('logs background delivery failures without affecting the response', async () => {
     allowCreation();
     getUserByEmail.mockRejectedValue(new Error('db down'));
     const res = mockRes();
@@ -335,6 +398,7 @@ describe('resendTeamInvite', () => {
     jest.clearAllMocks();
     getCompanyByIdInDb.mockResolvedValue({ id: 'company-1', name: 'Acme Corp' });
     getUserCompanyRoleNames.mockResolvedValue(['company_admin']);
+    canCompanyMemberGrantRoleInDb.mockResolvedValue(true);
   });
 
   it('returns 404 when the invite does not exist in the caller company', async () => {
@@ -375,7 +439,7 @@ describe('resendTeamInvite', () => {
     expect(JSON.stringify(res.json.mock.calls)).not.toContain('rotated-secret-token');
   });
 
-  it('answers the same 200 when the invitee registered on their own, voiding the invite instead of emailing', async () => {
+  it('answers the same 200 when the invitee registered on their own, keeping the row and sending nothing', async () => {
     getTeamInviteByIdInDb.mockResolvedValue(pendingInvite);
     getUserByEmail.mockResolvedValue({ id: 'existing-user' });
     rotateTeamInviteTokenInDb.mockResolvedValue({ invite: rotatedInvite, inviteToken: 'rotated-secret-token' });
@@ -383,6 +447,7 @@ describe('resendTeamInvite', () => {
 
     await resendTeamInvite({ user: caller, params: { inviteId: 'invite-1' } }, res);
 
+    expect(rotateTeamInviteTokenInDb).toHaveBeenCalledWith('invite-1', 'company-1');
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
       invite: expect.objectContaining({ id: 'invite-1', role: 'company_member' }),
@@ -390,8 +455,21 @@ describe('resendTeamInvite', () => {
 
     await flushBackgroundWork();
 
-    expect(deleteTeamInviteInDb).toHaveBeenCalledWith('invite-1', 'company-1');
+    expect(deleteTeamInviteInDb).not.toHaveBeenCalled();
     expect(sendTeamInviteToUser).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 INVITER_INVALID without rotating when the original inviter can no longer grant the role', async () => {
+    getTeamInviteByIdInDb.mockResolvedValue(pendingInvite);
+    canCompanyMemberGrantRoleInDb.mockResolvedValue(false);
+    const res = mockRes();
+
+    await resendTeamInvite({ user: caller, params: { inviteId: 'invite-1' } }, res);
+
+    expect(canCompanyMemberGrantRoleInDb).toHaveBeenCalledWith('original-inviter', 'company-1', 'company_member');
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'INVITER_INVALID' }));
+    expect(rotateTeamInviteTokenInDb).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the invite disappeared before the rotation', async () => {

@@ -188,6 +188,7 @@ adminRouter.get('/users/:userId', userIdParamValidation, getOneUserById);
  *   delete:
  *     tags: [Admin]
  *     summary: Delete a user by id (admin only)
+ *     description: Same transactional deletion as the self-delete endpoint (sessions revoked, company data removed when the user was its last member, Stripe/S3 cleanup after the commit). Platform admins are not bound by the last-owner rule.
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -226,7 +227,7 @@ adminRouter.get('/users/:userId', userIdParamValidation, getOneUserById);
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  *       409:
- *         description: Admin tried to delete their own account via the admin endpoint
+ *         description: Admin tried to delete their own account via the admin endpoint, or related DB entries exist (nothing was deleted)
  *         content:
  *           application/json:
  *             schema:

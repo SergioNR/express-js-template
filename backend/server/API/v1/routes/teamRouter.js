@@ -320,7 +320,7 @@ teamRouter.delete('/invites/:inviteId', checkCompanyPermission('team.invite'), i
  *   delete:
  *     tags: [Team]
  *     summary: Remove a member from the caller's company
- *     description: Deletes the member's account, revokes their active sessions and runs company cleanup when they were the last member. Requires the `team.remove` company permission. Self-removal, removing a global admin and removing the last company owner are rejected with 409. Only members of the caller's company can be removed.
+ *     description: Deletes the member's account, revokes their active sessions and runs company cleanup when they were the last member. Requires the `team.remove` company permission; unless they are a global admin, the caller must be able to grant every role the member currently holds (an admin cannot remove an owner). Self-removal, removing a global admin and removing the last company owner are rejected with 409. The last-owner check and the deletion run atomically. Only members of the caller's company can be removed.
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -349,7 +349,7 @@ teamRouter.delete('/invites/:inviteId', checkCompanyPermission('team.invite'), i
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  *       403:
- *         description: Missing permissions
+ *         description: Missing permissions, or the member holds a role that outranks the caller
  *         content:
  *           application/json:
  *             schema:
@@ -381,7 +381,7 @@ teamRouter.delete('/members/:userId', checkCompanyPermission('team.remove'), use
  *   patch:
  *     tags: [Team]
  *     summary: Change a member's company role
- *     description: Replaces the member's company role with the given one. Requires the `team.manage_roles` company permission; the caller must hold the target role themselves unless they are a global admin. Self-change, changing a global admin's role and demoting the last company owner are rejected with 409. Only members of the caller's company can be changed.
+ *     description: Replaces the member's company role with the given one. Requires the `team.manage_roles` company permission; unless they are a global admin, the caller must hold the target role themselves and be able to grant every role the member currently holds (an admin cannot demote an owner). The last-owner check and the write run atomically. Self-change, changing a global admin's role and demoting the last company owner are rejected with 409. Only members of the caller's company can be changed.
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -429,7 +429,7 @@ teamRouter.delete('/members/:userId', checkCompanyPermission('team.remove'), use
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  *       403:
- *         description: Missing permissions, or the caller does not hold the target role
+ *         description: Missing permissions, the caller does not hold the target role, or the member holds a role that outranks the caller
  *         content:
  *           application/json:
  *             schema:

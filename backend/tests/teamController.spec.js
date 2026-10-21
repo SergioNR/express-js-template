@@ -4,9 +4,7 @@ jest.unstable_mockModule('../server/models/userModel.js', () => ({
   getUserByEmail: jest.fn(),
   getCompanyMembersInDb: jest.fn(),
   getOneCompanyMemberInDb: jest.fn(),
-  updateUserCompanyRolesInDb: jest.fn(),
-  countUsersWithCompanyRoleInDb: jest.fn(),
-  deleteUserInDb: jest.fn(),
+  updateCompanyMemberRoleInDb: jest.fn(),
 }));
 
 jest.unstable_mockModule('../server/models/teamInvitesModel.js', () => ({
@@ -31,7 +29,7 @@ jest.unstable_mockModule('../server/models/companyModel.js', () => ({
 }));
 
 jest.unstable_mockModule('../server/utils/userDeletionCleanup.js', () => ({
-  cleanupAfterUserDeletion: jest.fn().mockResolvedValue(undefined),
+  deleteUserAndCleanup: jest.fn(),
 }));
 
 jest.unstable_mockModule('../server/integrations/brevo/transactionalEmails/sendTeamInviteToUser.js', () => ({
@@ -50,9 +48,7 @@ const {
   getUserByEmail,
   getCompanyMembersInDb,
   getOneCompanyMemberInDb,
-  updateUserCompanyRolesInDb,
-  countUsersWithCompanyRoleInDb,
-  deleteUserInDb,
+  updateCompanyMemberRoleInDb,
 } = await import('../server/models/userModel.js');
 const {
   createTeamInviteInDb,
@@ -70,7 +66,7 @@ const {
   getRoleByName,
 } = await import('../server/models/roleModel.js');
 const { getCompanyByIdInDb } = await import('../server/models/companyModel.js');
-const { cleanupAfterUserDeletion } = await import('../server/utils/userDeletionCleanup.js');
+const { deleteUserAndCleanup } = await import('../server/utils/userDeletionCleanup.js');
 const { sendTeamInviteToUser } = await import('../server/integrations/brevo/transactionalEmails/sendTeamInviteToUser.js');
 
 const mockRes = () => {
@@ -383,7 +379,7 @@ describe('removeTeamMember', () => {
     await removeTeamMember({ user: caller, params: { userId: 'caller-id' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(409);
-    expect(deleteUserInDb).not.toHaveBeenCalled();
+    expect(deleteUserAndCleanup).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the target is not a member of the caller company', async () => {
@@ -402,30 +398,68 @@ describe('removeTeamMember', () => {
     await removeTeamMember({ user: caller, params: { userId: 'target' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(409);
-    expect(deleteUserInDb).not.toHaveBeenCalled();
+    expect(deleteUserAndCleanup).not.toHaveBeenCalled();
   });
 
-  it('returns 409 when the target is the last company owner', async () => {
+  it('returns 403 when a company admin tries to remove an owner', async () => {
+    getOneCompanyMemberInDb.mockResolvedValue(memberRecord('target', 'owner2@acme.test', ['company_owner']));
+    getUserCompanyRoleNames.mockResolvedValue(['company_admin']);
+    const res = mockRes();
+
+    await removeTeamMember({ user: caller, params: { userId: 'target' } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(deleteUserAndCleanup).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 when the transaction reports the last company owner', async () => {
     getOneCompanyMemberInDb.mockResolvedValue(memberRecord('target', 'peer@acme.test', ['company_owner']));
-    countUsersWithCompanyRoleInDb.mockResolvedValue(1);
+    getUserCompanyRoleNames.mockResolvedValue(['company_owner']);
+    deleteUserAndCleanup.mockResolvedValue({ status: 'last_owner' });
     const res = mockRes();
 
     await removeTeamMember({ user: caller, params: { userId: 'target' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(409);
-    expect(deleteUserInDb).not.toHaveBeenCalled();
   });
 
-  it('deletes the member and runs the shared cleanup', async () => {
-    const target = memberRecord('target', 'peer@acme.test', ['company_member']);
-    getOneCompanyMemberInDb.mockResolvedValue(target);
-    deleteUserInDb.mockResolvedValue({ ...target, company_id: 'company-1' });
+  it('returns 403 when the rank re-check inside the transaction fails', async () => {
+    getOneCompanyMemberInDb.mockResolvedValue(memberRecord('target', 'peer@acme.test', ['company_member']));
+    getUserCompanyRoleNames.mockResolvedValue(['company_admin']);
+    deleteUserAndCleanup.mockResolvedValue({ status: 'forbidden' });
     const res = mockRes();
 
     await removeTeamMember({ user: caller, params: { userId: 'target' } }, res);
 
-    expect(deleteUserInDb).toHaveBeenCalledWith('target');
-    expect(cleanupAfterUserDeletion).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
+  it('deletes the member through the guarded transactional cleanup', async () => {
+    getOneCompanyMemberInDb.mockResolvedValue(memberRecord('target', 'peer@acme.test', ['company_member']));
+    getUserCompanyRoleNames.mockResolvedValue(['company_admin']);
+    deleteUserAndCleanup.mockResolvedValue({ status: 'deleted', deletedUser: { id: 'target' } });
+    const res = mockRes();
+
+    await removeTeamMember({ user: caller, params: { userId: 'target' } }, res);
+
+    expect(deleteUserAndCleanup).toHaveBeenCalledWith('target', {
+      companyId: 'company-1',
+      protectLastOwner: true,
+      allowedTargetRoleNames: ['company_admin', 'company_member'],
+    });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ userId: 'target' });
+  });
+
+  it('does not restrict target roles for superusers', async () => {
+    getOneCompanyMemberInDb.mockResolvedValue(memberRecord('target', 'owner2@acme.test', ['company_owner']));
+    deleteUserAndCleanup.mockResolvedValue({ status: 'deleted', deletedUser: { id: 'target' } });
+    const res = mockRes();
+
+    await removeTeamMember({ user: { ...caller, role: 'admin' }, params: { userId: 'target' } }, res);
+
+    expect(getUserCompanyRoleNames).not.toHaveBeenCalled();
+    expect(deleteUserAndCleanup).toHaveBeenCalledWith('target', expect.objectContaining({ allowedTargetRoleNames: undefined }));
     expect(res.status).toHaveBeenCalledWith(200);
   });
 });
@@ -441,7 +475,7 @@ describe('updateTeamMemberRole', () => {
     await updateTeamMemberRole({ user: caller, params: { userId: 'caller-id' }, body: { roleName: 'company_member' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(409);
-    expect(updateUserCompanyRolesInDb).not.toHaveBeenCalled();
+    expect(updateCompanyMemberRoleInDb).not.toHaveBeenCalled();
   });
 
   it('returns 409 when the target is a global admin', async () => {
@@ -472,32 +506,61 @@ describe('updateTeamMemberRole', () => {
     await updateTeamMemberRole({ user: caller, params: { userId: 'target' }, body: { roleName: 'company_owner' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(403);
-    expect(updateUserCompanyRolesInDb).not.toHaveBeenCalled();
+    expect(updateCompanyMemberRoleInDb).not.toHaveBeenCalled();
   });
 
-  it('returns 409 when demoting the last company owner', async () => {
+  it('returns 403 when a company admin tries to demote an owner', async () => {
+    getOneCompanyMemberInDb.mockResolvedValue(memberRecord('target', 'owner2@acme.test', ['company_owner']));
+    getRoleByName.mockResolvedValue({ id: 'role-member', name: 'company_member' });
+    getUserCompanyRoleNames.mockResolvedValue(['company_admin']);
+    const res = mockRes();
+
+    await updateTeamMemberRole({ user: caller, params: { userId: 'target' }, body: { roleName: 'company_member' } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(updateCompanyMemberRoleInDb).not.toHaveBeenCalled();
+  });
+
+  it('returns 409 when the transaction reports the last company owner', async () => {
     getOneCompanyMemberInDb.mockResolvedValue(memberRecord('target', 'peer@acme.test', ['company_owner']));
     getRoleByName.mockResolvedValue({ id: 'role-member', name: 'company_member' });
     getUserCompanyRoleNames.mockResolvedValue(['company_owner']);
-    countUsersWithCompanyRoleInDb.mockResolvedValue(1);
+    updateCompanyMemberRoleInDb.mockResolvedValue({ status: 'last_owner' });
     const res = mockRes();
 
     await updateTeamMemberRole({ user: caller, params: { userId: 'target' }, body: { roleName: 'company_member' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(409);
-    expect(updateUserCompanyRolesInDb).not.toHaveBeenCalled();
   });
 
-  it('updates the role and returns the member shape', async () => {
+  it('returns 403 when the rank re-check inside the transaction fails', async () => {
     getOneCompanyMemberInDb.mockResolvedValue(memberRecord('target', 'peer@acme.test', ['company_member']));
-    getRoleByName.mockResolvedValue({ id: 'role-admin', name: 'company_admin' });
+    getRoleByName.mockResolvedValue({ id: 'role-member', name: 'company_member' });
+    getUserCompanyRoleNames.mockResolvedValue(['company_admin']);
+    updateCompanyMemberRoleInDb.mockResolvedValue({ status: 'forbidden' });
+    const res = mockRes();
+
+    await updateTeamMemberRole({ user: caller, params: { userId: 'target' }, body: { roleName: 'company_member' } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
+  it('updates the role atomically and returns the member shape', async () => {
+    getOneCompanyMemberInDb.mockResolvedValue(memberRecord('target', 'peer@acme.test', ['company_member']));
+    const adminRole = { id: 'role-admin', name: 'company_admin' };
+    getRoleByName.mockResolvedValue(adminRole);
     getUserCompanyRoleNames.mockResolvedValue(['company_owner']);
-    updateUserCompanyRolesInDb.mockResolvedValue(memberRecord('target', 'peer@acme.test', ['company_admin']));
+    updateCompanyMemberRoleInDb.mockResolvedValue({
+      status: 'updated',
+      member: memberRecord('target', 'peer@acme.test', ['company_admin']),
+    });
     const res = mockRes();
 
     await updateTeamMemberRole({ user: caller, params: { userId: 'target' }, body: { roleName: 'company_admin' } }, res);
 
-    expect(updateUserCompanyRolesInDb).toHaveBeenCalledWith('target', 'role-admin');
+    expect(updateCompanyMemberRoleInDb).toHaveBeenCalledWith('target', 'company-1', adminRole, {
+      allowedTargetRoleNames: ['company_admin', 'company_member', 'company_owner'],
+    });
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
       member: expect.objectContaining({ companyRoles: ['company_admin'] }),

@@ -21,6 +21,14 @@ export const getCompanyByIdInDb = async (companyId) => {
   return getCompanyByIdQuery;
 };
 
+//* Row lock on the company, taken inside an interactive transaction (`tx`).
+//* Every membership-changing write of a company (role changes, member and
+//* self deletion) takes it first, so last-owner / last-member checks and the
+//* write they guard can never interleave with a concurrent one
+export const lockCompanyForUpdateInDb = async (tx, companyId) => {
+  await tx.$queryRaw`SELECT "id" FROM "Company" WHERE "id" = ${companyId} FOR UPDATE`;
+};
+
 export const deleteCompanyInDb = async (companyId) => {
   await prisma.company.delete({
     where: {

@@ -1,5 +1,4 @@
 import {
-  deleteUserInDb,
   getAllUsersInDb,
   countUsersInDb,
   getUserById,
@@ -18,7 +17,7 @@ import {
   countActiveSessionsInDb,
   countActiveSessionsByUserInDb,
 } from '../models/sessionModel.js';
-import { cleanupAfterUserDeletion } from '../utils/userDeletionCleanup.js';
+import { deleteUserAndCleanup } from '../utils/userDeletionCleanup.js';
 
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 100;
@@ -92,20 +91,18 @@ export const deleteOneUserById = async (req, res) => {
     });
   }
 
+  const existingUser = await getUserById(userId);
+
+  if (!existingUser) {
+    return res.status(404).json({});
+  }
+
+  let deletionResult;
+
+  //* The P2003 mapping wraps only the deletion transaction - the post-commit
+  //* Stripe/S3 cleanup never throws, so a committed delete is never misreported
   try {
-    const existingUser = await getUserById(userId);
-
-    if (!existingUser) {
-      return res.status(404).json({});
-    }
-
-    const deletedUser = await deleteUserInDb(userId);
-
-    await cleanupAfterUserDeletion(deletedUser);
-
-    return res.status(200).json({
-      userId: deletedUser.id,
-    });
+    deletionResult = await deleteUserAndCleanup(userId);
   } catch (error) {
     if (error.code === 'P2003') {
       return res.status(409).json({
@@ -115,6 +112,14 @@ export const deleteOneUserById = async (req, res) => {
 
     throw error; //* Forwarded to the global error handler (Express 5)
   }
+
+  if (deletionResult.status === 'not_found') {
+    return res.status(404).json({});
+  }
+
+  return res.status(200).json({
+    userId: deletionResult.deletedUser.id,
+  });
 };
 
 export const getAllCompanies = async (req, res) => {

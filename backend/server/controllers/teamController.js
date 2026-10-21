@@ -1,10 +1,8 @@
 import {
-  countUsersWithCompanyRoleInDb,
-  deleteUserInDb,
   getCompanyMembersInDb,
   getOneCompanyMemberInDb,
   getUserByEmail,
-  updateUserCompanyRolesInDb,
+  updateCompanyMemberRoleInDb,
 } from '../models/userModel.js';
 import {
   createTeamInviteInDb,
@@ -22,11 +20,9 @@ import {
   getRoleByName,
 } from '../models/roleModel.js';
 import { getCompanyByIdInDb } from '../models/companyModel.js';
-import { cleanupAfterUserDeletion } from '../utils/userDeletionCleanup.js';
+import { deleteUserAndCleanup } from '../utils/userDeletionCleanup.js';
 import { canGrantRole, rolesGrantableBy } from '../utils/companyRoleHierarchy.js';
 import { sendTeamInviteToUser } from '../integrations/brevo/transactionalEmails/sendTeamInviteToUser.js';
-
-const COMPANY_OWNER_ROLE = 'company_owner';
 
 const toMemberShape = (member) => ({
   id: member.id,
@@ -242,12 +238,32 @@ export const revokeTeamInvite = async (req, res) => {
   return res.status(200).json({});
 };
 
+//* Non-superusers may only manage members whose every current role they
+//* could grant themselves - an admin can never demote or remove an owner.
+//* Returns the role names the caller may act on (undefined = unrestricted)
+const getManageableRoleNames = async (callerId, callerRole) => {
+  if (callerRole === 'admin') {
+    return undefined;
+  }
+
+  return rolesGrantableBy(await getUserCompanyRoleNames(callerId));
+};
+
+const outranksCaller = (targetMember, manageableRoleNames) => {
+  if (!manageableRoleNames) {
+    return false;
+  }
+
+  return targetMember.UserRoles.some((userRole) => !manageableRoleNames.includes(userRole.Role.name));
+};
+
 export const removeTeamMember = async (req, res) => {
   const { userId } = req.params;
 
   const {
     company_id: companyId,
     id: callerId,
+    role: callerRole,
   } = req.user;
 
   if (userId === callerId) {
@@ -270,23 +286,39 @@ export const removeTeamMember = async (req, res) => {
     });
   }
 
-  const targetRoleNames = targetMember.UserRoles.map((userRole) => userRole.Role.name);
+  const manageableRoleNames = await getManageableRoleNames(callerId, callerRole);
 
-  if (targetRoleNames.includes(COMPANY_OWNER_ROLE)) {
-    const ownerCount = await countUsersWithCompanyRoleInDb(COMPANY_OWNER_ROLE, companyId);
-
-    if (ownerCount <= 1) {
-      return res.status(409).json({
-        message: 'The last company owner cannot be removed',
-      });
-    }
+  if (outranksCaller(targetMember, manageableRoleNames)) {
+    return res.status(403).json({
+      message: 'You cannot remove a member whose role outranks your own',
+    });
   }
 
-  const deletedUser = await deleteUserInDb(userId);
+  //* The rank and last-owner checks are repeated inside the transaction,
+  //* under the company lock, together with the delete itself
+  const deletionResult = await deleteUserAndCleanup(userId, {
+    companyId,
+    protectLastOwner: true,
+    allowedTargetRoleNames: manageableRoleNames,
+  });
 
-  //* Revokes the removed member's active sessions and handles company
-  //* cleanup when they were the last member
-  await cleanupAfterUserDeletion(deletedUser);
+  if (deletionResult.status === 'not_found') {
+    return res.status(404).json({
+      message: 'Member not found in your company',
+    });
+  }
+
+  if (deletionResult.status === 'forbidden') {
+    return res.status(403).json({
+      message: 'You cannot remove a member whose role outranks your own',
+    });
+  }
+
+  if (deletionResult.status === 'last_owner') {
+    return res.status(409).json({
+      message: 'The last company owner cannot be removed',
+    });
+  }
 
   return res.status(200).json({
     userId,
@@ -331,31 +363,45 @@ export const updateTeamMemberRole = async (req, res) => {
     });
   }
 
-  if (callerRole !== 'admin') {
-    const callerRoleNames = await getUserCompanyRoleNames(callerId);
+  const manageableRoleNames = await getManageableRoleNames(callerId, callerRole);
 
-    if (!canGrantRole(callerRoleNames, roleName)) {
-      return res.status(403).json({
-        message: 'You can only assign roles you hold yourself',
-      });
-    }
+  if (manageableRoleNames && !manageableRoleNames.includes(roleName)) {
+    return res.status(403).json({
+      message: 'You can only assign roles you hold yourself',
+    });
   }
 
-  const targetRoleNames = targetMember.UserRoles.map((userRole) => userRole.Role.name);
-
-  if (targetRoleNames.includes(COMPANY_OWNER_ROLE) && roleName !== COMPANY_OWNER_ROLE) {
-    const ownerCount = await countUsersWithCompanyRoleInDb(COMPANY_OWNER_ROLE, companyId);
-
-    if (ownerCount <= 1) {
-      return res.status(409).json({
-        message: 'The last company owner cannot be demoted',
-      });
-    }
+  if (outranksCaller(targetMember, manageableRoleNames)) {
+    return res.status(403).json({
+      message: 'You cannot change the role of a member whose role outranks your own',
+    });
   }
 
-  const updatedMember = await updateUserCompanyRolesInDb(userId, role.id);
+  //* The rank and last-owner checks are repeated inside the transaction,
+  //* under the company lock, together with the write itself
+  const updateResult = await updateCompanyMemberRoleInDb(userId, companyId, role, {
+    allowedTargetRoleNames: manageableRoleNames,
+  });
+
+  if (updateResult.status === 'not_found') {
+    return res.status(404).json({
+      message: 'Member not found in your company',
+    });
+  }
+
+  if (updateResult.status === 'forbidden') {
+    return res.status(403).json({
+      message: 'You cannot change the role of a member whose role outranks your own',
+    });
+  }
+
+  if (updateResult.status === 'last_owner') {
+    return res.status(409).json({
+      message: 'The last company owner cannot be demoted',
+    });
+  }
 
   return res.status(200).json({
-    member: toMemberShape(updatedMember),
+    member: toMemberShape(updateResult.member),
   });
 };

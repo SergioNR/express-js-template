@@ -37,6 +37,7 @@ const SiteNavBar = () => {
         onClick={() => setMobileMenuOpened(!mobileMenuOpened)}
         className={styles.mobileMenuButton}
         size="sm"
+        aria-label={t('nav.menu')}
       />
 
       <nav className={`${styles.mobileNav} ${mobileMenuOpened ? styles.mobileNavOpen : ''}`}>

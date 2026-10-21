@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { UnstyledButton } from '@mantine/core';
 import apiClient from '../../config/API/axiosConfig.mjs';
 import { usePostHog } from 'posthog-js/react';
 import { IconLogout } from '@tabler/icons-react';
@@ -17,24 +18,25 @@ const LogOutButton = () => {
     try {
       await apiClient.post('/api/v1/auth/logout');
     } catch (error) {
+      //* The session is still alive server-side - stay put so the user can retry
       console.error('Logout failed:', error);
       notifyError(t('errors.logoutFailed'));
-    } finally {
-      // Reset PostHog to clear user session and prevent tracking continuity
-      if (analyticsEnabled) {
-        posthog?.reset();
-      }
-
-      // Leave the private area even when the server call failed
-      navigate('/');
+      return;
     }
+
+    // Reset PostHog to clear user session and prevent tracking continuity
+    if (analyticsEnabled) {
+      posthog?.reset();
+    }
+
+    navigate('/');
   };
 
   return (
-    <a className={classes.link} onClick={handleLogout}>
+    <UnstyledButton type="button" className={classes.link} onClick={handleLogout}>
       <IconLogout className={classes.linkIcon} stroke={1.5} />
       <span>{t('nav.logout')}</span>
-    </a>
+    </UnstyledButton>
   );
 };
 

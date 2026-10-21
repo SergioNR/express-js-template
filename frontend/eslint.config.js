@@ -7,6 +7,13 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 export default [
   { ignores: ['dist'] },
   {
+    // Build tooling runs in Node
+    files: ['*.config.js'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
+  {
     files: ['**/*.{js,jsx}'],
     languageOptions: {
       ecmaVersion: 2020,
@@ -17,7 +24,7 @@ export default [
         sourceType: 'module',
       },
     },
-    settings: { react: { version: '18.3' } },
+    settings: { react: { version: 'detect' } },
     plugins: {
       react,
       'react-hooks': reactHooks,
@@ -36,6 +43,11 @@ export default [
         {
           selector: "MemberExpression[property.name='message'][object.name=/^(err|error|e)$/]",
           message: 'Never render axios/backend error messages — map status/code to t() keys.',
+        },
+        {
+          // Backend response bodies: `response.data.message`, `err.response?.data?.message`, ...
+          selector: "MemberExpression[property.name='message'][object.type='MemberExpression'][object.property.name='data']",
+          message: 'Never render backend response messages (`*.data.message`) — map status/code to t() keys.',
         },
       ],
       // The codebase fetches on mount in effects (see SubscriptionContext);

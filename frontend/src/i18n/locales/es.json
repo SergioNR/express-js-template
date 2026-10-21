@@ -4,7 +4,8 @@
     "error": "Error",
     "success": "Correcto",
     "retry": "Reintentar",
-    "logoAlt": "logo"
+    "logoAlt": "logo",
+    "contactEmail": "hello@yourapp.com"
   },
   "nav": {
     "home": "Inicio",
@@ -136,6 +137,10 @@
           "title": "Invitación caducada",
           "body": "Esta invitación ha caducado. Pide al equipo que te envíe una nueva."
         },
+        "inviterInvalid": {
+          "title": "Invitación no válida",
+          "body": "La persona que te invitó ya no puede concederte este rol. Pide al equipo que te envíe una nueva invitación."
+        },
         "notFound": {
           "title": "Invitación inválida",
           "body": "La invitación no existe o ya se ha utilizado. Pide al equipo que te envíe una nueva."
@@ -143,7 +148,6 @@
       },
       "backToLogin": "Volver al inicio de sesión",
       "errors": {
-        "expired": "La invitación ha caducado. Pide una nueva invitación.",
         "registered": "Ese email ya tiene una cuenta. Inicia sesión.",
         "invalidPassword": "La contraseña no cumple los requisitos: mínimo 8 caracteres, con al menos una mayúscula, una minúscula y un número.",
         "generic": "No se pudo aceptar la invitación. Inténtalo de nuevo."
@@ -231,7 +235,7 @@
         },
         "moreQuestions": {
           "q": "Tengo más preguntas, ¿cómo puedo contactaros?",
-          "a": "Escríbenos a <0>hello@yourapp.com</0> y estaremos encantados de ayudarte."
+          "a": "Escríbenos a <0>{{email}}</0> y estaremos encantados de ayudarte."
         }
       }
     },
@@ -401,13 +405,13 @@
       "title": "Suscripción Mensual",
       "pricePerMonth": "{{price}}/mes",
       "vatIncluded": "IVA incluido",
-      "saveHint": "Ahorra 17%",
       "description": "Utiliza la plataforma sin límites.",
       "choose": "Elegir mensual"
     },
     "checkout": {
       "paid": "Pago completado. Estamos activando tu suscripción.",
-      "cancelled": "Has cancelado el pago. Puedes elegir un plan cuando quieras."
+      "cancelled": "Has cancelado el pago. Puedes elegir un plan cuando quieras.",
+      "processing": "Tu pago se está procesando. La suscripción puede tardar unos minutos en activarse; vuelve a cargar la página más tarde."
     },
     "invoices": {
       "title": "Historial de facturas",
@@ -632,16 +636,21 @@
       "invite": "No tienes permiso para invitar miembros al equipo",
       "remove": "No tienes permiso para eliminar miembros",
       "manageRoles": "No tienes permiso para cambiar los roles de los miembros",
-      "roleNotAssignable": "No puedes cambiar el rol de este miembro"
+      "roleNotAssignable": "No puedes cambiar el rol de este miembro",
+      "self": "No puedes modificar tu propia cuenta",
+      "notOutranked": "Solo puedes gestionar a miembros con un rol inferior al tuyo",
+      "inviteRole": "No puedes gestionar invitaciones para este rol"
     },
     "errors": {
       "loadError": "No se pudo cargar la información del equipo. Inténtalo de nuevo.",
       "membershipRequired": "Tu cuenta no pertenece a ninguna empresa, así que no tiene equipo.",
-      "inviteConflict": "Ese email ya está registrado o ya tiene una invitación pendiente.",
+      "inviteConflict": "Ya hay una invitación pendiente para ese email. Reenvíala desde la lista de invitaciones pendientes.",
+      "resendInviterInvalid": "Quien envió esta invitación ya no puede conceder este rol. Revócala y vuelve a invitar a esta persona.",
       "removeConflict": "No se puede eliminar a este miembro.",
       "roleConflict": "No se puede cambiar el rol de este miembro.",
       "forbidden": "No tienes permisos para realizar esta acción.",
-      "generic": "Ha ocurrido un error. Inténtalo de nuevo."
+      "generic": "Ha ocurrido un error. Inténtalo de nuevo.",
+      "retry": "No se pudo completar la acción por un conflicto. Inténtalo de nuevo."
     }
   }
 }

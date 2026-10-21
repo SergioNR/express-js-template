@@ -56,6 +56,7 @@ export function Team() {
   const [invites, setInvites] = useState([]);
   const [callerPermissions, setCallerPermissions] = useState([]);
   const [assignableRoles, setAssignableRoles] = useState([]);
+  const [callerId, setCallerId] = useState(null);
   const [now, setNow] = useState(null);
 
   useEffect(() => {
@@ -81,6 +82,7 @@ export function Team() {
       setInvites(response.data.invites);
       setCallerPermissions(response.data.callerPermissions);
       setAssignableRoles(response.data.assignableRoles);
+      setCallerId(response.data.callerId ?? null);
     } catch (err) {
       const status = err?.response?.status;
       const code = err?.response?.data?.code;
@@ -131,6 +133,7 @@ export function Team() {
     } catch (err) {
       const status = err?.response?.status;
 
+      //* 409 only means an invite is already pending for this email
       if (status === 409) {
         notifyError(t('team.errors.inviteConflict'));
       } else if (status === 403) {
@@ -161,6 +164,8 @@ export function Team() {
 
       if (status === 409) {
         notifyError(t('team.errors.removeConflict'));
+      } else if (status === 403) {
+        notifyError(t('team.errors.forbidden'));
       } else {
         notifyError(t('team.errors.generic'));
       }
@@ -200,9 +205,17 @@ export function Team() {
       await loadTeam();
     } catch (err) {
       const status = err?.response?.status;
+      const code = err?.response?.data?.code;
 
-      if (status === 409) {
-        notifyError(t('team.errors.inviteConflict'));
+      //* INVITER_INVALID: the original inviter can no longer grant the role -
+      //* the invite has to be revoked and sent again. Any other 409 is a
+      //* transient conflict worth retrying
+      if (status === 409 && code === 'INVITER_INVALID') {
+        notifyError(t('team.errors.resendInviterInvalid'));
+      } else if (status === 409) {
+        notifyError(t('team.errors.retry'));
+      } else if (status === 403) {
+        notifyError(t('team.errors.forbidden'));
       } else {
         notifyError(t('team.errors.generic'));
       }
@@ -215,8 +228,12 @@ export function Team() {
 
       notifySuccess(t('team.invites.revokedToast'));
       await loadTeam();
-    } catch {
-      notifyError(t('team.errors.generic'));
+    } catch (err) {
+      if (err?.response?.status === 403) {
+        notifyError(t('team.errors.forbidden'));
+      } else {
+        notifyError(t('team.errors.generic'));
+      }
     }
   };
 
@@ -226,10 +243,21 @@ export function Team() {
     //* reach such as the owner) keep their badge and a locked Select
     const currentRole = member.companyRoles.length === 1 ? member.companyRoles[0] : null;
     const roleNotAssignable = !currentRole || !assignableRoles.includes(currentRole);
-    const roleLocked = !canManageRoles || roleNotAssignable;
+    //* The API marks a member manageable only when the caller strictly
+    //* outranks every role they hold; the caller's own row is never manageable
+    const isSelf = callerId !== null && member.id === callerId;
+    const outranked = !member.manageable;
+    const rankLockLabel = isSelf ? t('team.locked.self') : t('team.locked.notOutranked');
+
+    const roleLocked = !canManageRoles || isSelf || outranked || roleNotAssignable;
     const roleLockLabel = !canManageRoles
       ? t('team.locked.manageRoles')
-      : t('team.locked.roleNotAssignable');
+      : isSelf || outranked
+        ? rankLockLabel
+        : t('team.locked.roleNotAssignable');
+
+    const removeLocked = !canRemove || isSelf || outranked;
+    const removeLockLabel = !canRemove ? t('team.locked.remove') : rankLockLabel;
 
     return (
       <Table.Tr key={member.id}>
@@ -265,11 +293,11 @@ export function Team() {
                 aria-label={t('team.members.roleChange', { email: member.email })}
               />
             </LockedTooltip>
-            <LockedTooltip locked={!canRemove} label={t('team.locked.remove')}>
+            <LockedTooltip locked={removeLocked} label={removeLockLabel}>
               <ActionIcon
                 variant="subtle"
                 color="red"
-                disabled={!canRemove}
+                disabled={removeLocked}
                 aria-label={t('team.members.removeAction', { email: member.email })}
                 onClick={() => setRemoveTarget(member)}
               >
@@ -284,6 +312,9 @@ export function Team() {
 
   const inviteRows = invites.map((invite) => {
     const expired = now !== null && new Date(invite.token_expires).getTime() < now;
+    //* `manageable` = the caller can grant the invite's role
+    const inviteLocked = !canInvite || !invite.manageable;
+    const inviteLockLabel = !canInvite ? t('team.locked.invite') : t('team.locked.inviteRole');
 
     return (
       <Table.Tr key={invite.id}>
@@ -307,22 +338,22 @@ export function Team() {
         </Table.Td>
         <Table.Td>
           <Group gap={0} justify="flex-end" wrap="nowrap">
-            <LockedTooltip locked={!canInvite} label={t('team.locked.invite')}>
+            <LockedTooltip locked={inviteLocked} label={inviteLockLabel}>
               <ActionIcon
                 variant="subtle"
                 color="blue"
-                disabled={!canInvite}
+                disabled={inviteLocked}
                 aria-label={t('team.invites.resend', { email: invite.email })}
                 onClick={() => resendInvite(invite.id)}
               >
                 <IconMailForward size={16} stroke={1.5} />
               </ActionIcon>
             </LockedTooltip>
-            <LockedTooltip locked={!canInvite} label={t('team.locked.invite')}>
+            <LockedTooltip locked={inviteLocked} label={inviteLockLabel}>
               <ActionIcon
                 variant="subtle"
                 color="red"
-                disabled={!canInvite}
+                disabled={inviteLocked}
                 aria-label={t('team.invites.revoke', { email: invite.email })}
                 onClick={() => revokeInvite(invite.id)}
               >

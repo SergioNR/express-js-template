@@ -100,9 +100,13 @@ export const deleteOneUserById = async (req, res) => {
   let deletionResult;
 
   //* The P2003 mapping wraps only the deletion transaction - the post-commit
-  //* Stripe/S3 cleanup never throws, so a committed delete is never misreported
+  //* Stripe/S3 cleanup never throws, so a committed delete is never misreported.
+  //* Superadmins are bound by the last-owner rule like everyone else: a
+  //* company must never be left with members and nobody able to manage them
   try {
-    deletionResult = await deleteUserAndCleanup(userId);
+    deletionResult = await deleteUserAndCleanup(userId, {
+      protectLastOwner: true,
+    });
   } catch (error) {
     if (error.code === 'P2003') {
       return res.status(409).json({
@@ -115,6 +119,14 @@ export const deleteOneUserById = async (req, res) => {
 
   if (deletionResult.status === 'not_found') {
     return res.status(404).json({});
+  }
+
+  if (deletionResult.status === 'last_owner') {
+    //* Stable code - the 409 status is shared with self-delete and FK conflicts
+    return res.status(409).json({
+      message: 'The user is the last owner of a company with other members - promote another member first',
+      code: 'LAST_COMPANY_OWNER',
+    });
   }
 
   return res.status(200).json({

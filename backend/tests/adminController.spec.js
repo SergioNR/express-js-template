@@ -194,16 +194,27 @@ describe('deleteOneUserById', () => {
     expect(deleteUserAndCleanup).not.toHaveBeenCalled();
   });
 
-  it('runs the transactional deletion without the last-owner guard and returns the deleted id', async () => {
+  it('runs the transactional deletion with the last-owner guard and returns the deleted id', async () => {
     getUserById.mockResolvedValue({ id: 'user-1' });
     deleteUserAndCleanup.mockResolvedValue({ status: 'deleted', deletedUser: { id: 'user-1', company_id: 'company-1' } });
     const res = mockRes();
 
     await deleteOneUserById({ params: { userId: 'user-1' }, user: { id: 'admin-1' } }, res);
 
-    expect(deleteUserAndCleanup).toHaveBeenCalledWith('user-1');
+    expect(deleteUserAndCleanup).toHaveBeenCalledWith('user-1', { protectLastOwner: true });
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ userId: 'user-1' });
+  });
+
+  it('returns 409 with a stable code when the user is the last owner of a company with other members', async () => {
+    getUserById.mockResolvedValue({ id: 'user-1' });
+    deleteUserAndCleanup.mockResolvedValue({ status: 'last_owner' });
+    const res = mockRes();
+
+    await deleteOneUserById({ params: { userId: 'user-1' }, user: { id: 'admin-1' } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'LAST_COMPANY_OWNER' }));
   });
 
   it('returns 404 when the user vanished before the transaction', async () => {

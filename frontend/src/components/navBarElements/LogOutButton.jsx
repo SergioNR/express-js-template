@@ -4,7 +4,7 @@ import apiClient from '../../config/API/axiosConfig.mjs';
 import { usePostHog } from 'posthog-js/react';
 import { UnstyledButton } from '@mantine/core';
 import { IconLogout } from '@tabler/icons-react';
-import classes from '../partials/NavbarSimple.module.css';
+import classes from '../partials/AreaShell.module.css';
 import { notifyError } from '../../utils/notifications.js';
 
 const analyticsEnabled = Boolean(import.meta.env.VITE_PUBLIC_POSTHOG_KEY);

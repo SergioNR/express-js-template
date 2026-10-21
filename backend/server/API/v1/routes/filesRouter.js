@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { checkSchema, param } from 'express-validator';
 import {
+  confirmFileUpload,
   createFileUpload,
   deleteOneFileById,
   getFileDownloadUrl,
@@ -37,7 +38,7 @@ const fileIdParamValidation = [
  *   post:
  *     tags: [Files]
  *     summary: Register a file and get a presigned upload URL
- *     description: Validates the declared file metadata (size, MIME whitelist), creates the file catalog entry and returns a short-lived presigned PUT URL. The client uploads the bytes directly to the bucket with the exact declared `Content-Type`. Uploads abandoned before completion leave an inert catalog entry that only errors when downloaded and can be removed via DELETE. Requires the `files.upload` company permission (global admins bypass permission checks).
+ *     description: Validates the declared file metadata (size, MIME whitelist), creates a `pending` file catalog entry and returns a short-lived presigned PUT URL. The client uploads the bytes directly to the bucket with the exact declared `Content-Type` and `Content-Length` (both are signed), then calls `POST /api/v1/files/{fileId}/confirm`. Pending files are not listed nor downloadable, and pending entries older than one hour are deleted automatically together with their object. Requires the `files.upload` company permission (global admins bypass permission checks).
  *     security:
  *       - sessionCookie: []
  *     requestBody:
@@ -48,7 +49,7 @@ const fileIdParamValidation = [
  *             $ref: '#/components/schemas/FileUploadRequest'
  *     responses:
  *       201:
- *         description: File registered - upload the bytes to the presigned URL
+ *         description: File registered with status `pending` - upload the bytes to the presigned URL, then confirm
  *         content:
  *           application/json:
  *             schema:
@@ -83,11 +84,77 @@ filesRouter.post('/', checkCompanyPermission('files.upload'), createUploadValida
 
 /**
  * @openapi
+ * /api/v1/files/{fileId}/confirm:
+ *   post:
+ *     tags: [Files]
+ *     summary: Confirm a finished upload
+ *     description: Call after the PUT to the presigned URL succeeded. The server reads the stored object's metadata and compares it with the size and MIME type declared at registration. On a match the file becomes `ready` (listed and downloadable). On a mismatch the object and the catalog entry are deleted (400, code `FILE_UPLOAD_MISMATCH`). When the object does not exist yet the entry stays pending (409, code `FILE_UPLOAD_MISSING`) and the call can be retried. Confirming an already-ready file is idempotent. Only files of the caller's company can be confirmed. Requires the `files.upload` company permission (global admins bypass permission checks).
+ *     security:
+ *       - sessionCookie: []
+ *     parameters:
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Id of the file to confirm
+ *     responses:
+ *       200:
+ *         description: Upload verified - the file is ready
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 file:
+ *                   $ref: '#/components/schemas/File'
+ *       400:
+ *         description: Stored object does not match the declared size or content type - object and entry were deleted (code `FILE_UPLOAD_MISMATCH`)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ *       401:
+ *         description: Not authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ *       403:
+ *         description: Missing permissions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ *       404:
+ *         description: File does not exist in the caller's company
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ *       409:
+ *         description: The object was not uploaded yet - entry stays pending (code `FILE_UPLOAD_MISSING`)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ *       422:
+ *         description: Validation errors
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ */
+filesRouter.post('/:fileId/confirm', checkCompanyPermission('files.upload'), fileIdParamValidation, confirmFileUpload);
+
+/**
+ * @openapi
  * /api/v1/files:
  *   get:
  *     tags: [Files]
  *     summary: List the caller's company files
- *     description: Cursor-paginated list of the files registered by the caller's company, newest first. Requires the `files.view` company permission (global admins bypass permission checks).
+ *     description: Cursor-paginated list of the confirmed (`ready`) files of the caller's company, newest first (id as tiebreaker). Pending uploads are never listed. Requires the `files.view` company permission (global admins bypass permission checks).
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -149,7 +216,7 @@ filesRouter.get('/', checkCompanyPermission('files.view'), filesListValidation, 
  *   get:
  *     tags: [Files]
  *     summary: Get a presigned download URL for a company file
- *     description: Returns a fresh short-lived presigned GET URL for the file's object. URLs expire within minutes - request a new one when needed. Files outside the caller's company answer 404 (no existence leak). Requires the `files.view` company permission (global admins bypass permission checks). Note that a file whose upload never completed resolves to the URL of a non-existent object - the bucket answers 404 when it is fetched.
+ *     description: Returns a fresh short-lived presigned GET URL for the file's object. URLs expire within minutes - request a new one when needed. Files outside the caller's company answer 404 (no existence leak). Requires the `files.view` company permission (global admins bypass permission checks). Pending (unconfirmed) files answer 404.
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -185,7 +252,7 @@ filesRouter.get('/', checkCompanyPermission('files.view'), filesListValidation, 
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  *       404:
- *         description: File does not exist in the caller's company
+ *         description: File does not exist in the caller's company, or its upload is not confirmed yet
  *         content:
  *           application/json:
  *             schema:

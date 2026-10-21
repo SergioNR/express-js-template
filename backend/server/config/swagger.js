@@ -222,6 +222,11 @@ const swaggerOptions = {
               type: 'integer',
               description: 'Size declared by the client at upload-request time',
             },
+            status: {
+              type: 'string',
+              enum: ['pending', 'ready'],
+              description: 'pending until POST /api/v1/files/{fileId}/confirm verifies the uploaded object',
+            },
             uploaded_by: {
               type: 'string',
               format: 'uuid',

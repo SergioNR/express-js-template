@@ -39,6 +39,10 @@ export const s3Client = isS3Configured()
     region: process.env.S3_REGION,
     endpoint: process.env.S3_ENDPOINT || undefined,
     forcePathStyle: process.env.S3_FORCE_PATH_STYLE !== 'false', //* Path-style by default so MinIO-compatible endpoints work out of the box
+    //* Default flexible checksums sign an empty-body CRC32 into presigned PUT
+    //* URLs, which makes S3 reject the browser's real upload
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED',
     credentials: {
       accessKeyId: process.env.S3_ACCESS_KEY_ID,
       secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,

@@ -18,6 +18,14 @@ jest.unstable_mockModule('../server/models/subscriptionModel.js', () => ({
   getSubscriptionDataInDb: jest.fn(),
 }));
 
+jest.unstable_mockModule('../server/models/filesModel.js', () => ({
+  getFileKeysForCompanyInDb: jest.fn().mockResolvedValue([]),
+}));
+
+jest.unstable_mockModule('../server/integrations/s3/deleteS3Objects.js', () => ({
+  deleteS3Objects: jest.fn().mockResolvedValue({ deletedCount: 0, failedKeys: [] }),
+}));
+
 const { cleanupAfterUserDeletion } = await import('../server/utils/userDeletionCleanup.js');
 const { deleteUserSessions } = await import('../server/models/sessionModel.js');
 const { countUsersInDb } = await import('../server/models/userModel.js');
@@ -27,6 +35,8 @@ const {
   deleteSubscriptionByCompanyId,
   getSubscriptionDataInDb,
 } = await import('../server/models/subscriptionModel.js');
+const { getFileKeysForCompanyInDb } = await import('../server/models/filesModel.js');
+const { deleteS3Objects } = await import('../server/integrations/s3/deleteS3Objects.js');
 
 const deletedUser = {
   id: 'user-1',
@@ -77,5 +87,27 @@ describe('cleanupAfterUserDeletion', () => {
     expect(cancelCompanySubscriptionInStripe).not.toHaveBeenCalled();
     expect(deleteSubscriptionByCompanyId).toHaveBeenCalledWith(deletedUser.company_id);
     expect(deleteCompanyInDb).toHaveBeenCalledWith(deletedUser.company_id);
+  });
+
+  it('deletes the company file objects after the company rows are gone', async () => {
+    countUsersInDb.mockResolvedValue(0);
+    getSubscriptionDataInDb.mockResolvedValue(null);
+    getFileKeysForCompanyInDb.mockResolvedValue(['company-1/file-1/report.pdf', 'company-1/file-2/data.csv']);
+
+    await cleanupAfterUserDeletion(deletedUser);
+
+    expect(getFileKeysForCompanyInDb).toHaveBeenCalledWith(deletedUser.company_id);
+    expect(deleteS3Objects).toHaveBeenCalledWith(['company-1/file-1/report.pdf', 'company-1/file-2/data.csv']);
+    expect(deleteCompanyInDb).toHaveBeenCalledWith(deletedUser.company_id);
+  });
+
+  it('calls the bucket delete with an empty key list when the company has no files', async () => {
+    countUsersInDb.mockResolvedValue(0);
+    getSubscriptionDataInDb.mockResolvedValue(null);
+    getFileKeysForCompanyInDb.mockResolvedValue([]);
+
+    await cleanupAfterUserDeletion(deletedUser);
+
+    expect(deleteS3Objects).toHaveBeenCalledWith([]);
   });
 });

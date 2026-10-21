@@ -14,17 +14,17 @@ const roles = [
   {
     id: COMPANY_OWNER_ROLE_ID,
     name: 'company_owner',
-    permissions: ['team.view', 'team.invite', 'team.remove', 'team.manage_roles'],
+    permissions: ['team.view', 'team.invite', 'team.remove', 'team.manage_roles', 'files.view', 'files.upload', 'files.delete'],
   },
   {
     id: '00000000-0000-4000-8000-000000000002',
     name: 'company_admin',
-    permissions: ['team.view', 'team.invite', 'team.remove'],
+    permissions: ['team.view', 'team.invite', 'team.remove', 'files.view', 'files.upload', 'files.delete'],
   },
   {
     id: COMPANY_MEMBER_ROLE_ID,
     name: 'company_member',
-    permissions: ['team.view'],
+    permissions: ['team.view', 'files.view', 'files.upload'],
   },
 ];
 
@@ -33,6 +33,9 @@ const permissions = [
   { id: '00000000-0000-4000-8000-000000000102', name: 'team.invite' },
   { id: '00000000-0000-4000-8000-000000000103', name: 'team.remove' },
   { id: '00000000-0000-4000-8000-000000000104', name: 'team.manage_roles' },
+  { id: '00000000-0000-4000-8000-000000000105', name: 'files.view' },
+  { id: '00000000-0000-4000-8000-000000000106', name: 'files.upload' },
+  { id: '00000000-0000-4000-8000-000000000107', name: 'files.delete' },
 ];
 
 const companies = [

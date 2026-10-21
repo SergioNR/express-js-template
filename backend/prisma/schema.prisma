@@ -21,6 +21,7 @@ model User {
   Company             Company               @relation(fields: [company_id], references: [id])
   PasswordResetTokens PasswordResetTokens[]
   UserRoles           UserRole[]
+  File                File[]
 }
 
 model Company {
@@ -29,6 +30,7 @@ model Company {
   User         User[]
   Subscription Subscription[]
   TeamInvites  TeamInvites[]
+  File         File[]
   stripe_id    String?        @unique
   created_at   DateTime       @default(now())
   updated_at   DateTime       @default(now()) @updatedAt
@@ -106,6 +108,21 @@ model Subscription {
   created_at DateTime  @default(now())
   updated_at DateTime  @default(now()) @updatedAt
   expires_at DateTime?
+}
+
+model File {
+  id                String   @id @default(uuid())
+  company_id        String
+  Company           Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  uploaded_by       String?
+  User              User?    @relation(fields: [uploaded_by], references: [id], onDelete: SetNull)
+  s3_key            String   @unique
+  original_filename String
+  mime_type         String
+  size_bytes        Int
+  created_at        DateTime @default(now())
+
+  @@index([company_id, created_at])
 }
 
 enum UserRoles {

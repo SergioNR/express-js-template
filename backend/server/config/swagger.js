@@ -20,6 +20,7 @@ const swaggerOptions = {
       { name: 'Auth', description: 'Authentication and password management' },
       { name: 'User', description: 'Logged-in user profile management' },
       { name: 'Team', description: 'Company team and invite management' },
+      { name: 'Files', description: 'S3-backed company file uploads (only mounted when storage is configured)' },
       { name: 'Billing', description: 'Stripe subscription billing' },
       { name: 'Admin', description: 'Admin-only user management' },
       { name: 'Webhooks', description: 'Inbound third-party webhooks' },
@@ -179,6 +180,55 @@ const swaggerOptions = {
               type: 'string',
               minLength: 8,
               maxLength: 64,
+            },
+          },
+        },
+        FileUploadRequest: {
+          type: 'object',
+          required: ['filename', 'contentType', 'sizeBytes'],
+          properties: {
+            filename: {
+              type: 'string',
+              maxLength: 255,
+              description: 'Original file name (display metadata - the storage key is always derived server-side)',
+            },
+            contentType: {
+              type: 'string',
+              description: 'MIME type of the file - must be whitelisted via S3_ALLOWED_MIME_TYPES',
+            },
+            sizeBytes: {
+              type: 'integer',
+              minimum: 1,
+              description: 'Declared file size - capped by S3_MAX_FILE_SIZE_MB',
+            },
+          },
+        },
+        File: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+            },
+            original_filename: {
+              type: 'string',
+            },
+            mime_type: {
+              type: 'string',
+            },
+            size_bytes: {
+              type: 'integer',
+              description: 'Size declared by the client at upload-request time',
+            },
+            uploaded_by: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              description: 'Id of the uploading user - null once that user is deleted (files are company assets)',
+            },
+            created_at: {
+              type: 'string',
+              format: 'date-time',
             },
           },
         },

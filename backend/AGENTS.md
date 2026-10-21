@@ -51,7 +51,7 @@ Request flow: `server/app.js` → middlewares → routers → controllers → mo
 ## Validation
 
 - One express-validator schema per request shape in `server/utils/validators/`, mounted as `checkSchema(...)` followed by `sanitizerResult` (rejects with 422 before any controller runs).
-- Login, register, and password-reset routes get `authLimiter` (10 req / 15 min). Global limiter (100 req / 15 min) applies everywhere except local dev and docs.
+- Login, register, and invite-accept routes share the `authLimiter` budget (10 req / 15 min per IP). The password-reset request route gets its own `passwordResetLimiter` (5 req / 1 hour per IP) so reset emails are throttled independently of login failures. Global limiter (100 req / 15 min) applies everywhere except local dev and docs.
 
 ## Sessions & auth
 

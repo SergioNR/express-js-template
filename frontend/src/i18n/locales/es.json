@@ -577,6 +577,11 @@
       "submit": "Enviar invitación",
       "cancel": "Cancelar"
     },
+    "locked": {
+      "invite": "No tienes permiso para invitar miembros al equipo",
+      "remove": "No tienes permiso para eliminar miembros",
+      "manageRoles": "No tienes permiso para cambiar los roles de los miembros"
+    },
     "errors": {
       "loadError": "No se pudo cargar la información del equipo. Inténtalo de nuevo.",
       "inviteConflict": "Ese email ya está registrado o ya tiene una invitación pendiente.",

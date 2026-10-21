@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Box, Container, SimpleGrid, Stack, Group, Divider, Image, Text, Anchor } from '@mantine/core';
+import { Link } from 'react-router';
 import classes from './SiteFooter.module.css';
 
 export const SiteFooter = () => {
@@ -56,7 +57,9 @@ export const SiteFooter = () => {
               {col.links.map((link) => (
                 <Anchor
                   key={link.label}
-                  href={link.href}
+                  {...(link.href.startsWith('/')
+                    ? { component: Link, to: link.href }
+                    : { href: link.href })}
                   c="dimmed"
                   size="sm"
                   underline="hover"

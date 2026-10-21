@@ -11,6 +11,8 @@
 **/build
 **/obj
 **/.cache
+# Prisma client is generated inside the image - never copy a host build over it
+**/server/config/generated
 **/.next
 **/*.dbmdl
 **/*.jfm
@@ -35,6 +37,7 @@
 
 # Environment and Configuration Files
 **/.env
+**/.env.*
 **/.env.example
 **/secrets.dev.yaml
 **/values.dev.yaml

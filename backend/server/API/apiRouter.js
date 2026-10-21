@@ -5,8 +5,11 @@ import { authRouter } from './v1/routes/authRouter.js';
 import { adminRouter } from './v1/routes/adminRouter.js';
 import { billingRouter } from './v1/routes/billingRouter.js';
 import { teamRouter } from './v1/routes/teamRouter.js';
+import { filesRouter } from './v1/routes/filesRouter.js';
 import { checkAuthentication } from '../middlewares/authenticationChecker.js';
 import { checkPermissionByRole } from '../middlewares/permissionByRoleChecker.js';
+import { isS3Configured } from '../config/s3.js';
+import { logWarn } from '../config/loggerFunctions.js';
 
 export const apiRouter = Router();
 
@@ -43,6 +46,18 @@ apiRouter.use(
   checkPermissionByRole(adminRole),
   adminRouter,
 );
+
+//* File storage is an optional feature - without S3_BUCKET the router is
+//* never mounted and /api/v1/files falls through to the fallback 404 below
+if (isS3Configured()) {
+  apiRouter.use(
+    '/v1/files',
+    checkAuthentication(),
+    filesRouter,
+  );
+} else {
+  logWarn('S3 storage is not configured - /api/v1/files endpoints are disabled', new Error('S3_BUCKET is not set'));
+}
 
 apiRouter.use('/*fallback', (req, res) => {
   res.status(404).json({

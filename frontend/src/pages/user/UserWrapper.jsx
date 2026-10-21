@@ -1,7 +1,7 @@
 import { Outlet, Link } from 'react-router';
 import NavbarSimple from '../../components/partials/UserNavBar';
 import { useNavigate } from 'react-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../config/API/axiosConfig.mjs';
 import { usePostHog } from 'posthog-js/react';
@@ -20,12 +20,23 @@ const UserWrapper = () => {
   const [attempt, setAttempt] = useState(0);
   const [opened, { toggle }] = useDisclosure();
   const [userId, setUserId] = useState(null);
+  //* `navigate` changes identity on every pathname change; reading it through
+  //* a ref keeps the session check from re-running (and unmounting the whole
+  //* layout behind PageLoader) on each sidebar click
+  const navigateRef = useRef(navigate);
+
+  useEffect(() => {
+    navigateRef.current = navigate;
+  }, [navigate]);
 
   useEffect(() => {
     let cancelled = false;
 
     const checkSession = async () => {
-      setLoading(true);
+      //* The first check starts with loading=true; only retries flip back
+      if (attempt > 0) {
+        setLoading(true);
+      }
       setError(false);
 
       try {
@@ -37,7 +48,7 @@ const UserWrapper = () => {
 
         //* Superadmins have no company - their area is /admin
         if (response.data?.user?.role === 'superadmin') {
-          navigate('/admin', { replace: true });
+          navigateRef.current('/admin', { replace: true });
           return;
         }
 
@@ -51,7 +62,7 @@ const UserWrapper = () => {
         //* Only a rejected session sends the user to login; a network/server
         //* error keeps them here with a retry
         if (err?.response?.status === 401) {
-          navigate('/auth/login', { replace: true });
+          navigateRef.current('/auth/login', { replace: true });
         } else {
           setError(true);
           setLoading(false);
@@ -64,7 +75,7 @@ const UserWrapper = () => {
     return () => {
       cancelled = true;
     };
-  }, [navigate, attempt]);
+  }, [attempt]);
 
   useEffect(() => {
     if (userId) {

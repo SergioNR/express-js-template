@@ -1,5 +1,5 @@
 import { Outlet, useNavigate } from 'react-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Container } from '@mantine/core';
 import AdminNavBar from '../../components/partials/AdminNavBar.jsx';
 import apiClient from '../../config/API/axiosConfig.mjs';
@@ -12,6 +12,13 @@ export const AdminDashboardWrapper = () => {
   const [sessionUser, setSessionUser] = useState(null);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  //* `navigate` changes identity on every pathname change; reading it through
+  //* a ref keeps the session check from re-running on each admin navigation
+  const navigateRef = useRef(navigate);
+
+  useEffect(() => {
+    navigateRef.current = navigate;
+  }, [navigate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,7 +36,7 @@ export const AdminDashboardWrapper = () => {
         if (response.data?.user?.role === 'superadmin') {
           setSessionUser(response.data.user);
         } else {
-          navigate('/dashboard', { replace: true });
+          navigateRef.current('/dashboard', { replace: true });
         }
       } catch (err) {
         if (cancelled) {
@@ -39,7 +46,7 @@ export const AdminDashboardWrapper = () => {
         //* Only a rejected session sends the user to login; a network/server
         //* error keeps them here with a retry
         if (err?.response?.status === 401) {
-          navigate('/auth/login', { replace: true });
+          navigateRef.current('/auth/login', { replace: true });
         } else {
           setError(true);
         }
@@ -51,7 +58,7 @@ export const AdminDashboardWrapper = () => {
     return () => {
       cancelled = true;
     };
-  }, [navigate, attempt]);
+  }, [attempt]);
 
   if (error) {
     return <SessionCheckError onRetry={() => setAttempt((n) => n + 1)} />;

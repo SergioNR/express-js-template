@@ -204,14 +204,30 @@ describe('registerUser', () => {
     getUserByEmail.mockReturnValue(new Promise(() => {}));
     const res = mockRes();
 
-    await registerUser({ body: { username: 'new@acme.test', password: 'Password123' } }, res);
+    await registerUser({ body: { username: 'new@acme.test', companyName: 'Acme Corp', password: 'Password123' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith({});
     expect(createUserInDB).not.toHaveBeenCalled();
   });
 
-  it('creates the account in the background for a new email', async () => {
+  it('creates the account and its company in the background for a new email', async () => {
+    getUserByEmail.mockResolvedValue(null);
+    createUserInDB.mockResolvedValue({ id: 'new-user' });
+    const res = mockRes();
+
+    await registerUser({ body: { username: 'new@acme.test', companyName: 'Acme Corp', password: 'Password123' } }, res);
+    await waitUntilCalled(createUserInDB);
+
+    expect(createUserInDB).toHaveBeenCalledWith({
+      username: 'new@acme.test',
+      password: expect.stringMatching(/^\$2[aby]\$/),
+      companyName: 'Acme Corp',
+    });
+    expect(sendExistingAccountNoticeToUser).not.toHaveBeenCalled();
+  });
+
+  it('still creates an unnamed company for clients that omit the company name', async () => {
     getUserByEmail.mockResolvedValue(null);
     createUserInDB.mockResolvedValue({ id: 'new-user' });
     const res = mockRes();
@@ -219,15 +235,15 @@ describe('registerUser', () => {
     await registerUser({ body: { username: 'new@acme.test', password: 'Password123' } }, res);
     await waitUntilCalled(createUserInDB);
 
-    expect(createUserInDB).toHaveBeenCalledWith({ username: 'new@acme.test', password: expect.stringMatching(/^\$2[aby]\$/) });
-    expect(sendExistingAccountNoticeToUser).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(createUserInDB).toHaveBeenCalledWith(expect.objectContaining({ username: 'new@acme.test', companyName: undefined }));
   });
 
   it('sends the existing-account notice to the stored address and creates nothing', async () => {
     getUserByEmail.mockResolvedValue({ id: 'existing', email: 'stored@acme.test' });
     const res = mockRes();
 
-    await registerUser({ body: { username: 'stored@acme.test', password: 'Password123' } }, res);
+    await registerUser({ body: { username: 'stored@acme.test', companyName: 'Acme Corp', password: 'Password123' } }, res);
     await flushBackgroundWork();
 
     expect(res.status).toHaveBeenCalledWith(201);

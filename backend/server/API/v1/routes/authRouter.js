@@ -86,8 +86,16 @@ authRouter.post('/login', authLimiter, checkSchema(userLoginValidationSchema), s
  * /api/v1/auth/register:
  *   post:
  *     tags: [Auth]
- *     summary: Register a new user
- *     description: Creates a new user (always with the `user` role) and its company. Responds with the same 201 shape whether or not the email is already registered, so the endpoint cannot be used to enumerate accounts.
+ *     summary: Register a new user and their company (onboarding)
+ *     description: |
+ *       Self-service onboarding. In one transaction it creates:
+ *       - a new company named `companyName` (unnamed when omitted), with a 7-day free trial subscription
+ *       - the user, with the global `user` role, as that company's first member
+ *       - a `company_owner` role assignment for the user, which grants every company permission, billing included
+ *
+ *       Additional members join an existing company only through team invites (`POST /api/v1/auth/invite-accept`) and never become owners automatically.
+ *
+ *       The work runs after the response is sent. The 201 response is identical whether or not the email is already registered, so the endpoint cannot be used to enumerate accounts. An already-registered email receives an existing-account notice by email and no company is created.
  *     requestBody:
  *       required: true
  *       content:
@@ -96,7 +104,7 @@ authRouter.post('/login', authLimiter, checkSchema(userLoginValidationSchema), s
  *             $ref: '#/components/schemas/RegisterRequest'
  *     responses:
  *       201:
- *         description: User created successfully (or the email is already registered - the response is identical)
+ *         description: Registration accepted - the company and its owner are created (or the email is already registered - the response is identical)
  *         content:
  *           application/json:
  *             schema:

@@ -3,7 +3,7 @@ import { prisma } from '../server/config/prismaClient.js';
 import { BCRYPT_SALT_ROUNDS, FREE_TRIAL_DURATION_MS } from '../server/config/security.js';
 
 const ACME_COMPANY_ID = '5f8b7c2e-1d4a-4f6b-8c3a-2a1b3c4d5e6f';
-const GLOBEX_COMPANY_ID = '9e7d6c5b-4a3f-4e2d-1b0a-7f8e9d0a1b2c';
+const PLATFORM_COMPANY_ID = '3c2b1a0f-9e8d-4c7b-a6f5-e4d3c2b1a0f9';
 
 //* Role ids are only used when a role row does not exist yet (same
 //* deterministic UUIDs as the team_invites_rbac migration). Assignments always
@@ -43,41 +43,40 @@ const companies = [
     name: 'Acme Corp',
   },
   {
-    id: GLOBEX_COMPANY_ID,
-    name: 'Globex Industries',
+    //* Internal company holding the platform admin - User.company_id is
+    //* required, and keeping the admin out of tenant companies keeps it
+    //* out of their team lists
+    id: PLATFORM_COMPANY_ID,
+    name: 'Platform',
   },
 ];
 
+//* Mirrors the onboarding flow: the owner is the account that registered the
+//* company, the user is a regular member who joined it afterwards
 const users = [
   {
-    email: 'admin@acme.test',
+    email: 'owner@acme.test',
     password: 'Password123!',
-    role: 'admin',
+    role: 'user',
+    companyRole: 'company_owner',
     company_id: ACME_COMPANY_ID,
   },
   {
     email: 'user@acme.test',
     password: 'Password123!',
     role: 'user',
+    companyRole: 'company_member',
     company_id: ACME_COMPANY_ID,
   },
   {
-    email: 'admin@globex.test',
+    //* Platform admin: the global `admin` role unlocks /api/v1/admin
+    email: 'admin@platform.test',
     password: 'Password123!',
     role: 'admin',
-    company_id: GLOBEX_COMPANY_ID,
-  },
-  {
-    email: 'user@globex.test',
-    password: 'Password123!',
-    role: 'user',
-    company_id: GLOBEX_COMPANY_ID,
+    companyRole: 'company_owner',
+    company_id: PLATFORM_COMPANY_ID,
   },
 ];
-
-//* Mirrors the migration backfill: global admins are company owners,
-//* everyone else is a company member
-const companyRoleNameForUser = (user) => (user.role === 'admin' ? 'company_owner' : 'company_member');
 
 async function main() {
   const roleIdsByName = {};
@@ -143,14 +142,12 @@ async function main() {
   }
 
   for (const user of users) {
-    const { password, ...rest } = user;
+    const { password, companyRole: companyRoleName, ...rest } = user;
     const createdUser = await prisma.user.upsert({
       where: { email: user.email },
       update: {},
       create: { ...rest, password: await bcrypt.hash(password, BCRYPT_SALT_ROUNDS) },
     });
-
-    const companyRoleName = companyRoleNameForUser(user);
 
     //* Replace (not upsert) the user's company roles: v1 keeps exactly one
     //* role per user, so re-seeding must never leave duplicate role rows

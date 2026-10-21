@@ -93,10 +93,18 @@ const swaggerOptions = {
               format: 'email',
               description: 'The user email (the field is historically named username)',
             },
+            companyName: {
+              type: 'string',
+              minLength: 2,
+              maxLength: 100,
+              description: 'Name of the company created for the registrant (trimmed). The registrant becomes its company owner. Optional for backwards compatibility - when omitted (or null) the company is created unnamed',
+              example: 'Acme Corp',
+            },
             password: {
               type: 'string',
               minLength: 8,
               maxLength: 64,
+              description: 'At least one lowercase letter, one uppercase letter and one number',
             },
           },
         },

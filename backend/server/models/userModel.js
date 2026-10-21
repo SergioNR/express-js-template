@@ -16,6 +16,7 @@ export const createUserInDB = async (userData) => {
     companyId,
     roleId,
     inviteId,
+    companyName,
   } = userData;
 
   //* Invite acceptance path: the user joins an existing company with the
@@ -54,8 +55,9 @@ export const createUserInDB = async (userData) => {
     return invitedUser;
   }
 
-  //* Self-registration path: creates a brand-new company with a trial
-  //* subscription, and the registrant becomes its company owner
+  //* Self-registration (onboarding) path: creates a brand-new company with a
+  //* trial subscription in the same nested write, and the registrant - its
+  //* first user - becomes its company owner
   const ownerRole = await prisma.role.findUnique({
     where: {
       name: COMPANY_OWNER_ROLE,
@@ -69,6 +71,7 @@ export const createUserInDB = async (userData) => {
       role: 'user',
       Company: {
         create: {
+          name: companyName,
           Subscription: {
             create: {
               expires_at: new Date(Date.now() + FREE_TRIAL_DURATION_MS),
@@ -89,7 +92,7 @@ export const createUserInDB = async (userData) => {
 
   logInfo(`User ${createUserInDbQuery.id} (${createUserInDbQuery.role}) created in DB`, createUserInDbQuery);
 
-  posthogUserSignedUp(createUserInDbQuery, { createdCompany: true }); // Fire-and-forget
+  posthogUserSignedUp(createUserInDbQuery, { createdCompany: true, companyName }); // Fire-and-forget
 
   return createUserInDbQuery;
 };

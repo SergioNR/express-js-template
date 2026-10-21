@@ -10,6 +10,8 @@ import { indexRouter } from './routers/indexRouter.js';
 import { docsRouter } from './routers/docsRouter.js';
 import { limiter } from './middlewares/express-rate-limiter.js';
 import { slowLimiter } from './middlewares/express-slow-down.js';
+import { checkOrigin } from './middlewares/originChecker.js';
+import { checkJsonContentType } from './middlewares/jsonContentTypeChecker.js';
 import { startCronJobs } from './cron/jobsContainer.js';
 import { globalErrorHandler } from './middlewares/globalErrorHandler.js';
 import { webhookRouter } from './webhooks/webhooksRouter.js';
@@ -34,8 +36,12 @@ app.use('/webhooks', webhookRouter);
 //* so the documentation static assets are not throttled in production
 app.use('/api', docsRouter);
 
-//* Middleware to create parse request (read req.body from form data & JSON) & parse query
-app.use(express.urlencoded({ extended: false }));
+//* CSRF protection - state-changing requests must come from an allowed origin
+app.use(checkOrigin());
+
+//* Only JSON bodies are accepted on the API (no urlencoded/form parsing, so
+//* cross-site HTML forms cannot submit to it)
+app.use('/api', checkJsonContentType());
 app.use(express.json());
 
 //* Middleware to store sessions in DB

@@ -29,14 +29,6 @@ export const lockCompanyForUpdateInDb = async (tx, companyId) => {
   await tx.$queryRaw`SELECT "id" FROM "Company" WHERE "id" = ${companyId} FOR UPDATE`;
 };
 
-export const deleteCompanyInDb = async (companyId) => {
-  await prisma.company.delete({
-    where: {
-      id: companyId,
-    },
-  });
-};
-
 export const getAllCompaniesInDb = async (filters = {}, pagination = {}) => {
   const getAllCompaniesQuery = await prisma.company.findMany({
     where: filters,

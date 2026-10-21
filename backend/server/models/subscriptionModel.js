@@ -6,29 +6,6 @@ const subscriptionStateFields = {
   expires_at: true,
 };
 
-const buildSubscriptionUpsert = (subscriptionData) => ({
-  where: {
-    company_id: subscriptionData.companyId,
-  },
-  update: {
-    id: subscriptionData.subscriptionId,
-    expires_at: subscriptionData.expiresAt,
-  },
-  create: {
-    id: subscriptionData.subscriptionId,
-    company_id: subscriptionData.companyId,
-    expires_at: subscriptionData.expiresAt,
-  },
-});
-
-//* Upsert (instead of update) so Stripe event retries and first checkout for a
-//* company without a Subscription row are both handled idempotently. The row
-//* is never deleted when the Stripe subscription ends - expires_at moves to
-//* the end date instead, so the company keeps its row and can resubscribe
-export const upsertSubscriptionInDb = async (subscriptionData) => {
-  await prisma.subscription.upsert(buildSubscriptionUpsert(subscriptionData));
-};
-
 //* The Stripe call inside the lock can take a while, so the interactive
 //* transaction gets more than Prisma's 5s default before it is rolled back
 const SUBSCRIPTION_SYNC_TIMEOUT_MS = 20000;
@@ -57,11 +34,24 @@ export const syncSubscriptionWithCompanyLockInDb = async (companyId, resolveSubs
       return false;
     }
 
-    await tx.subscription.upsert(buildSubscriptionUpsert({
-      companyId,
-      subscriptionId: subscriptionWrite.subscriptionId,
-      expiresAt: subscriptionWrite.expiresAt,
-    }));
+    //* Upsert so Stripe event retries and the first checkout of a company
+    //* without a Subscription row are both handled idempotently. The row is
+    //* never deleted when the Stripe subscription ends - expires_at moves to
+    //* the end date instead, so the company keeps its row and can resubscribe
+    await tx.subscription.upsert({
+      where: {
+        company_id: companyId,
+      },
+      update: {
+        id: subscriptionWrite.subscriptionId,
+        expires_at: subscriptionWrite.expiresAt,
+      },
+      create: {
+        id: subscriptionWrite.subscriptionId,
+        company_id: companyId,
+        expires_at: subscriptionWrite.expiresAt,
+      },
+    });
 
     return true;
   }, {
@@ -172,14 +162,6 @@ export const getSubscriptionPublicDataInDb = async (companyId) => {
     is_paid: Boolean(id?.startsWith('sub_')),
     has_billing_id: Boolean(Company?.stripe_id),
   };
-};
-
-export const deleteSubscriptionByCompanyId = async (companyId) => {
-  await prisma.subscription.deleteMany({
-    where: {
-      company_id: companyId,
-    },
-  });
 };
 
 export const countTotalSubscriptionsInDb = async () => {

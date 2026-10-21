@@ -1,4 +1,45 @@
 import { Router } from 'express';
+import { getHealth } from '../controllers/healthController.js';
+
+//* Mounted in app.js before the rate limiters and slow-down: orchestrator
+//* probes poll frequently from a single IP and must never be throttled or
+//* delayed into a false "unhealthy"
+export const healthRouter = Router();
+
+/**
+ * @openapi
+ * /health:
+ *   get:
+ *     tags: [Health]
+ *     summary: Health check (database included)
+ *     description: Returns 200 when the server is up and the database answers a `SELECT 1`, 503 otherwise. Not rate limited - intended for container/orchestrator health probes.
+ *     responses:
+ *       200:
+ *         description: Server and database are healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   enum: [ok]
+ *             example:
+ *               status: ok
+ *       503:
+ *         description: Database unreachable
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   enum: [unavailable]
+ *             example:
+ *               status: unavailable
+ */
+healthRouter.get('/', getHealth);
 
 export const indexRouter = Router();
 
@@ -7,11 +48,11 @@ export const indexRouter = Router();
  * /:
  *   get:
  *     tags: [Health]
- *     summary: Health check
- *     description: Returns whether the server is up and able to handle requests.
+ *     summary: Liveness check
+ *     description: Returns whether the HTTP server is up. Does not touch the database - use `/health` for readiness.
  *     responses:
  *       200:
- *         description: Server is healthy
+ *         description: Server is up
  *         content:
  *           application/json:
  *             schema:

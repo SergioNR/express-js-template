@@ -6,7 +6,7 @@ import { corsMiddleware } from './middlewares/cors.js';
 import { helmetMiddleware } from './middlewares/helmet.js';
 import { apiRouter } from './API/apiRouter.js';
 import { storeSessions } from './middlewares/storeExpressSessions.js';
-import { indexRouter } from './routers/indexRouter.js';
+import { healthRouter, indexRouter } from './routers/indexRouter.js';
 import { docsRouter } from './routers/docsRouter.js';
 import { limiter } from './middlewares/express-rate-limiter.js';
 import { slowLimiter } from './middlewares/express-slow-down.js';
@@ -15,6 +15,7 @@ import { checkJsonContentType } from './middlewares/jsonContentTypeChecker.js';
 import { startCronJobs, stopCronJobs } from './cron/jobsContainer.js';
 import { globalErrorHandler } from './middlewares/globalErrorHandler.js';
 import { webhookRouter } from './webhooks/webhooksRouter.js';
+import { webhookLimiter } from './webhooks/webhookRateLimiter.js';
 import { trustProxySetting } from './config/trustProxy.js';
 import { prisma } from './config/prismaClient.js';
 import { client as posthogClient } from './config/posthog-node.js';
@@ -32,10 +33,15 @@ app.set('trust proxy', trustProxySetting);
 app.use(helmetMiddleware);
 app.use(corsMiddleware);
 
-//* Webhooks router - mounted before the rate limiters (Stripe retries must not
-//* be throttled), before the Origin check (Stripe sends no Origin header) and
-//* before express.json() (signature verification needs the raw body)
-app.use('/webhooks', webhookRouter);
+//* Health probe - mounted before every limiter so orchestrator polling is
+//* never throttled, and before sessions/body parsing so it stays cheap
+app.use('/health', healthRouter);
+
+//* Webhooks router - mounted before the global rate limiters (Stripe retries
+//* must not be throttled - it gets its own generous budget instead), before
+//* the Origin check (Stripe sends no Origin header) and before express.json()
+//* (signature verification needs the raw body)
+app.use('/webhooks', webhookLimiter, webhookRouter);
 
 //* API documentation (Swagger UI + raw OpenAPI spec) - mounted before rate limiters
 //* so the documentation static assets are not throttled in production

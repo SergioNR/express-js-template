@@ -37,6 +37,12 @@ export const webhookRouter = express.Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
+ *       429:
+ *         description: Webhook rate limit exceeded (300 requests / minute per IP)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
  */
 webhookRouter.post('/v1/stripe', express.raw({ type: 'application/json' }), stripeEventHandler);
 

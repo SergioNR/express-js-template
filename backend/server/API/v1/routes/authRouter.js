@@ -89,7 +89,7 @@ authRouter.post('/login', authLimiter, checkSchema(userLoginValidationSchema), s
  *     summary: Register a new user and their company (onboarding)
  *     description: |
  *       Self-service onboarding. In one transaction it creates:
- *       - a new company named `companyName`, with a 7-day free trial subscription
+ *       - a new company named `companyName` (unnamed when omitted), with a 7-day free trial subscription
  *       - the user, with the global `user` role, as that company's first member
  *       - a `company_owner` role assignment for the user, which grants every company permission, billing included
  *

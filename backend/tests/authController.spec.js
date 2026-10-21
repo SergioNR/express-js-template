@@ -227,6 +227,18 @@ describe('registerUser', () => {
     expect(sendExistingAccountNoticeToUser).not.toHaveBeenCalled();
   });
 
+  it('still creates an unnamed company for clients that omit the company name', async () => {
+    getUserByEmail.mockResolvedValue(null);
+    createUserInDB.mockResolvedValue({ id: 'new-user' });
+    const res = mockRes();
+
+    await registerUser({ body: { username: 'new@acme.test', password: 'Password123' } }, res);
+    await waitUntilCalled(createUserInDB);
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(createUserInDB).toHaveBeenCalledWith(expect.objectContaining({ username: 'new@acme.test', companyName: undefined }));
+  });
+
   it('sends the existing-account notice to the stored address and creates nothing', async () => {
     getUserByEmail.mockResolvedValue({ id: 'existing', email: 'stored@acme.test' });
     const res = mockRes();

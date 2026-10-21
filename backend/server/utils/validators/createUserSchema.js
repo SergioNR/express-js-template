@@ -36,16 +36,19 @@ export const createUserValidationSchema = {
       errorMessage: 'Email must not exceed 254 characters',
     },
   },
+  //* Optional so clients built before onboarding asked for it keep working -
+  //* without it the company is created unnamed. When sent it must be valid
   companyName: {
+    optional: {
+      options: {
+        values: 'null',
+      },
+    },
     isString: {
-      errorMessage: 'Company name is required',
+      errorMessage: 'Company name must be a string',
       bail: true,
     },
     trim: true,
-    notEmpty: {
-      errorMessage: 'Company name is required',
-      bail: true,
-    },
     isLength: {
       options: {
         min: 2,

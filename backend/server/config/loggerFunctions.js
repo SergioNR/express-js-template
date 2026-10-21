@@ -1,36 +1,57 @@
 import { logger } from './logger.js';
 import { sendErrorLogsToTelegram, sendInfoLogsToTelegram } from '../integrations/telegram/sendLogsToTelegram.js';
 
+//* Only a whitelist of error fields is logged - serializing the whole error
+//* object leaks whatever libraries attach to it (request bodies, headers,
+//* connection strings, Prisma query params, ...)
+export const serializeError = (error) => {
+  if (error === null || error === undefined) {
+    return { name: 'UnknownError', message: 'no error provided' };
+  }
+
+  if (typeof error !== 'object') {
+    return { name: 'NonErrorThrown', message: String(error) };
+  }
+
+  const serialized = {
+    name: error.name,
+    message: error.message,
+    code: error.code,
+    status: error.status ?? error.statusCode,
+    stack: error.stack,
+  };
+
+  return Object.fromEntries(Object.entries(serialized).filter(([, value]) => value !== undefined));
+};
+
 export const logError = (errorMessage, error, additionalInfo = 'N/A') => {
   try {
     logger.error({
       message: errorMessage,
       context: {
-        name: error.name,
-        errorMessage: error.message,
-        // errorStack: error.stack,
-        errorDetails: error, // I will log the entire error object for now just in case
+        errorDetails: serializeError(error),
         additionalInfo: additionalInfo,
       },
     });
 
-    sendErrorLogsToTelegram(errorMessage, error);
+    sendErrorLogsToTelegram(errorMessage, serializeError(error), additionalInfo);
   } catch {
     // Fail silently
   }
 };
 
 export const logWarn = async (message, error, additionalInfo = 'N/A') => {
-  logger.warn({
-    message: message,
-    context: {
-      name: error.name || 'no error name',
-      errorMessage: error.message || 'no error message',
-      errorStack: error.stack || 'no error stack',
-      errorDetails: error, // I will log the entire error object for now just in case
-      additionalInfo: additionalInfo,
-    },
-  });
+  try {
+    logger.warn({
+      message: message,
+      context: {
+        errorDetails: serializeError(error),
+        additionalInfo: additionalInfo,
+      },
+    });
+  } catch {
+    // Fail silently
+  }
 };
 
 export const logInfo = async (message, context = 'no context') => {

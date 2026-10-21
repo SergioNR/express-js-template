@@ -1,8 +1,7 @@
 import { BrevoClient } from '@getbrevo/brevo';
+import { requireEnv } from '../../../config/requiredEnv.js';
 
-if (!process.env.BREVO_API_KEY) {
-  throw new Error('BREVO_API_KEY environment variable is not set - refusing to start without transactional email delivery');
-}
+requireEnv('BREVO_API_KEY', 'refusing to start without transactional email delivery');
 
 export const brevoClient = new BrevoClient({
   apiKey: process.env.BREVO_API_KEY,

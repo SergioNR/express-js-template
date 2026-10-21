@@ -48,7 +48,7 @@ Request flow: `server/app.js` → middlewares → routers → controllers → mo
 - **Passwords**: bcrypt with `BCRYPT_SALT_ROUNDS` (12) from `config/security.js`. Queries returning users must `omit: { password: true }` (only `getUserPassword` selects it).
 - **Query whitelist**: never pass `req.query`/`req.body` through to Prisma — whitelist explicit fields (see `getAllUsers` role filter).
 - **Admin self-protection**: admins cannot delete their own account via `/api/v1/admin` (409) — route them to the user endpoint.
-- **Required env vars fail fast at startup** (pattern: `SESSION_SECRET` check in `storeExpressSessions.js`). `TRUST_PROXY` and `FRONT_WEB_APP_ORIGIN_URL` are required outside localhost; never hard-code `trust proxy`.
+- **Required env vars fail fast at startup** via `requireEnv(name, reason)` from `config/requiredEnv.js` — throws outside localhost, only warns on `DEPLOY_ENVIRONMENT=localhost` so local dev boots with any key unset. `TRUST_PROXY` and `FRONT_WEB_APP_ORIGIN_URL` are required outside localhost; never hard-code `trust proxy`.
 - New env vars must be added to `.env.example` and the README table in the same change.
 
 ## Validation

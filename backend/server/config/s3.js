@@ -1,4 +1,6 @@
 import { S3Client } from '@aws-sdk/client-s3';
+import { isLocalhost } from './requiredEnv.js';
+import { logWarn } from './loggerFunctions.js';
 
 //* S3-compatible storage singleton. The whole files feature is an optional
 //* feature flag: when S3_BUCKET is unset the files router is never mounted
@@ -28,7 +30,13 @@ if (isS3Configured()) {
   const missingVars = requiredVars.filter((varName) => !process.env[varName]);
 
   if (missingVars.length > 0) {
-    throw new Error(`S3_BUCKET is set but ${missingVars.join(', ')} are missing - refusing to start with a misconfigured S3 client`);
+    const message = `S3_BUCKET is set but ${missingVars.join(', ')} are missing - refusing to start with a misconfigured S3 client`;
+
+    if (!isLocalhost()) {
+      throw new Error(message);
+    }
+
+    logWarn(`${message} (ignored on localhost)`);
   }
 }
 

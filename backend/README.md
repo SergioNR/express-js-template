@@ -104,7 +104,7 @@ See `.env.example` for the full list. Key variables:
 | `NODE_ENV` | Node environment (`production` in the Docker image) |
 | `DEPLOY_ENVIRONMENT` | `localhost` for local development (disables global rate limiters, relaxes cookie flags, allows `localhost` dev-server origins, returns error details); any other value is treated as a deployed environment |
 | `TRUST_PROXY` | Express `trust proxy` setting: number of reverse-proxy hops in front of the app (e.g. `1`), `false` when the app is reached directly, or a comma-separated list of trusted addresses/subnets (e.g. `loopback, 10.0.0.0/8`). **Required** outside `DEPLOY_ENVIRONMENT=localhost` (defaults to `false` there); `true` is rejected because it lets clients spoof their IP and bypass rate limits |
-| `SESSION_SECRET` | Express session secret (required) |
+| `SESSION_SECRET` | Express session secret. **Required** outside `DEPLOY_ENVIRONMENT=localhost` — like every required key, a missing value only logs a warning on localhost (sessions fall back to a fixed dev secret) |
 | `PRISMA_POSTGRES_DIRECT_URL` / `PRISMA_POSTGRES_CONNECTION_STRING` | PostgreSQL connection strings (migrations / runtime). `PRISMA_POSTGRES_CONNECTION_STRING` is required at startup |
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Docker Compose database credentials |
 | `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_ID` | Stripe billing configuration |

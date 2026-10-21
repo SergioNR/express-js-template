@@ -6,6 +6,8 @@ import { IconLogout } from '@tabler/icons-react';
 import classes from '../partials/NavbarSimple.module.css';
 import { notifyError } from '../../utils/notifications.js';
 
+const analyticsEnabled = Boolean(import.meta.env.VITE_PUBLIC_POSTHOG_KEY);
+
 const LogOutButton = () => {
   const { t } = useTranslation();
   const posthog = usePostHog();
@@ -14,14 +16,17 @@ const LogOutButton = () => {
   const handleLogout = async () => {
     try {
       await apiClient.post('/api/v1/auth/logout');
-
-      // Reset PostHog to clear user session and prevent tracking continuity
-      posthog.reset();
-
-      navigate('/');
     } catch (error) {
       console.error('Logout failed:', error);
       notifyError(t('errors.logoutFailed'));
+    } finally {
+      // Reset PostHog to clear user session and prevent tracking continuity
+      if (analyticsEnabled) {
+        posthog?.reset();
+      }
+
+      // Leave the private area even when the server call failed
+      navigate('/');
     }
   };
 

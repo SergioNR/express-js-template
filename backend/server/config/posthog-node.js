@@ -7,6 +7,7 @@ const noopClient = {
   capture: () => {},
   groupIdentify: () => {},
   on: () => {},
+  shutdown: async () => {},
 };
 
 export const client = apiKey

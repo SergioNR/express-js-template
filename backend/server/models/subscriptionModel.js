@@ -3,45 +3,71 @@ import { stripeInstance } from '../config/stripe.js';
 import { logError } from '../config/loggerFunctions.js';
 
 //* Upsert (instead of update) so Stripe event retries and first checkout for a
-//* company without a Subscription row are both handled idempotently
-export const upsertSubscriptionInDb = async (checkoutSessionData) => {
+//* company without a Subscription row are both handled idempotently. The row
+//* is never deleted when the Stripe subscription ends - expires_at moves to
+//* the end date instead, so the company keeps its row and can resubscribe
+export const upsertSubscriptionInDb = async (subscriptionData) => {
   await prisma.subscription.upsert({
     where: {
-      company_id: checkoutSessionData.companyId,
+      company_id: subscriptionData.companyId,
     },
     update: {
-      id: checkoutSessionData.subscriptionId,
+      id: subscriptionData.subscriptionId,
+      expires_at: subscriptionData.expiresAt,
     },
     create: {
-      id: checkoutSessionData.subscriptionId,
-      company_id: checkoutSessionData.companyId,
+      id: subscriptionData.subscriptionId,
+      company_id: subscriptionData.companyId,
+      expires_at: subscriptionData.expiresAt,
     },
   });
 };
 
-export const storeBillingCompanyIdInDb = async (companyId, stripeCustomerId) => {
-  const whereClause = {
-    id: companyId,
-  };
+export const getCompanyStripeIdInDb = async (companyId) => {
+  const company = await prisma.company.findUnique({
+    where: {
+      id: companyId,
+    },
+    select: {
+      stripe_id: true,
+    },
+  });
 
-  const user = await prisma.company.update({
-    where: whereClause,
+  return company?.stripe_id ?? null;
+};
+
+//* Conditional write (only while stripe_id is still null) so two concurrent
+//* first checkouts cannot overwrite each other's customer id. Returns the
+//* customer id that ends up stored - on a lost race that is the winner's id
+export const storeBillingCompanyIdInDb = async (companyId, stripeCustomerId) => {
+  const updateResult = await prisma.company.updateMany({
+    where: {
+      id: companyId,
+      stripe_id: null,
+    },
     data: {
       stripe_id: stripeCustomerId,
     },
   });
 
-  return user;
+  if (updateResult.count === 1) {
+    return stripeCustomerId;
+  }
+
+  return getCompanyStripeIdInDb(companyId);
 };
 
-//* deleteMany (instead of delete) so repeated Stripe delivery attempts of
-//* `customer.subscription.deleted` do not fail on an already-deleted row
-export const deleteSubscriptionInDb = async (subscriptionDeletionData) => {
-  await prisma.subscription.deleteMany({
+export const getCompanyIdByStripeCustomerIdInDb = async (stripeCustomerId) => {
+  const company = await prisma.company.findUnique({
     where: {
-      id: subscriptionDeletionData.subscriptionId,
+      stripe_id: stripeCustomerId,
+    },
+    select: {
+      id: true,
     },
   });
+
+  return company?.id ?? null;
 };
 
 export const getSubscriptionDataInDb = async (companyId) => {

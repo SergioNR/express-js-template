@@ -1,10 +1,8 @@
 import {
-  countUsersWithCompanyRoleInDb,
-  deleteUserInDb,
   getCompanyMembersInDb,
   getOneCompanyMemberInDb,
   getUserByEmail,
-  updateUserCompanyRolesInDb,
+  updateCompanyMemberRoleInDb,
 } from '../models/userModel.js';
 import {
   createTeamInviteInDb,
@@ -12,6 +10,7 @@ import {
   getCompanyPendingInvitesInDb,
   getTeamInviteByCompanyAndEmailInDb,
   getTeamInviteByIdInDb,
+  rotateTeamInviteTokenInDb,
 } from '../models/teamInvitesModel.js';
 import {
   getAllPermissionNames,
@@ -21,11 +20,9 @@ import {
   getRoleByName,
 } from '../models/roleModel.js';
 import { getCompanyByIdInDb } from '../models/companyModel.js';
-import { cleanupAfterUserDeletion } from '../utils/userDeletionCleanup.js';
+import { deleteUserAndCleanup } from '../utils/userDeletionCleanup.js';
 import { canGrantRole, rolesGrantableBy } from '../utils/companyRoleHierarchy.js';
 import { sendTeamInviteToUser } from '../integrations/brevo/transactionalEmails/sendTeamInviteToUser.js';
-
-const COMPANY_OWNER_ROLE = 'company_owner';
 
 const toMemberShape = (member) => ({
   id: member.id,
@@ -35,10 +32,12 @@ const toMemberShape = (member) => ({
   companyRoles: member.UserRoles.map((userRole) => userRole.Role.name),
 });
 
-const toInviteShape = (invite, roleId) => ({
+//* Whitelisted shape - the token digest never reaches a response and the raw
+//* invite token only ever travels inside the invite email
+const toInviteShape = (invite, roleName) => ({
   id: invite.id,
   email: invite.email,
-  role: roleId,
+  role: roleName,
   token_expires: invite.token_expires,
   created_at: invite.created_at,
 });
@@ -125,10 +124,10 @@ export const createTeamInvite = async (req, res) => {
     }
   }
 
-  let invite;
+  let createdInvite;
 
   try {
-    invite = await createTeamInviteInDb({
+    createdInvite = await createTeamInviteInDb({
       email,
       companyId,
       roleId: role.id,
@@ -146,11 +145,13 @@ export const createTeamInvite = async (req, res) => {
     throw error;
   }
 
+  const { invite, inviteToken } = createdInvite;
+
   const company = await getCompanyByIdInDb(companyId);
 
   //* Fire-and-forget - the function swallows its own errors so an email
   //* provider outage never changes this response
-  sendTeamInviteToUser(email, invite.id, company?.name, inviterEmail);
+  sendTeamInviteToUser(invite.email, inviteToken, company?.name, inviterEmail);
 
   return res.status(201).json({
     invite: toInviteShape(invite, role.name),
@@ -185,18 +186,34 @@ export const resendTeamInvite = async (req, res) => {
     });
   }
 
-  //* Re-creating rotates the token (previous link becomes unusable) and
-  //* resets the expiry window
-  const rotatedInvite = await createTeamInviteInDb({
-    email: invite.email,
-    companyId,
-    roleId: invite.role_id,
-    invitedBy: inviterId,
-  });
+  let rotation;
+
+  try {
+    //* Single atomic UPDATE - the previous link stops working, the expiry
+    //* window resets and the invite id stays the same
+    rotation = await rotateTeamInviteTokenInDb(inviteId, companyId, inviterId);
+  } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(409).json({
+        message: 'The invite could not be rotated - please try again',
+      });
+    }
+
+    throw error;
+  }
+
+  if (!rotation) {
+    //* Revoked or accepted between the lookup and the rotation
+    return res.status(404).json({
+      message: 'Invite does not exist',
+    });
+  }
+
+  const { invite: rotatedInvite, inviteToken } = rotation;
 
   const company = await getCompanyByIdInDb(companyId);
 
-  sendTeamInviteToUser(invite.email, rotatedInvite.id, company?.name, inviterEmail); // Fire-and-forget
+  sendTeamInviteToUser(rotatedInvite.email, inviteToken, company?.name, inviterEmail); // Fire-and-forget
 
   return res.status(200).json({
     invite: toInviteShape(rotatedInvite, invite.Role.name),
@@ -221,12 +238,32 @@ export const revokeTeamInvite = async (req, res) => {
   return res.status(200).json({});
 };
 
+//* Non-superusers may only manage members whose every current role they
+//* could grant themselves - an admin can never demote or remove an owner.
+//* Returns the role names the caller may act on (undefined = unrestricted)
+const getManageableRoleNames = async (callerId, callerRole) => {
+  if (callerRole === 'admin') {
+    return undefined;
+  }
+
+  return rolesGrantableBy(await getUserCompanyRoleNames(callerId));
+};
+
+const outranksCaller = (targetMember, manageableRoleNames) => {
+  if (!manageableRoleNames) {
+    return false;
+  }
+
+  return targetMember.UserRoles.some((userRole) => !manageableRoleNames.includes(userRole.Role.name));
+};
+
 export const removeTeamMember = async (req, res) => {
   const { userId } = req.params;
 
   const {
     company_id: companyId,
     id: callerId,
+    role: callerRole,
   } = req.user;
 
   if (userId === callerId) {
@@ -249,23 +286,39 @@ export const removeTeamMember = async (req, res) => {
     });
   }
 
-  const targetRoleNames = targetMember.UserRoles.map((userRole) => userRole.Role.name);
+  const manageableRoleNames = await getManageableRoleNames(callerId, callerRole);
 
-  if (targetRoleNames.includes(COMPANY_OWNER_ROLE)) {
-    const ownerCount = await countUsersWithCompanyRoleInDb(COMPANY_OWNER_ROLE, companyId);
-
-    if (ownerCount <= 1) {
-      return res.status(409).json({
-        message: 'The last company owner cannot be removed',
-      });
-    }
+  if (outranksCaller(targetMember, manageableRoleNames)) {
+    return res.status(403).json({
+      message: 'You cannot remove a member whose role outranks your own',
+    });
   }
 
-  const deletedUser = await deleteUserInDb(userId);
+  //* The rank and last-owner checks are repeated inside the transaction,
+  //* under the company lock, together with the delete itself
+  const deletionResult = await deleteUserAndCleanup(userId, {
+    companyId,
+    protectLastOwner: true,
+    allowedTargetRoleNames: manageableRoleNames,
+  });
 
-  //* Revokes the removed member's active sessions and handles company
-  //* cleanup when they were the last member
-  await cleanupAfterUserDeletion(deletedUser);
+  if (deletionResult.status === 'not_found') {
+    return res.status(404).json({
+      message: 'Member not found in your company',
+    });
+  }
+
+  if (deletionResult.status === 'forbidden') {
+    return res.status(403).json({
+      message: 'You cannot remove a member whose role outranks your own',
+    });
+  }
+
+  if (deletionResult.status === 'last_owner') {
+    return res.status(409).json({
+      message: 'The last company owner cannot be removed',
+    });
+  }
 
   return res.status(200).json({
     userId,
@@ -310,31 +363,45 @@ export const updateTeamMemberRole = async (req, res) => {
     });
   }
 
-  if (callerRole !== 'admin') {
-    const callerRoleNames = await getUserCompanyRoleNames(callerId);
+  const manageableRoleNames = await getManageableRoleNames(callerId, callerRole);
 
-    if (!canGrantRole(callerRoleNames, roleName)) {
-      return res.status(403).json({
-        message: 'You can only assign roles you hold yourself',
-      });
-    }
+  if (manageableRoleNames && !manageableRoleNames.includes(roleName)) {
+    return res.status(403).json({
+      message: 'You can only assign roles you hold yourself',
+    });
   }
 
-  const targetRoleNames = targetMember.UserRoles.map((userRole) => userRole.Role.name);
-
-  if (targetRoleNames.includes(COMPANY_OWNER_ROLE) && roleName !== COMPANY_OWNER_ROLE) {
-    const ownerCount = await countUsersWithCompanyRoleInDb(COMPANY_OWNER_ROLE, companyId);
-
-    if (ownerCount <= 1) {
-      return res.status(409).json({
-        message: 'The last company owner cannot be demoted',
-      });
-    }
+  if (outranksCaller(targetMember, manageableRoleNames)) {
+    return res.status(403).json({
+      message: 'You cannot change the role of a member whose role outranks your own',
+    });
   }
 
-  const updatedMember = await updateUserCompanyRolesInDb(userId, role.id);
+  //* The rank and last-owner checks are repeated inside the transaction,
+  //* under the company lock, together with the write itself
+  const updateResult = await updateCompanyMemberRoleInDb(userId, companyId, role, {
+    allowedTargetRoleNames: manageableRoleNames,
+  });
+
+  if (updateResult.status === 'not_found') {
+    return res.status(404).json({
+      message: 'Member not found in your company',
+    });
+  }
+
+  if (updateResult.status === 'forbidden') {
+    return res.status(403).json({
+      message: 'You cannot change the role of a member whose role outranks your own',
+    });
+  }
+
+  if (updateResult.status === 'last_owner') {
+    return res.status(409).json({
+      message: 'The last company owner cannot be demoted',
+    });
+  }
 
   return res.status(200).json({
-    member: toMemberShape(updatedMember),
+    member: toMemberShape(updateResult.member),
   });
 };

@@ -1,11 +1,14 @@
+import { SECURE_TOKEN_PATTERN } from '../secureToken.js';
+
 export const passwordResetTokenQuerySchema = {
   passwordResetToken: {
     in: ['query'],
     notEmpty: {
       errorMessage: 'Token is required',
     },
-    isUUID: {
-      errorMessage: 'Password reset token must be a valid UUID',
+    matches: {
+      options: SECURE_TOKEN_PATTERN,
+      errorMessage: 'Password reset token is malformed',
     },
   },
 };

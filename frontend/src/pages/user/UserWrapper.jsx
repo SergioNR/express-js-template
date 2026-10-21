@@ -19,17 +19,28 @@ const UserWrapper = () => {
   const [userId, setUserId] = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     const checkSession = async () => {
       try {
-        const response = await apiClient.get(`/api/v1/auth/session`);
-        setUserId(response.data.user.id);
-        setLoading(false);
+        const response = await apiClient.get('/api/v1/auth/session');
+
+        if (!cancelled) {
+          setUserId(response.data.user.id);
+          setLoading(false);
+        }
       } catch {
-        navigate('/auth/login');
+        if (!cancelled) {
+          navigate('/auth/login', { replace: true });
+        }
       }
     };
 
     checkSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   useEffect(() => {
@@ -37,6 +48,12 @@ const UserWrapper = () => {
       posthog?.identify(userId, {});
     }
   }, [userId, posthog]);
+
+  //* Nothing (including SubscriptionProvider's billing fetch) mounts until the
+  //* session check passes
+  if (loading) {
+    return <PageLoader />;
+  }
 
   return (
     <SubscriptionProvider>
@@ -79,7 +96,7 @@ const UserWrapper = () => {
         </AppShell.Navbar>
 
         <AppShell.Main>
-          {loading ? <PageLoader /> : <Outlet />}
+          <Outlet />
         </AppShell.Main>
       </AppShell>
     </SubscriptionProvider>

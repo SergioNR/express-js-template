@@ -26,7 +26,6 @@ export const createTeamInviteSchema = {
       },
       errorMessage: 'Email must not exceed 254 characters',
     },
-    escape: true,
   },
   roleName: {
     in: ['body'],

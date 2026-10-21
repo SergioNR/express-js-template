@@ -1,17 +1,8 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import PropTypes from 'prop-types';
 import apiClient from '../config/API/axiosConfig.mjs';
-
-const SubscriptionContext = createContext(null);
-
-export const useSubscription = () => {
-  const ctx = useContext(SubscriptionContext);
-  if (!ctx) {
-    throw new Error('useSubscription must be used within SubscriptionProvider');
-  }
-  return ctx;
-};
+import { SubscriptionContext } from './useSubscription.js';
 
 export const SubscriptionProvider = ({ children }) => {
   const { t } = useTranslation();
@@ -69,4 +60,4 @@ SubscriptionProvider.propTypes = {
   children: PropTypes.node.isRequired,
 };
 
-export default SubscriptionContext;
+export default SubscriptionProvider;

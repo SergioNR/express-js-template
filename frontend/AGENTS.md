@@ -38,10 +38,10 @@ Rules describe how this codebase is written today. Follow them for all new and m
 - Every page renders `<Seo>` (`src/components/Seo.jsx`, React 19 meta hoisting): public pages pass `title`/`description`/`path`; internal pages pass `title` only. Static defaults live in `index.html`.
 - Full-page/wrapper loads → `PageLoader` (`src/components/PageLoader.jsx`); in-content loads → inline `Skeleton` (`UserDashboard.jsx` is the reference).
 - `ErrorBoundary` (`src/components/ErrorBoundary.jsx`, wired in `main.jsx` via `RoutedErrorBoundary`) catches render errors app-wide, shows the Spanish fallback and reports to PostHog when analytics are enabled; navigation resets it.
-- Server state pattern: context provider + `useX()` hook + `refresh` function (`SubscriptionContext.jsx` is the reference). No global state library.
+- Server state pattern: context provider + `useX()` hook + `refresh` function (`SubscriptionContext.jsx` + `useSubscription.js` is the reference — keep the context object and hook out of the `.jsx` provider file for Fast Refresh). No global state library.
 
 ## Environment & build
 
 - Vite vars are `VITE_*`, baked at build time (Docker `ARG`s). New vars must be added to `.env.example` and the README table.
-- Prod bundle: `vite build` → `dist/`, served by nginx (`nginx.conf`, SPA history fallback). Image builds via the `docker-build:*` scripts.
+- Prod bundle: `vite build` → `dist/` (fails without `VITE_SITE_BASE_URL`), served by unprivileged nginx on port 8080 (`nginx/default.conf.template` + `nginx/security-headers.inc.template`, rendered by envsubst; SPA history fallback, CSP/security headers). Any `location` that sets `add_header` must re-include `security-headers.inc`. Image builds via the `docker-build:*` scripts.
 - No test framework yet — do not invent one without discussion.

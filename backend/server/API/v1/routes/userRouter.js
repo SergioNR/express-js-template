@@ -65,6 +65,7 @@ userRouter.get('/', getUserProfile);
  *   delete:
  *     tags: [User]
  *     summary: Delete the logged-in user account
+ *     description: Deletes the account and revokes its sessions in one transaction; when the user was the last company member the company, its subscription, invites and files are removed too (the Stripe subscription is cancelled at period end and bucket objects deleted after the commit). The last company owner cannot delete their account while other members remain (409, code `USER_LAST_COMPANY_OWNER`) - they must promote another owner first.
  *     security:
  *       - sessionCookie: []
  *     responses:
@@ -80,8 +81,14 @@ userRouter.get('/', getUserProfile);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
+ *       404:
+ *         description: User no longer exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
  *       409:
- *         description: User deletion failed - related DB entries exist
+ *         description: Caller is the last company owner while other members remain (code `USER_LAST_COMPANY_OWNER`), or related DB entries exist (nothing was deleted)
  *         content:
  *           application/json:
  *             schema:

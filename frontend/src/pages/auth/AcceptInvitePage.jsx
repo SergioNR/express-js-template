@@ -41,7 +41,10 @@ export function AcceptInvitePage() {
       }
 
       try {
-        const response = await apiClient.get(`/api/v1/auth/invite?inviteToken=${inviteToken}`);
+        // `params` URL-encodes the opaque token
+        const response = await apiClient.get('/api/v1/auth/invite', {
+          params: { inviteToken },
+        });
 
         setInviteData(response.data);
       } catch (err) {

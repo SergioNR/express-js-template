@@ -1,4 +1,6 @@
 import { S3Client } from '@aws-sdk/client-s3';
+import { isLocalhost } from './requiredEnv.js';
+import { logWarn } from './loggerFunctions.js';
 
 //* S3-compatible storage singleton. The whole files feature is an optional
 //* feature flag: when S3_BUCKET is unset the files router is never mounted
@@ -28,7 +30,13 @@ if (isS3Configured()) {
   const missingVars = requiredVars.filter((varName) => !process.env[varName]);
 
   if (missingVars.length > 0) {
-    throw new Error(`S3_BUCKET is set but ${missingVars.join(', ')} are missing - refusing to start with a misconfigured S3 client`);
+    const message = `S3_BUCKET is set but ${missingVars.join(', ')} are missing - refusing to start with a misconfigured S3 client`;
+
+    if (!isLocalhost()) {
+      throw new Error(message);
+    }
+
+    logWarn(`${message} (ignored on localhost)`);
   }
 }
 
@@ -39,6 +47,10 @@ export const s3Client = isS3Configured()
     region: process.env.S3_REGION,
     endpoint: process.env.S3_ENDPOINT || undefined,
     forcePathStyle: process.env.S3_FORCE_PATH_STYLE !== 'false', //* Path-style by default so MinIO-compatible endpoints work out of the box
+    //* Default flexible checksums sign an empty-body CRC32 into presigned PUT
+    //* URLs, which makes S3 reject the browser's real upload
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED',
     credentials: {
       accessKeyId: process.env.S3_ACCESS_KEY_ID,
       secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,

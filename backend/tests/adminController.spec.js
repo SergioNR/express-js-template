@@ -1,7 +1,6 @@
 import { jest } from '@jest/globals';
 
 jest.unstable_mockModule('../server/models/userModel.js', () => ({
-  deleteUserInDb: jest.fn(),
   getAllUsersInDb: jest.fn(),
   countUsersInDb: jest.fn(),
   getUserById: jest.fn(),
@@ -25,7 +24,7 @@ jest.unstable_mockModule('../server/models/sessionModel.js', () => ({
 }));
 
 jest.unstable_mockModule('../server/utils/userDeletionCleanup.js', () => ({
-  cleanupAfterUserDeletion: jest.fn().mockResolvedValue(undefined),
+  deleteUserAndCleanup: jest.fn(),
 }));
 
 const {
@@ -37,7 +36,6 @@ const {
   getOneUserById,
 } = await import('../server/controllers/adminController.js');
 const {
-  deleteUserInDb,
   getAllUsersInDb,
   countUsersInDb,
   getUserById,
@@ -56,7 +54,7 @@ const {
   countActiveSessionsInDb,
   countActiveSessionsByUserInDb,
 } = await import('../server/models/sessionModel.js');
-const { cleanupAfterUserDeletion } = await import('../server/utils/userDeletionCleanup.js');
+const { deleteUserAndCleanup } = await import('../server/utils/userDeletionCleanup.js');
 
 const mockRes = () => {
   const res = {
@@ -183,7 +181,7 @@ describe('deleteOneUserById', () => {
     await deleteOneUserById({ params: { userId: 'admin-1' }, user: { id: 'admin-1' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(409);
-    expect(deleteUserInDb).not.toHaveBeenCalled();
+    expect(deleteUserAndCleanup).not.toHaveBeenCalled();
   });
 
   it('returns 404 when the user does not exist', async () => {
@@ -193,30 +191,47 @@ describe('deleteOneUserById', () => {
     await deleteOneUserById({ params: { userId: 'ghost' }, user: { id: 'admin-1' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(404);
+    expect(deleteUserAndCleanup).not.toHaveBeenCalled();
   });
 
-  it('deletes, runs the shared cleanup and returns the deleted id', async () => {
+  it('runs the transactional deletion without the last-owner guard and returns the deleted id', async () => {
     getUserById.mockResolvedValue({ id: 'user-1' });
-    deleteUserInDb.mockResolvedValue({ id: 'user-1', company_id: 'company-1' });
+    deleteUserAndCleanup.mockResolvedValue({ status: 'deleted', deletedUser: { id: 'user-1', company_id: 'company-1' } });
     const res = mockRes();
 
     await deleteOneUserById({ params: { userId: 'user-1' }, user: { id: 'admin-1' } }, res);
 
-    expect(cleanupAfterUserDeletion).toHaveBeenCalledWith({ id: 'user-1', company_id: 'company-1' });
+    expect(deleteUserAndCleanup).toHaveBeenCalledWith('user-1');
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'user-1' }),
-    );
+    expect(res.json).toHaveBeenCalledWith({ userId: 'user-1' });
   });
 
-  it('maps the Prisma FK constraint error to 409', async () => {
+  it('returns 404 when the user vanished before the transaction', async () => {
     getUserById.mockResolvedValue({ id: 'user-1' });
-    deleteUserInDb.mockRejectedValue(Object.assign(new Error('fk'), { code: 'P2003' }));
+    deleteUserAndCleanup.mockResolvedValue({ status: 'not_found' });
+    const res = mockRes();
+
+    await deleteOneUserById({ params: { userId: 'user-1' }, user: { id: 'admin-1' } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('maps the Prisma FK constraint error of the deletion to 409', async () => {
+    getUserById.mockResolvedValue({ id: 'user-1' });
+    deleteUserAndCleanup.mockRejectedValue(Object.assign(new Error('fk'), { code: 'P2003' }));
     const res = mockRes();
 
     await deleteOneUserById({ params: { userId: 'user-1' }, user: { id: 'admin-1' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(409);
+  });
+
+  it('forwards errors that are not FK violations', async () => {
+    getUserById.mockResolvedValue({ id: 'user-1' });
+    deleteUserAndCleanup.mockRejectedValue(new Error('db down'));
+    const res = mockRes();
+
+    await expect(deleteOneUserById({ params: { userId: 'user-1' }, user: { id: 'admin-1' } }, res)).rejects.toThrow('db down');
   });
 });
 

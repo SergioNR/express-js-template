@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { IconArrowLeft } from '@tabler/icons-react';
+import { IconAlertCircle, IconArrowLeft, IconCheck } from '@tabler/icons-react';
 import {
+  Alert,
   Anchor,
   Box,
   Button,
@@ -35,7 +36,7 @@ const ForgotPasswordForm = () => {
       setRecoverPasswordResponse(response.data);
       setRecoverPasswordError(null);
     } catch (error) {
-      setRecoverPasswordError({ message: t('auth.recover.error') });
+      setRecoverPasswordError(true);
       console.error('Error al recuperar la contraseña:', error);
       setRecoverPasswordResponse(null);
     }
@@ -53,15 +54,15 @@ const ForgotPasswordForm = () => {
       </Text>
 
       {recoverPasswordResponse && (
-        <Paper shadow="xs" p={10} mt={20} radius="sm" style={{ backgroundColor: '#ccffcc' }}>
+        <Alert icon={<IconCheck size={16} />} color="green" mt={20}>
           {t('auth.recover.success')}
-        </Paper>
+        </Alert>
       )}
 
       {recoverPasswordError && (
-        <Paper shadow="xs" p={10} mt={20} radius="sm" style={{ backgroundColor: '#ffcccc' }}>
-          {recoverPasswordError.message}
-        </Paper>
+        <Alert icon={<IconAlertCircle size={16} />} color="red" mt={20}>
+          {t('auth.recover.error')}
+        </Alert>
       )}
 
       <Paper withBorder shadow="md" p={30} radius="md" mt="xl">

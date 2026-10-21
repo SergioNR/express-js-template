@@ -34,16 +34,16 @@ export const PricingPage = () => {
                 p="lg"
                 style={{ width: '100%', height: '100%', textAlign: 'center' }}
               >
-                <Title order={3} mb="md">{plan.name}</Title>
+                <Title order={3} mb="md">{t(`index.pricing.plans.${plan.id}.name`)}</Title>
 
                 <Text c="dimmed" size="sm" mb="md">
-                  {plan.subtitle}
+                  {t(`index.pricing.plans.${plan.id}.subtitle`)}
                 </Text>
 
                 <List spacing="sm" size="sm" mb="xl" style={{ textAlign: 'left', display: 'inline-block' }}>
-                  {plan.features.map((feature, index) => (
+                  {t(`index.pricing.plans.${plan.id}.features`, { returnObjects: true }).map((feature) => (
                     <List.Item
-                      key={index}
+                      key={feature}
                       icon={
                         <ThemeIcon size={20} radius="xl" color="green">
                           ✓

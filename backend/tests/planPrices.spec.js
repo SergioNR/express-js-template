@@ -44,6 +44,16 @@ describe('planPrices', () => {
     expect(getStripePriceId('basic', 'yearly')).toBe('price_fallback');
   });
 
+  it('supports the pro plan advertised on the pricing page for both billing cycles', async () => {
+    process.env.STRIPE_PRICE_ID_PRO_MONTHLY = 'price_pro_monthly';
+    process.env.STRIPE_PRICE_ID_PRO_YEARLY = 'price_pro_yearly';
+
+    const { getStripePriceId } = await import('../server/config/planPrices.js');
+
+    expect(getStripePriceId('pro', 'monthly')).toBe('price_pro_monthly');
+    expect(getStripePriceId('pro', 'yearly')).toBe('price_pro_yearly');
+  });
+
   it('falls back to STRIPE_PRICE_ID for plans without a specific override', async () => {
     process.env.STRIPE_PRICE_ID = 'price_fallback';
 

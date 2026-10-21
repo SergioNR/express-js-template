@@ -7,9 +7,15 @@ import {
   getCompanySubscriptionData,
 } from '../../../controllers/billingController.js';
 import { sanitizerResult } from '../../../middlewares/sanitizerResult.js';
+import { checkCompanyPermission } from '../../../middlewares/companyPermissionChecker.js';
 import { checkoutSessionSchema } from '../../../utils/validators/checkoutSessionSchema.js';
 
 export const billingRouter = Router();
+
+//* Authentication and the global role happen at the apiRouter mounting level.
+//* Reading the subscription status is open to every company member; anything
+//* that creates Stripe objects requires the `billing.manage` company permission
+const requireBillingManage = checkCompanyPermission('billing.manage');
 
 /**
  * @openapi
@@ -17,6 +23,7 @@ export const billingRouter = Router();
  *   get:
  *     tags: [Billing]
  *     summary: Get the subscription data of the user's company
+ *     description: Readable by every member of the company - no company permission required.
  *     security:
  *       - sessionCookie: []
  *     responses:
@@ -67,7 +74,7 @@ billingRouter.get('/', getCompanySubscriptionData);
  *   post:
  *     tags: [Billing]
  *     summary: Create a Stripe customer for the user's company
- *     description: Creates a Stripe customer id for the logged-in user's company and stores it. Fails if the company already has a billing id.
+ *     description: Creates a Stripe customer id for the logged-in user's company and stores it. Fails if the company already has a billing id. Requires the `billing.manage` company permission (global admins bypass permission checks).
  *     security:
  *       - sessionCookie: []
  *     responses:
@@ -83,8 +90,8 @@ billingRouter.get('/', getCompanySubscriptionData);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
- *       404:
- *         description: No subscription found for the company
+ *       403:
+ *         description: Missing the `billing.manage` company permission
  *         content:
  *           application/json:
  *             schema:
@@ -96,7 +103,7 @@ billingRouter.get('/', getCompanySubscriptionData);
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  */
-billingRouter.post('/', createCompanyBillingId);
+billingRouter.post('/', requireBillingManage, createCompanyBillingId);
 
 /**
  * @openapi
@@ -104,7 +111,7 @@ billingRouter.post('/', createCompanyBillingId);
  *   post:
  *     tags: [Billing]
  *     summary: Create a Stripe checkout session
- *     description: Creates a Stripe checkout session for the user's company and returns its URL for redirecting the user.
+ *     description: Creates a Stripe checkout session for the user's company and returns its URL for redirecting the user. The Stripe customer is created on first use. Refused while the company has an active Stripe subscription. Requires the `billing.manage` company permission (global admins bypass permission checks).
  *     security:
  *       - sessionCookie: []
  *     requestBody:
@@ -138,12 +145,24 @@ billingRouter.post('/', createCompanyBillingId);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
- *       404:
- *         description: No subscription found for the company
+ *       403:
+ *         description: Missing the `billing.manage` company permission
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
+ *       409:
+ *         description: The company already has an active Stripe subscription (`code` = `SUBSCRIPTION_ACTIVE`) - manage or change it through the customer portal instead
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 code:
+ *                   type: string
+ *                   enum: [SUBSCRIPTION_ACTIVE]
  *       422:
  *         description: Validation errors - unknown plan or billing cycle
  *         content:
@@ -151,7 +170,7 @@ billingRouter.post('/', createCompanyBillingId);
  *             schema:
  *               $ref: '#/components/schemas/ValidationError'
  */
-billingRouter.post('/checkout-session', checkSchema(checkoutSessionSchema), sanitizerResult, getBillingCheckoutSessionUrl);
+billingRouter.post('/checkout-session', requireBillingManage, checkSchema(checkoutSessionSchema), sanitizerResult, getBillingCheckoutSessionUrl);
 
 /**
  * @openapi
@@ -159,7 +178,7 @@ billingRouter.post('/checkout-session', checkSchema(checkoutSessionSchema), sani
  *   post:
  *     tags: [Billing]
  *     summary: Create a Stripe customer portal session
- *     description: Creates a Stripe customer portal session for the user's company and returns its URL for managing the subscription.
+ *     description: Creates a Stripe customer portal session for the user's company and returns its URL for managing the subscription. Works whenever the company has a Stripe customer, including after the subscription ended. Requires the `billing.manage` company permission (global admins bypass permission checks).
  *     security:
  *       - sessionCookie: []
  *     responses:
@@ -179,8 +198,8 @@ billingRouter.post('/checkout-session', checkSchema(checkoutSessionSchema), sani
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
- *       404:
- *         description: No subscription found for the company
+ *       403:
+ *         description: Missing the `billing.manage` company permission
  *         content:
  *           application/json:
  *             schema:
@@ -192,7 +211,7 @@ billingRouter.post('/checkout-session', checkSchema(checkoutSessionSchema), sani
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  */
-billingRouter.post('/customer-portal', getBillingCustomerPortalUrl);
+billingRouter.post('/customer-portal', requireBillingManage, getBillingCustomerPortalUrl);
 
 billingRouter.use('/*fallback', (req, res) => {
   res.status(404).json({

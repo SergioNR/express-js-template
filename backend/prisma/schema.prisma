@@ -63,8 +63,8 @@ model RolePermission {
 model UserRole {
   user_id String
   role_id String
-  User    User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  Role    Role  @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  User    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  Role    Role   @relation(fields: [role_id], references: [id], onDelete: Cascade)
 
   @@id([user_id, role_id])
 }
@@ -75,9 +75,11 @@ model TeamInvites {
   company_id    String
   role_id       String
   invited_by    String
+  //* sha256 hex of the emailed secret token - the raw token is never stored
+  token_hash    String   @unique
   token_expires DateTime
   created_at    DateTime @default(now())
-  Company       Company  @relation(fields: [company_id], references: [id])
+  Company       Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
   Role          Role     @relation(fields: [role_id], references: [id])
 
   @@unique([company_id, email])
@@ -87,13 +89,15 @@ model PasswordResetTokens {
   id            String   @id @unique @default(uuid())
   User          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   user_id       String
+  //* sha256 hex of the emailed secret token - the raw token is never stored
+  token_hash    String   @unique
   token_expires DateTime
   created_at    DateTime @default(now())
 }
 
 model Session {
-  id        String    @id
-  sid       String    @unique
+  id        String   @id
+  sid       String   @unique
   data      String
   expiresAt DateTime
   user_id   String?
@@ -111,18 +115,27 @@ model Subscription {
 }
 
 model File {
-  id                String   @id @default(uuid())
+  id                String     @id @default(uuid())
   company_id        String
-  Company           Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  Company           Company    @relation(fields: [company_id], references: [id], onDelete: Cascade)
   uploaded_by       String?
-  User              User?    @relation(fields: [uploaded_by], references: [id], onDelete: SetNull)
-  s3_key            String   @unique
+  User              User?      @relation(fields: [uploaded_by], references: [id], onDelete: SetNull)
+  s3_key            String     @unique
   original_filename String
   mime_type         String
   size_bytes        Int
-  created_at        DateTime @default(now())
+  //* Rows start pending and only become ready once the uploaded object was
+  //* verified against the declared size and MIME type (confirm endpoint)
+  status            FileStatus @default(pending)
+  created_at        DateTime   @default(now())
 
   @@index([company_id, created_at])
+  @@index([status, created_at])
+}
+
+enum FileStatus {
+  pending
+  ready
 }
 
 enum UserRoles {

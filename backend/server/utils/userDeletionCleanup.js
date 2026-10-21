@@ -1,43 +1,48 @@
-import { deleteUserSessions } from '../models/sessionModel.js';
-import { countUsersInDb } from '../models/userModel.js';
-import { deleteCompanyInDb } from '../models/companyModel.js';
-import { getFileKeysForCompanyInDb } from '../models/filesModel.js';
+import { deleteUserWithCompanyDataInDb } from '../models/userModel.js';
 import { deleteS3Objects } from '../integrations/s3/deleteS3Objects.js';
-import {
-  cancelCompanySubscriptionInStripe,
-  deleteSubscriptionByCompanyId,
-  getSubscriptionDataInDb,
-} from '../models/subscriptionModel.js';
+import { cancelCompanySubscriptionInStripe } from '../models/subscriptionModel.js';
+import { logError } from '../config/loggerFunctions.js';
 
-//* Side effects shared by self- and admin-triggered user deletion:
-//* - revoke all of the user's sessions
-//* - when the last user of a company is gone, cancel its Stripe subscription
-//*   (at period end) and remove the company's subscription + company rows,
-//*   together with the company's file objects in the bucket
-export const cleanupAfterUserDeletion = async (deletedUser) => {
-  await deleteUserSessions(deletedUser.id);
-
-  const remainingUsers = await countUsersInDb({
-    company_id: deletedUser.company_id,
-  });
-
-  if (remainingUsers > 0) {
+//* Third-party side effects of a committed deletion. They run strictly after
+//* the DB transaction so a rollback can never leave a cancelled Stripe
+//* subscription or deleted bucket objects behind for a still-existing
+//* company. Both calls are best-effort and never throw, so a provider outage
+//* cannot flip an already-committed deletion into an error response
+export const cleanupAfterUserDeletion = async (deletionResult) => {
+  if (!deletionResult?.companyDeleted) {
     return;
   }
 
-  const subscriptionData = await getSubscriptionDataInDb(deletedUser.company_id);
-
-  if (subscriptionData) {
-    await cancelCompanySubscriptionInStripe(subscriptionData);
+  try {
+    if (deletionResult.subscription) {
+      await cancelCompanySubscriptionInStripe(deletionResult.subscription);
+    }
+  } catch (error) {
+    logError(`Stripe cancellation after deleting user ${deletionResult.deletedUser?.id} failed`, error);
   }
 
-  await deleteSubscriptionByCompanyId(deletedUser.company_id);
+  try {
+    await deleteS3Objects(deletionResult.fileKeys ?? []);
+  } catch (error) {
+    logError(`Bucket cleanup after deleting user ${deletionResult.deletedUser?.id} failed`, error);
+  }
+};
 
-  //* The company delete cascades the File rows - the keys must be collected
-  //* first so the bucket objects can be cleaned up after the rows are gone
-  const companyFileKeys = await getFileKeysForCompanyInDb(deletedUser.company_id);
+//* Shared by self-, team- and admin-triggered deletion:
+//* 1. one DB transaction removes the user, revokes their sessions and - when
+//*    they were the last member - removes the company's subscription,
+//*    invites, files and company rows (see deleteUserWithCompanyDataInDb)
+//* 2. after the commit, the Stripe subscription is cancelled at period end
+//*    and the company's bucket objects are deleted
+//* DB errors (e.g. P2003) propagate from step 1 only - step 2 never throws,
+//* so callers can map DB errors without misreporting a committed delete.
+//* Resolves to the model's result ({ status, ... })
+export const deleteUserAndCleanup = async (userId, options = {}) => {
+  const deletionResult = await deleteUserWithCompanyDataInDb(userId, options);
 
-  await deleteCompanyInDb(deletedUser.company_id);
+  if (deletionResult.status === 'deleted') {
+    await cleanupAfterUserDeletion(deletionResult);
+  }
 
-  await deleteS3Objects(companyFileKeys);
+  return deletionResult;
 };

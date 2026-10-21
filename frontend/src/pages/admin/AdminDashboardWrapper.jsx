@@ -8,24 +8,39 @@ import { SiteFooter } from '../../components/partials/SiteFooter';
 
 export const AdminDashboardWrapper = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     const checkAuth = async () => {
       try {
-        await apiClient.get(`/api/v1/auth/session`);
+        const response = await apiClient.get('/api/v1/auth/session');
 
-        setLoading(false);
+        if (cancelled) {
+          return;
+        }
+
+        if (response.data?.user?.role === 'admin') {
+          setAuthorized(true);
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
       } catch {
-        setLoading(false);
-        navigate('/auth/login');
+        if (!cancelled) {
+          navigate('/auth/login', { replace: true });
+        }
       }
     };
 
     checkAuth();
+
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
-  if (loading) {
+  if (!authorized) {
     return <PageLoader />;
   }
 

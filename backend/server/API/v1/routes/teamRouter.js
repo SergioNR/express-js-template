@@ -124,7 +124,7 @@ teamRouter.get('/', checkCompanyPermission('team.view'), getTeamData);
  *   post:
  *     tags: [Team]
  *     summary: Invite a new member to the caller's company by email
- *     description: Creates a tokenized team invite (valid for 7 days) and emails the invite link. Requires the `team.invite` company permission; the inviter must hold the invited role themselves unless they are a global admin. The endpoint is authenticated, so a registered email is answered with an explicit 409.
+ *     description: Creates a team invite (valid for 7 days) and emails the invite link. The secret invite token only travels inside the email - it is never part of any API response (only its sha256 digest is stored); `id` is the public handle for resend/revoke. Requires the `team.invite` company permission; the inviter must hold the invited role themselves unless they are a global admin. The endpoint is authenticated, so a registered email is answered with an explicit 409.
  *     security:
  *       - sessionCookie: []
  *     requestBody:
@@ -194,7 +194,7 @@ teamRouter.post('/invites', checkCompanyPermission('team.invite'), createInviteV
  *   post:
  *     tags: [Team]
  *     summary: Resend a pending invite
- *     description: Rotates the invite token (the previous link becomes unusable), resets the 7-day expiry and re-sends the email. Requires the `team.invite` company permission. Only invites of the caller's company can be resent.
+ *     description: Atomically rotates the secret invite token (the previous link becomes unusable), resets the 7-day expiry and re-sends the email. The invite id is unchanged and the token is never returned. Requires the `team.invite` company permission. Only invites of the caller's company can be resent.
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -215,6 +215,21 @@ teamRouter.post('/invites', checkCompanyPermission('team.invite'), createInviteV
  *               properties:
  *                 invite:
  *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     email:
+ *                       type: string
+ *                       format: email
+ *                     role:
+ *                       type: string
+ *                     token_expires:
+ *                       type: string
+ *                       format: date-time
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
  *       401:
  *         description: Not authenticated
  *         content:
@@ -234,7 +249,7 @@ teamRouter.post('/invites', checkCompanyPermission('team.invite'), createInviteV
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  *       409:
- *         description: Email became registered in the meantime - the invite was revoked
+ *         description: Email became registered in the meantime (the invite was revoked), or the token rotation collided - retry
  *         content:
  *           application/json:
  *             schema:
@@ -305,7 +320,7 @@ teamRouter.delete('/invites/:inviteId', checkCompanyPermission('team.invite'), i
  *   delete:
  *     tags: [Team]
  *     summary: Remove a member from the caller's company
- *     description: Deletes the member's account, revokes their active sessions and runs company cleanup when they were the last member. Requires the `team.remove` company permission. Self-removal, removing a global admin and removing the last company owner are rejected with 409. Only members of the caller's company can be removed.
+ *     description: Deletes the member's account, revokes their active sessions and runs company cleanup when they were the last member. Requires the `team.remove` company permission; unless they are a global admin, the caller must be able to grant every role the member currently holds (an admin cannot remove an owner). Self-removal, removing a global admin and removing the last company owner are rejected with 409. The last-owner check and the deletion run atomically. Only members of the caller's company can be removed.
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -334,7 +349,7 @@ teamRouter.delete('/invites/:inviteId', checkCompanyPermission('team.invite'), i
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  *       403:
- *         description: Missing permissions
+ *         description: Missing permissions, or the member holds a role that outranks the caller
  *         content:
  *           application/json:
  *             schema:
@@ -366,7 +381,7 @@ teamRouter.delete('/members/:userId', checkCompanyPermission('team.remove'), use
  *   patch:
  *     tags: [Team]
  *     summary: Change a member's company role
- *     description: Replaces the member's company role with the given one. Requires the `team.manage_roles` company permission; the caller must hold the target role themselves unless they are a global admin. Self-change, changing a global admin's role and demoting the last company owner are rejected with 409. Only members of the caller's company can be changed.
+ *     description: Replaces the member's company role with the given one. Requires the `team.manage_roles` company permission; unless they are a global admin, the caller must hold the target role themselves and be able to grant every role the member currently holds (an admin cannot demote an owner). The last-owner check and the write run atomically. Self-change, changing a global admin's role and demoting the last company owner are rejected with 409. Only members of the caller's company can be changed.
  *     security:
  *       - sessionCookie: []
  *     parameters:
@@ -414,7 +429,7 @@ teamRouter.delete('/members/:userId', checkCompanyPermission('team.remove'), use
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  *       403:
- *         description: Missing permissions, or the caller does not hold the target role
+ *         description: Missing permissions, the caller does not hold the target role, or the member holds a role that outranks the caller
  *         content:
  *           application/json:
  *             schema:

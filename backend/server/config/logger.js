@@ -6,6 +6,11 @@ const redactOptions = {
     'context.password',
     'context.inviteToken',
     'context.userData.inviteToken',
+    //* Request bodies (e.g. body-parser errors carry the raw body, which can
+    //* contain passwords) must never reach the logs
+    'context.errorDetails.body',
+    'context.*.body',
+    'context.body',
   ],
   censor: '[REDACTED]',
 };

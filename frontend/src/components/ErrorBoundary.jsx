@@ -16,7 +16,10 @@ export class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error) {
-    posthog.captureException(error);
+    // posthog is only initialised when a key is configured (see main.jsx)
+    if (import.meta.env.VITE_PUBLIC_POSTHOG_KEY) {
+      posthog.captureException(error);
+    }
   }
 
   componentDidUpdate(prevProps) {

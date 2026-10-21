@@ -1,21 +1,24 @@
-# Use the latest Docker syntax parser
 # syntax=docker/dockerfile:1
 
-# Define a build argument for Node.js version, defaulting to 22.14.0
+# Define a build argument for Node.js version
 ARG NODE_VERSION=26
 
 # Use official Node.js Alpine Linux image with the specified version
 FROM node:${NODE_VERSION}-alpine
 
+# Production mode for every library that checks NODE_ENV (express, etc.)
+ENV NODE_ENV=production
+
 # Set the working directory inside the container
 WORKDIR /usr/src/app
 
-# Install dependencies using package.json and package-lock.json
+# Install production dependencies only (prisma CLI + tsx are runtime
+# dependencies: start.sh runs `prisma migrate deploy` and the server runs via tsx)
 # Uses bind mounts for the files and a cache mount for npm
 RUN --mount=type=bind,source=package.json,target=package.json \
     --mount=type=bind,source=package-lock.json,target=package-lock.json \
     --mount=type=cache,target=/root/.npm \
-    npm ci --omit-dev --force
+    npm ci --omit=dev
 
 # Copy Prisma schema and CLI config files into the container
 COPY prisma ./prisma/
@@ -37,5 +40,5 @@ USER node
 # Declare that the container will listen on port 3000
 EXPOSE 3000
 
-# Set the default command to run the local startup script
-CMD ["./start.sh"] 
+# Set the default command to run the production startup script
+CMD ["./start.sh"]

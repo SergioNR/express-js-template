@@ -26,14 +26,19 @@ export const createFileInDb = async (fileData) => {
   return createFileQuery;
 };
 
+//* Only verified uploads are listed - pending rows are invisible until the
+//* confirm endpoint checked the stored object
 export const getFilesInDb = async (companyId, pagination = {}) => {
   const getFilesQuery = await prisma.file.findMany({
     where: {
       company_id: companyId,
+      status: 'ready',
     },
-    orderBy: {
-      created_at: 'desc',
-    },
+    //* id tiebreaker keeps the cursor order total when created_at collides
+    orderBy: [
+      { created_at: 'desc' },
+      { id: 'desc' },
+    ],
     take: pagination.limit,
     skip: pagination.cursor ? 1 : undefined,
     cursor: pagination.cursor ? { id: pagination.cursor } : undefined,
@@ -42,12 +47,14 @@ export const getFilesInDb = async (companyId, pagination = {}) => {
   return getFilesQuery;
 };
 
-//* Scoped by company so one company can never act on another's files
-export const getFileByIdInDb = async (fileId, companyId) => {
+//* Scoped by company so one company can never act on another's files.
+//* `status` optionally narrows the lookup (e.g. downloads only see ready files)
+export const getFileByIdInDb = async (fileId, companyId, status = undefined) => {
   const getFileByIdQuery = await prisma.file.findFirst({
     where: {
       id: fileId,
       company_id: companyId,
+      ...(status ? { status } : {}),
     },
   });
 
@@ -78,4 +85,42 @@ export const getFileKeysForCompanyInDb = async (companyId) => {
   });
 
   return getFileKeysQuery.map((file) => file.s3_key);
+};
+
+//* Conditional transition so a row the cleanup job removed concurrently is
+//* never resurrected. Returns the updated row, or null when it was not pending
+export const markFileReadyInDb = async (fileId) => {
+  const updateResult = await prisma.file.updateMany({
+    where: {
+      id: fileId,
+      status: 'pending',
+    },
+    data: {
+      status: 'ready',
+    },
+  });
+
+  if (updateResult.count !== 1) {
+    return null;
+  }
+
+  return prisma.file.findUnique({
+    where: {
+      id: fileId,
+    },
+  });
+};
+
+//* Deletes pending rows older than the cutoff in a single statement and
+//* returns their keys, so the bucket objects of exactly those rows can be
+//* removed afterwards (a row confirmed meanwhile is untouched). Prisma
+//* stores UTC wall time in timestamp(3) columns, hence the ISO -> timestamp cast
+export const deleteStalePendingFilesInDb = async (createdBefore) => {
+  const deletedRows = await prisma.$queryRaw`
+    DELETE FROM "File"
+    WHERE "status" = 'pending' AND "created_at" < ${createdBefore.toISOString()}::timestamp
+    RETURNING "s3_key"
+  `;
+
+  return deletedRows.map((row) => row.s3_key);
 };

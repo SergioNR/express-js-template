@@ -10,32 +10,50 @@ import { indexRouter } from './routers/indexRouter.js';
 import { docsRouter } from './routers/docsRouter.js';
 import { limiter } from './middlewares/express-rate-limiter.js';
 import { slowLimiter } from './middlewares/express-slow-down.js';
-import { startCronJobs } from './cron/jobsContainer.js';
+import { checkOrigin } from './middlewares/originChecker.js';
+import { checkJsonContentType } from './middlewares/jsonContentTypeChecker.js';
+import { startCronJobs, stopCronJobs } from './cron/jobsContainer.js';
 import { globalErrorHandler } from './middlewares/globalErrorHandler.js';
 import { webhookRouter } from './webhooks/webhooksRouter.js';
+import { trustProxySetting } from './config/trustProxy.js';
+import { prisma } from './config/prismaClient.js';
+import { client as posthogClient } from './config/posthog-node.js';
+import { logError, logInfo } from './config/loggerFunctions.js';
 
 const app = express();
 const server = createServer(app);
 
-//* Trust the reverse proxy so req.ip / req.protocol reflect the client
-app.set('trust proxy', 1);
+//* Trust exactly the reverse proxy hops declared in TRUST_PROXY so req.ip /
+//* req.protocol reflect the client and rate limits cannot be bypassed by
+//* forging X-Forwarded-For
+app.set('trust proxy', trustProxySetting);
 
 //* Middleware for ExpressJS securization
 app.use(helmetMiddleware);
 app.use(corsMiddleware);
-app.use(cookieParserMiddleware);
-if (process.env.DEPLOY_ENVIRONMENT !== 'localhost') app.use(slowLimiter);
-if (process.env.DEPLOY_ENVIRONMENT !== 'localhost') app.use(limiter);
 
-//* Webhooks router
+//* Webhooks router - mounted before the rate limiters (Stripe retries must not
+//* be throttled), before the Origin check (Stripe sends no Origin header) and
+//* before express.json() (signature verification needs the raw body)
 app.use('/webhooks', webhookRouter);
 
 //* API documentation (Swagger UI + raw OpenAPI spec) - mounted before rate limiters
 //* so the documentation static assets are not throttled in production
 app.use('/api', docsRouter);
 
-//* Middleware to create parse request (read req.body from form data & JSON) & parse query
-app.use(express.urlencoded({ extended: false }));
+//* Global limiter first so requests over budget are rejected immediately
+//* instead of being held by the slow-down delay
+if (process.env.DEPLOY_ENVIRONMENT !== 'localhost') app.use(limiter);
+if (process.env.DEPLOY_ENVIRONMENT !== 'localhost') app.use(slowLimiter);
+
+//* CSRF protection - state-changing requests must come from an allowed origin
+app.use(checkOrigin());
+
+app.use(cookieParserMiddleware);
+
+//* Only JSON bodies are accepted on the API (no urlencoded/form parsing, so
+//* cross-site HTML forms cannot submit to it)
+app.use('/api', checkJsonContentType());
 app.use(express.json());
 
 //* Middleware to store sessions in DB
@@ -60,28 +78,46 @@ if (!Number.isInteger(PORT) || PORT <= 0) {
 }
 
 server.listen(Number.isInteger(PORT) && PORT > 0 ? PORT : 3000, () => {
-// eslint-disable-next-line no-console
+  // eslint-disable-next-line no-console
   console.log('Server running');
 });
 
 startCronJobs();
 
-const gracefulShutdown = () => {
-  console.log('Received shutdown signal, closing server...');
+const SHUTDOWN_TIMEOUT_MS = 10000;
+let isShuttingDown = false;
 
-  server.close(() => {
-    console.log('Express server closed');
-    // TODO - Close other resources (database connections, etc.)
-    // ...
-    process.exit(0);
-  });
+const closeResources = async () => {
+  const results = await Promise.allSettled([
+    posthogClient.shutdown(), //* Flush queued analytics events
+    prisma.$disconnect(),
+  ]);
 
-  // Force shutdown after timeout
-  setTimeout(() => {
-    console.error('Could not close connections in time, forcefully shutting down');
-    process.exit(1);
-  }, 10000);
+  results
+    .filter((result) => result.status === 'rejected')
+    .forEach((result) => logError('Error closing resources during shutdown', result.reason));
 };
 
-process.on('SIGINT', gracefulShutdown);
-process.on('SIGTERM', gracefulShutdown);
+const gracefulShutdown = (signal) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  logInfo(`Received ${signal}, closing server`);
+
+  stopCronJobs();
+
+  //* Force shutdown after timeout - unref'd so it never keeps the process alive
+  setTimeout(() => {
+    logError('Could not close connections in time, forcefully shutting down', new Error('Shutdown timeout'));
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS).unref();
+
+  server.close(async () => {
+    await closeResources();
+    logInfo('Server closed gracefully');
+    process.exit(0);
+  });
+};
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

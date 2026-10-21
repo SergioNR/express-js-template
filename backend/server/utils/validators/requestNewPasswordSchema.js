@@ -18,6 +18,5 @@ export const requestNewPasswordSchema = {
         icloud_remove_subaddress: true,
       },
     },
-    escape: true,
   },
 };

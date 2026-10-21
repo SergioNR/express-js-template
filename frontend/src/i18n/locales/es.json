@@ -97,7 +97,13 @@
       "backToLogin": "Volver al inicio de sesión",
       "invalidLinkTitle": "Enlace inválido",
       "invalidLinkBody": "El enlace para restablecer la contraseña es inválido o ha expirado. Por favor, solicita un nuevo enlace.",
-      "requestNewLink": "Solicitar nuevo enlace"
+      "requestNewLink": "Solicitar nuevo enlace",
+      "errors": {
+        "expired": "El enlace ha caducado o ya se ha usado. Solicita un nuevo enlace para restablecer tu contraseña.",
+        "invalidLink": "El enlace no es válido. Solicita un nuevo enlace para restablecer tu contraseña.",
+        "invalid": "La contraseña no cumple los requisitos o las contraseñas no coinciden. Revisa los datos e inténtalo de nuevo.",
+        "generic": "No se pudo actualizar la contraseña. Por favor, inténtalo de nuevo más tarde."
+      }
     },
     "passwordUpdate": {
       "title": "Cambiar contraseña",
@@ -223,7 +229,20 @@
     },
     "pricing": {
       "title": "Planes y precios",
-      "subtitle": "Un único plan simple para empezar hoy mismo. Sin complicaciones, cancela cuando quieras."
+      "subtitle": "Un único plan simple para empezar hoy mismo. Sin complicaciones, cancela cuando quieras.",
+      "plans": {
+        "pro": {
+          "name": "Pro",
+          "subtitle": "Todo lo que necesitas para empezar a trabajar con nuestra plataforma.",
+          "features": [
+            "Acceso completo a la plataforma",
+            "Colaboración ilimitada con tu equipo",
+            "Integraciones con herramientas de terceros",
+            "Soporte prioritario por correo electrónico",
+            "RGPD - Alojado en la UE"
+          ]
+        }
+      }
     },
     "terms": {
       "title": "Términos y Condiciones de Uso",
@@ -287,9 +306,6 @@
   "user": {
     "panelTitle": "Panel de control",
     "backToSite": "Volver al sitio",
-    "profile": {
-      "loadError": "No se pudo cargar tu perfil. Por favor, inténtalo de nuevo más tarde."
-    },
     "noSubscriptionBanner": {
       "title": "Suscripción inactiva",
       "body": "No tienes una suscripción activa. Activa un plan para continuar usando la plataforma.",
@@ -349,7 +365,15 @@
       "title": "Acciones de la cuenta",
       "description": "Gestiona las opciones y preferencias de tu cuenta",
       "delete": "Eliminar mi cuenta",
-      "deleteError": "No se pudo eliminar tu cuenta. Por favor, inténtalo de nuevo."
+      "deleteError": "No se pudo eliminar tu cuenta. Por favor, inténtalo de nuevo.",
+      "deleteConfirmModal": {
+        "title": "Eliminar cuenta",
+        "description": "Se eliminará tu cuenta y se cerrarán todas tus sesiones. Esta acción no se puede deshacer.",
+        "cancel": "Cancelar",
+        "confirm": "Eliminar mi cuenta"
+      },
+      "deletedToast": "Tu cuenta se ha eliminado correctamente.",
+      "deleteLastOwner": "Eres el único propietario de la empresa y aún hay otros miembros. Asigna el rol de propietario a otro miembro antes de eliminar tu cuenta."
     }
   },
   "billing": {
@@ -373,11 +397,15 @@
       "portalDisabled": "Disponible después de iniciar tu primera suscripción"
     },
     "errors": {
-      "existingSubscription": "El usuario ya tiene una suscripción existente",
       "invalid": "Los datos de la solicitud no son válidos. Por favor, inténtalo de nuevo.",
       "load": "No se pudo obtener la información de la suscripción",
       "checkout": "Se ha producido un error generando el enlace de pago. Por favor, inténtalo más tarde",
-      "portal": "Se ha producido un error obteniendo el área de usuario. Por favor, inténtalo más tarde"
+      "portal": "Se ha producido un error obteniendo el área de usuario. Por favor, inténtalo más tarde",
+      "forbidden": "Solo el propietario de la empresa puede gestionar la facturación.",
+      "subscriptionActive": "Tu empresa ya tiene una suscripción activa. Gestiónala desde el portal del cliente."
+    },
+    "locked": {
+      "manage": "Solo el propietario de la empresa puede gestionar la facturación"
     }
   },
   "admin": {
@@ -490,8 +518,7 @@
   },
   "loading": {
     "default": "Cargando...",
-    "billing": "Cargando información de facturación...",
-    "user": "Cargando usuario..."
+    "billing": "Cargando información de facturación..."
   },
   "errors": {
     "logoutFailed": "No se pudo cerrar la sesión. Por favor, inténtalo de nuevo."
@@ -575,7 +602,8 @@
       "role": "Rol",
       "rolePlaceholder": "Selecciona un rol",
       "submit": "Enviar invitación",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "roleRequired": "Selecciona un rol para la invitación"
     },
     "locked": {
       "invite": "No tienes permiso para invitar miembros al equipo",

@@ -1,3 +1,5 @@
+import { SECURE_TOKEN_PATTERN } from '../secureToken.js';
+
 export const acceptTeamInviteSchema = {
   inviteToken: {
     in: ['body'],
@@ -7,8 +9,9 @@ export const acceptTeamInviteSchema = {
     isString: {
       errorMessage: 'Team invite token must be a string',
     },
-    isUUID: {
-      errorMessage: 'Team invite token must be a valid UUID',
+    matches: {
+      options: SECURE_TOKEN_PATTERN,
+      errorMessage: 'Team invite token is malformed',
     },
   },
   password: {

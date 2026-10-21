@@ -101,15 +101,27 @@ See `.env.example` for the full list. Key variables:
 
 | Variable | Purpose |
 | --- | --- |
-| `SESSION_SECRET` | Express session secret |
-| `PRISMA_POSTGRES_DIRECT_URL` / `PRISMA_POSTGRES_CONNECTION_STRING` | PostgreSQL connection strings |
+| `NODE_ENV` | Node environment (`production` in the Docker image) |
+| `DEPLOY_ENVIRONMENT` | `localhost` for local development (disables global rate limiters, relaxes cookie flags, allows `localhost` dev-server origins, returns error details); any other value is treated as a deployed environment |
+| `TRUST_PROXY` | Express `trust proxy` setting: number of reverse-proxy hops in front of the app (e.g. `1`), `false` when the app is reached directly, or a comma-separated list of trusted addresses/subnets (e.g. `loopback, 10.0.0.0/8`). **Required** outside `DEPLOY_ENVIRONMENT=localhost` (defaults to `false` there); `true` is rejected because it lets clients spoof their IP and bypass rate limits |
+| `SESSION_SECRET` | Express session secret. **Required** outside `DEPLOY_ENVIRONMENT=localhost` — like every required key, a missing value only logs a warning on localhost (sessions fall back to a fixed dev secret) |
+| `PRISMA_POSTGRES_DIRECT_URL` / `PRISMA_POSTGRES_CONNECTION_STRING` | PostgreSQL connection strings (migrations / runtime). `PRISMA_POSTGRES_CONNECTION_STRING` is required at startup |
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Docker Compose database credentials |
 | `STRIPE_API_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_ID` | Stripe billing configuration |
+| `STRIPE_PRICE_ID_BASIC_MONTHLY` / `STRIPE_PRICE_ID_BASIC_YEARLY` | Stripe price ids for the Basic plan (monthly / yearly billing) |
+| `STRIPE_PRICE_ID_PRO_MONTHLY` / `STRIPE_PRICE_ID_PRO_YEARLY` | Stripe price ids for the Pro plan (monthly / yearly billing) |
 | `S3_BUCKET` / `S3_REGION` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | S3-compatible file storage. The whole files feature is an **optional feature flag**: when `S3_BUCKET` is unset the server boots normally and `/api/v1/files` is not mounted. `S3_ENDPOINT` targets a non-AWS provider (e.g. MinIO, `http://localhost:9000`); `S3_FORCE_PATH_STYLE` (default `true`) is required for MinIO. `S3_MAX_FILE_SIZE_MB` (default `50`) and `S3_ALLOWED_MIME_TYPES` (comma-separated whitelist with a sensible default) constrain uploads at request time |
-| `BREVO_API_KEY` / `BREVO_SENDER_EMAIL` / `BREVO_ACCOUNT_EXISTS_TEMPLATE_ID` | Transactional email configuration; template id for the duplicate-registration notice (optional - notice is skipped when unset) |
+| `BREVO_API_KEY` / `BREVO_SENDER_EMAIL` / `BREVO_ACCOUNT_EXISTS_TEMPLATE_ID` | Transactional email configuration (`BREVO_API_KEY` is required at startup); template id for the duplicate-registration notice (optional - notice is skipped when unset) |
 | `POSTHOG_API_KEY` | Product analytics |
 | `TELEGRAM_BOT_API_KEY` / `TELEGRAM_INFO_CHAT_ID` / `TELEGRAM_ERRORS_CHAT_ID` | Telegram log notifications |
-| `FRONT_WEB_APP_ORIGIN_URL` | Front-end origin (CORS + Stripe redirects) |
+| `FRONT_WEB_APP_ORIGIN_URL` | Front-end origin (CORS allowlist, CSRF Origin check + Stripe redirects). **Required** outside `DEPLOY_ENVIRONMENT=localhost` |
+| `PORT` | HTTP port (defaults to `3000`) |
+
+## Request requirements
+
+- **JSON only** — every `/api` request with a body must send `Content-Type: application/json` (other body types get `415`). Form/urlencoded bodies are not parsed.
+- **Origin check (CSRF)** — non-`GET`/`HEAD`/`OPTIONS` requests must carry an `Origin` (or, failing that, `Referer`) header matching `FRONT_WEB_APP_ORIGIN_URL` (plus `localhost` dev-server ports when `DEPLOY_ENVIRONMENT=localhost`) or the API's own origin; otherwise `403`. Browsers send it automatically; for curl/Postman add e.g. `-H "Origin: http://localhost:5173"`. `/webhooks` is exempt.
+- **Rate limits** — global 100 req / 15 min per IP plus progressive slow-down after 30 req / 5 min (capped at 2 s delay), disabled on localhost; credential endpoints share a 10 req / 15 min per-IP budget; login additionally allows 5 failed attempts / 15 min per account; password-reset emails 5 / hour per IP.
 
 ## API overview
 

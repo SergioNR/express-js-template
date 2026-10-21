@@ -29,4 +29,12 @@ npm run start:local
 
 ## CI
 
-GitHub Actions builds the backend Docker image from `backend/` and pushes it to Docker Hub on pushes to `latest` / `next`. Configure `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` as repository secrets.
+GitHub Actions (`.github/workflows/docker-build-push.yaml`) builds the backend image from `backend/` and the frontend image from `frontend/` and pushes both to Docker Hub on pushes to `latest` / `next`. Each job runs in the GitHub **environment** named after the branch (`latest` or `next`), so values can be set per environment (Settings → Environments) or once at repository level (Settings → Secrets and variables → Actions); environment values take precedence.
+
+| Name | Kind | Used by |
+| --- | --- | --- |
+| `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` | Secrets | Both jobs (Docker Hub login, image namespace) |
+| `VITE_API_BASE_URL`, `VITE_SITE_BASE_URL` | Variables (required) | Frontend build args |
+| `VITE_PUBLIC_POSTHOG_KEY` | Variable (optional) | Frontend build arg |
+
+The `VITE_*` values are baked into the public JS bundle, so they are Actions *variables*, not secrets.

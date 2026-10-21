@@ -6,6 +6,11 @@ jest.unstable_mockModule('../server/models/filesModel.js', () => ({
   getFileByIdInDb: jest.fn(),
   deleteFileInDb: jest.fn(),
   getFileKeysForCompanyInDb: jest.fn(),
+  markFileReadyInDb: jest.fn(),
+}));
+
+jest.unstable_mockModule('../server/integrations/s3/headS3Object.js', () => ({
+  headS3Object: jest.fn(),
 }));
 
 jest.unstable_mockModule('../server/integrations/s3/presignPutObject.js', () => ({
@@ -21,6 +26,7 @@ jest.unstable_mockModule('../server/integrations/s3/deleteS3Objects.js', () => (
 }));
 
 const {
+  confirmFileUpload,
   createFileUpload,
   deleteOneFileById,
   getFileDownloadUrl,
@@ -31,7 +37,9 @@ const {
   deleteFileInDb,
   getFileByIdInDb,
   getFilesInDb,
+  markFileReadyInDb,
 } = await import('../server/models/filesModel.js');
+const { headS3Object } = await import('../server/integrations/s3/headS3Object.js');
 const { presignGetObject } = await import('../server/integrations/s3/presignGetObject.js');
 const { presignPutObject } = await import('../server/integrations/s3/presignPutObject.js');
 const { deleteS3Objects } = await import('../server/integrations/s3/deleteS3Objects.js');
@@ -59,6 +67,7 @@ const fileRecord = (overrides = {}) => ({
   original_filename: 'report.pdf',
   mime_type: 'application/pdf',
   size_bytes: 1234,
+  status: 'ready',
   created_at: '2026-01-01T00:00:00.000Z',
   ...overrides,
 });
@@ -74,6 +83,7 @@ describe('createFileUpload', () => {
       id: fileData.id,
       s3_key: fileData.s3Key,
       original_filename: fileData.originalFilename,
+      status: 'pending',
     }));
 
     const req = {
@@ -91,7 +101,8 @@ describe('createFileUpload', () => {
     expect(createdData.uploadedBy).toBe('caller-id');
     expect(createdData.originalFilename).toBe('quarterly_report.pdf');
     expect(createdData.s3Key).toBe(`company-1/${createdData.id}/quarterly_report.pdf`);
-    expect(presignPutObject).toHaveBeenCalledWith(createdData.s3Key, 'application/pdf');
+    //* Size is signed into the URL so the bucket rejects a different payload length
+    expect(presignPutObject).toHaveBeenCalledWith(createdData.s3Key, 'application/pdf', 1234);
 
     const responseBody = res.json.mock.calls[0][0];
     expect(responseBody.uploadUrl).toBe('https://bucket.s3/upload-url');
@@ -99,6 +110,7 @@ describe('createFileUpload', () => {
       original_filename: 'quarterly_report.pdf',
       mime_type: 'application/pdf',
       size_bytes: 1234,
+      status: 'pending',
       uploaded_by: 'caller-id',
     });
   });
@@ -129,6 +141,97 @@ describe('createFileUpload', () => {
     await expect(createFileUpload(req, res)).rejects.toThrow('S3 unreachable');
 
     expect(createFileInDb).not.toHaveBeenCalled();
+  });
+});
+
+describe('confirmFileUpload', () => {
+  const pendingFile = () => fileRecord({ status: 'pending' });
+
+  const confirm = async () => {
+    const res = mockRes();
+    await confirmFileUpload({ user: caller, params: { fileId: 'file-1' } }, res);
+    return res;
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('answers 404 when the file does not exist in the caller company', async () => {
+    getFileByIdInDb.mockResolvedValue(null);
+
+    const res = await confirm();
+
+    expect(getFileByIdInDb).toHaveBeenCalledWith('file-1', 'company-1');
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(headS3Object).not.toHaveBeenCalled();
+  });
+
+  it('is idempotent for an already ready file', async () => {
+    getFileByIdInDb.mockResolvedValue(fileRecord());
+
+    const res = await confirm();
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(headS3Object).not.toHaveBeenCalled();
+    expect(markFileReadyInDb).not.toHaveBeenCalled();
+  });
+
+  it('answers 409 and keeps the pending row when the object was not uploaded yet', async () => {
+    getFileByIdInDb.mockResolvedValue(pendingFile());
+    headS3Object.mockResolvedValue(null);
+
+    const res = await confirm();
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'FILE_UPLOAD_MISSING' }));
+    expect(deleteFileInDb).not.toHaveBeenCalled();
+    expect(markFileReadyInDb).not.toHaveBeenCalled();
+  });
+
+  it('discards row and object when the stored size differs from the declared one', async () => {
+    getFileByIdInDb.mockResolvedValue(pendingFile());
+    headS3Object.mockResolvedValue({ contentLength: 9999, contentType: 'application/pdf' });
+
+    const res = await confirm();
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'FILE_UPLOAD_MISMATCH' }));
+    expect(deleteS3Objects).toHaveBeenCalledWith(['company-1/file-1/report.pdf']);
+    expect(deleteFileInDb).toHaveBeenCalledWith('file-1');
+    expect(markFileReadyInDb).not.toHaveBeenCalled();
+  });
+
+  it('discards row and object when the stored content type differs from the declared one', async () => {
+    getFileByIdInDb.mockResolvedValue(pendingFile());
+    headS3Object.mockResolvedValue({ contentLength: 1234, contentType: 'text/html' });
+
+    const res = await confirm();
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(deleteFileInDb).toHaveBeenCalledWith('file-1');
+  });
+
+  it('marks the file ready when size and content type match', async () => {
+    getFileByIdInDb.mockResolvedValue(pendingFile());
+    headS3Object.mockResolvedValue({ contentLength: 1234, contentType: 'application/pdf' });
+    markFileReadyInDb.mockResolvedValue(fileRecord({ status: 'ready' }));
+
+    const res = await confirm();
+
+    expect(markFileReadyInDb).toHaveBeenCalledWith('file-1');
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ file: expect.objectContaining({ id: 'file-1', status: 'ready' }) });
+  });
+
+  it('answers 404 when the cleanup job removed the row in between', async () => {
+    getFileByIdInDb.mockResolvedValue(pendingFile());
+    headS3Object.mockResolvedValue({ contentLength: 1234, contentType: 'application/pdf' });
+    markFileReadyInDb.mockResolvedValue(null);
+
+    const res = await confirm();
+
+    expect(res.status).toHaveBeenCalledWith(404);
   });
 });
 
@@ -183,7 +286,7 @@ describe('getFileDownloadUrl', () => {
 
     await getFileDownloadUrl(req, res);
 
-    expect(getFileByIdInDb).toHaveBeenCalledWith('other-company-file', 'company-1');
+    expect(getFileByIdInDb).toHaveBeenCalledWith('other-company-file', 'company-1', 'ready');
     expect(res.status).toHaveBeenCalledWith(404);
     expect(presignGetObject).not.toHaveBeenCalled();
   });

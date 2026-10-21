@@ -20,7 +20,6 @@ export const createFileUploadSchema = {
       options: /^[^\\/\r\n\0]+$/,
       errorMessage: 'Filename must not contain path separators or control characters',
     },
-    escape: true,
   },
   contentType: {
     in: ['body'],

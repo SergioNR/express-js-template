@@ -124,7 +124,8 @@ const swaggerOptions = {
             },
             passwordResetToken: {
               type: 'string',
-              format: 'uuid',
+              pattern: '^[A-Za-z0-9_-]{43}$',
+              description: 'Opaque base64url token from the email link',
             },
           },
         },
@@ -174,7 +175,8 @@ const swaggerOptions = {
           properties: {
             inviteToken: {
               type: 'string',
-              format: 'uuid',
+              pattern: '^[A-Za-z0-9_-]{43}$',
+              description: 'Opaque base64url token from the email link',
             },
             password: {
               type: 'string',
@@ -219,6 +221,11 @@ const swaggerOptions = {
             size_bytes: {
               type: 'integer',
               description: 'Size declared by the client at upload-request time',
+            },
+            status: {
+              type: 'string',
+              enum: ['pending', 'ready'],
+              description: 'pending until POST /api/v1/files/{fileId}/confirm verifies the uploaded object',
             },
             uploaded_by: {
               type: 'string',

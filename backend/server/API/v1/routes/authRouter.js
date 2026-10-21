@@ -15,6 +15,7 @@ import {
 import { sanitizerResult } from '../../../middlewares/sanitizerResult.js';
 import { authLimiter } from '../../../middlewares/authRateLimiter.js';
 import { passwordResetLimiter } from '../../../middlewares/passwordResetRateLimiter.js';
+import { loginAccountLimiter } from '../../../middlewares/loginAccountRateLimiter.js';
 import { createUserValidationSchema } from '../../../utils/validators/createUserSchema.js';
 import { userLoginValidationSchema } from '../../../utils/validators/userLoginValidationSchema.js';
 
@@ -34,7 +35,7 @@ export const authRouter = Router();
  *   post:
  *     tags: [Auth]
  *     summary: Log in with email and password
- *     description: Authenticates the user with the local strategy and establishes a session cookie (`connect.sid`).
+ *     description: Authenticates the user with the local strategy and establishes a session cookie (`app.sid`). Failed attempts are throttled per IP and per account (5 failures / 15 min per email).
  *     requestBody:
  *       required: true
  *       content:
@@ -71,13 +72,14 @@ export const authRouter = Router();
  *             schema:
  *               $ref: '#/components/schemas/ValidationError'
  *       429:
- *         description: Too many authentication attempts
+ *         description: Too many authentication attempts (per IP) or too many failed attempts for this account
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
  */
-authRouter.post('/login', authLimiter, checkSchema(userLoginValidationSchema), sanitizerResult, loginLocal);
+//* loginAccountLimiter runs after the validator so it keys on the normalized email
+authRouter.post('/login', authLimiter, checkSchema(userLoginValidationSchema), sanitizerResult, loginAccountLimiter, loginLocal);
 
 /**
  * @openapi
@@ -127,7 +129,8 @@ authRouter.post('/register', authLimiter, checkSchema(createUserValidationSchema
  *         required: true
  *         schema:
  *           type: string
- *           format: uuid
+ *           pattern: '^[A-Za-z0-9_-]{43}$'
+ *           description: Opaque base64url token from the email link (only its SHA-256 hash is stored)
  *     responses:
  *       200:
  *         description: Token exists and is valid
@@ -136,7 +139,7 @@ authRouter.post('/register', authLimiter, checkSchema(createUserValidationSchema
  *             schema:
  *               $ref: '#/components/schemas/SuccessMessage'
  *       400:
- *         description: Token is missing from the query string, is not a valid UUID or has expired
+ *         description: Token is missing from the query string, is malformed or has expired
  *         content:
  *           application/json:
  *             schema:
@@ -147,8 +150,14 @@ authRouter.post('/register', authLimiter, checkSchema(createUserValidationSchema
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorMessage'
+ *       429:
+ *         description: Too many authentication attempts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
  */
-authRouter.get('/password-reset', checkSchema(passwordResetTokenQuerySchema), sanitizerResult, checkPasswordResetTokenValidity);
+authRouter.get('/password-reset', authLimiter, checkSchema(passwordResetTokenQuerySchema), sanitizerResult, checkPasswordResetTokenValidity);
 
 /**
  * @openapi
@@ -177,12 +186,12 @@ authRouter.get('/password-reset', checkSchema(passwordResetTokenQuerySchema), sa
  *             schema:
  *               $ref: '#/components/schemas/ValidationError'
  *       429:
-   *         description: Too many password reset requests
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/ErrorMessage'
-   */
+ *         description: Too many password reset requests
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
+ */
 authRouter.post('/password-reset', passwordResetLimiter, checkSchema(requestNewPasswordSchema), sanitizerResult, requestPasswordResetToken);
 
 /**
@@ -206,13 +215,7 @@ authRouter.post('/password-reset', passwordResetLimiter, checkSchema(requestNewP
  *             schema:
  *               $ref: '#/components/schemas/SuccessMessage'
  *       400:
- *         description: Token expired or passwords do not match
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorMessage'
- *       404:
- *         description: Token does not exist
+ *         description: Token is unknown, expired or already used, or the passwords do not match
  *         content:
  *           application/json:
  *             schema:
@@ -223,8 +226,14 @@ authRouter.post('/password-reset', passwordResetLimiter, checkSchema(requestNewP
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ValidationError'
+ *       429:
+ *         description: Too many authentication attempts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorMessage'
  */
-authRouter.patch('/password-reset', checkSchema(recoverPasswordSchema), sanitizerResult, updateRecoveredUserPassword);
+authRouter.patch('/password-reset', authLimiter, checkSchema(recoverPasswordSchema), sanitizerResult, updateRecoveredUserPassword);
 
 /**
  * @openapi
@@ -239,7 +248,8 @@ authRouter.patch('/password-reset', checkSchema(recoverPasswordSchema), sanitize
  *         required: true
  *         schema:
  *           type: string
- *           format: uuid
+ *           pattern: '^[A-Za-z0-9_-]{43}$'
+ *           description: Opaque base64url token from the email link (only its SHA-256 hash is stored)
  *     responses:
  *       200:
  *         description: Invite exists and is valid
@@ -257,7 +267,7 @@ authRouter.patch('/password-reset', checkSchema(recoverPasswordSchema), sanitize
  *                 roleName:
  *                   type: string
  *       400:
- *         description: Token is missing from the query string, is not a valid UUID or has expired
+ *         description: Token is missing from the query string, is malformed or has expired
  *         content:
  *           application/json:
  *             schema:
@@ -292,7 +302,7 @@ authRouter.get('/invite', checkSchema(teamInviteTokenQuerySchema), sanitizerResu
  *             schema:
  *               $ref: '#/components/schemas/SuccessMessage'
  *       400:
- *         description: Token is not a valid UUID or has expired
+ *         description: Token is malformed or has expired
  *         content:
  *           application/json:
  *             schema:
@@ -414,7 +424,7 @@ authRouter.patch('/update-user-password', checkSchema(updatePasswordSchema), san
  *   get:
  *     tags: [Auth]
  *     summary: Check whether the current session is valid
- *     description: Returns the logged-in user id when the session cookie is valid.
+ *     description: Returns the logged-in user id and global role when the session cookie is valid.
  *     security:
  *       - sessionCookie: []
  *     responses:
@@ -431,6 +441,9 @@ authRouter.patch('/update-user-password', checkSchema(updatePasswordSchema), san
  *                     id:
  *                       type: string
  *                       format: uuid
+ *                     role:
+ *                       type: string
+ *                       enum: [user, admin]
  *       401:
  *         description: Session is invalid
  *         content:

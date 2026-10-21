@@ -1,5 +1,6 @@
 export const userLoginValidationSchema = {
   username: {
+    trim: true,
     isEmail: {
       errorMessage: 'Invalid email or password',
     },
@@ -14,10 +15,18 @@ export const userLoginValidationSchema = {
         icloud_remove_subaddress: true,
       },
     },
-    escape: true,
   },
   password: {
+    //* Bound the input so bcrypt never hashes attacker-sized payloads
+    //* (bcrypt only uses the first 72 bytes anyway)
+    isString: {
+      errorMessage: 'Invalid email or password',
+    },
     notEmpty: {
+      errorMessage: 'Invalid email or password',
+    },
+    isLength: {
+      options: { max: 128 },
       errorMessage: 'Invalid email or password',
     },
   },

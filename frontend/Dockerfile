@@ -1,45 +1,46 @@
-# Use the latest Docker syntax parser
 # syntax=docker/dockerfile:1
 
-# Define build arguments for environment variables
-ARG NODE_VERSION=26
+# Pinned to a Node 26 minor - bump deliberately
+ARG NODE_VERSION=26.12
 
-# First stage: Build the application
+# First stage: build the application
 FROM node:${NODE_VERSION}-alpine AS build
 
-# Set the baseUrl ARG in the build stage to compile it - Will be replaced by docker build command
+# Vite bakes VITE_* vars into the bundle at build time - pass them with --build-arg
 ARG VITE_API_BASE_URL
 ARG VITE_PUBLIC_POSTHOG_KEY
 ARG VITE_SITE_BASE_URL
 
-# Set working directory for all build stages.
+# Fail fast when a required build arg is missing
+RUN test -n "$VITE_API_BASE_URL" || { echo 'VITE_API_BASE_URL build arg is required' >&2; exit 1; }; \
+  test -n "$VITE_SITE_BASE_URL" || { echo 'VITE_SITE_BASE_URL build arg is required' >&2; exit 1; }
+
 WORKDIR /usr/src/app
 
+# Install exact lockfile dependencies (devDependencies included - Vite is one)
 COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci
 
-
-RUN npm install
-
-
-# Copy the rest of the source files into the image.
 COPY . .
 
-# Run the build script.
-RUN npm run build
-
-# SET NODE_ENV to production
+# Set after `npm ci` so devDependencies are still installed for the build
 ENV NODE_ENV=production
 
-# Create a new stage for the production image
-FROM nginx:1.27.4-alpine
+RUN npm run build
 
-# Copy the nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Second stage: serve the static bundle with an unprivileged nginx (port 8080)
+FROM nginxinc/nginx-unprivileged:1.30.6-alpine
 
-# Copy the build output from the build stage
+# Default API origin allowed by the CSP connect-src - derived from the build
+# arg, overridable at runtime with `-e NGINX_CSP_API_ORIGIN=...`
+ARG VITE_API_BASE_URL
+ENV NGINX_CSP_API_ORIGIN=${VITE_API_BASE_URL}
+
+# The image entrypoint renders /etc/nginx/templates/*.template with envsubst
+# into /etc/nginx/conf.d/ on startup
+COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
+COPY nginx/security-headers.inc.template /etc/nginx/templates/security-headers.inc.template
+
 COPY --from=build /usr/src/app/dist /usr/share/nginx/html
 
-# Expose the port
-EXPOSE 80
-
-# Nginx starts automatically, no need for CMD
+EXPOSE 8080

@@ -1,6 +1,7 @@
 import { prisma } from '../config/prismaClient.js';
 import { INVITE_EXPIRY_DURATION_MS } from '../config/security.js';
 import { logError } from '../config/loggerFunctions.js';
+import { generateSecureToken, hashSecureToken } from '../utils/secureToken.js';
 
 const inviteWithRelationsInclude = {
   Company: {
@@ -12,6 +13,15 @@ const inviteWithRelationsInclude = {
   Role: true,
 };
 
+//* The digest never leaves the model - not even towards controllers
+const inviteOmit = {
+  token_hash: true,
+};
+
+//* Returns the created row together with the raw token. The raw token only
+//* ever goes into the invite email; the row stores its sha256 digest.
+//* A pending invite for the same company+email makes the create fail with
+//* P2002 (unique company_id+email) - callers map it to 409
 export const createTeamInviteInDb = async (inviteData) => {
   const {
     email,
@@ -20,14 +30,7 @@ export const createTeamInviteInDb = async (inviteData) => {
     invitedBy,
   } = inviteData;
 
-  //* Token rotation per company+email (mirrors createPasswordResetToken) -
-  //* only the most recently generated invite link is usable
-  await prisma.teamInvites.deleteMany({
-    where: {
-      company_id: companyId,
-      email,
-    },
-  });
+  const inviteToken = generateSecureToken();
 
   const createTeamInviteQuery = await prisma.teamInvites.create({
     data: {
@@ -35,19 +38,59 @@ export const createTeamInviteInDb = async (inviteData) => {
       company_id: companyId,
       role_id: roleId,
       invited_by: invitedBy,
+      token_hash: hashSecureToken(inviteToken),
       token_expires: new Date(Date.now() + INVITE_EXPIRY_DURATION_MS),
     },
+    omit: inviteOmit,
   });
 
-  return createTeamInviteQuery;
+  return {
+    invite: createTeamInviteQuery,
+    inviteToken,
+  };
 };
 
-export const getTeamInviteByToken = async (inviteToken) => {
+//* Rotation is a single UPDATE on the existing row, so it is atomic and the
+//* invite id (the public handle for resend/revoke) never changes. The old
+//* link stops working the moment the new digest is written. Returns null when
+//* the invite was revoked or accepted concurrently
+export const rotateTeamInviteTokenInDb = async (inviteId, companyId, invitedBy) => {
+  const inviteToken = generateSecureToken();
+
+  try {
+    const rotatedInvite = await prisma.teamInvites.update({
+      where: {
+        id: inviteId,
+        company_id: companyId,
+      },
+      data: {
+        invited_by: invitedBy,
+        token_hash: hashSecureToken(inviteToken),
+        token_expires: new Date(Date.now() + INVITE_EXPIRY_DURATION_MS),
+      },
+      omit: inviteOmit,
+    });
+
+    return {
+      invite: rotatedInvite,
+      inviteToken,
+    };
+  } catch (error) {
+    if (error.code === 'P2025') { //* Record to update not found
+      return null;
+    }
+
+    throw error;
+  }
+};
+
+export const getTeamInviteByTokenInDb = async (inviteToken) => {
   const getTeamInviteQuery = await prisma.teamInvites.findUnique({
     where: {
-      id: inviteToken,
+      token_hash: hashSecureToken(inviteToken),
     },
     include: inviteWithRelationsInclude,
+    omit: inviteOmit,
   });
 
   return getTeamInviteQuery;
@@ -68,6 +111,7 @@ export const getTeamInviteByIdInDb = async (inviteId, companyId) => {
         },
       },
     },
+    omit: inviteOmit,
   });
 
   return getTeamInviteQuery;
@@ -81,6 +125,7 @@ export const getTeamInviteByCompanyAndEmailInDb = async (companyId, email) => {
         email,
       },
     },
+    omit: inviteOmit,
   });
 
   return getTeamInviteQuery;
@@ -98,9 +143,11 @@ export const getCompanyPendingInvitesInDb = async (companyId) => {
         },
       },
     },
-    orderBy: {
-      created_at: 'desc',
-    },
+    omit: inviteOmit,
+    orderBy: [
+      { created_at: 'desc' },
+      { id: 'desc' },
+    ],
   });
 
   return getCompanyInvitesQuery;
@@ -130,16 +177,16 @@ export const deleteExpiredTeamInvites = async () => {
 };
 
 //* Non-throwing cleanup used by the invite-accept flow - a failed delete
-//* must not flip an already-successful account creation into a 500
-export const deleteTeamInviteByTokenSafe = async (inviteToken) => {
+//* must not flip an already-decided response into a 500
+export const deleteTeamInviteByIdSafe = async (inviteId) => {
   try {
-    await prisma.teamInvites.delete({
+    await prisma.teamInvites.deleteMany({
       where: {
-        id: inviteToken,
+        id: inviteId,
       },
     });
   } catch (error) {
-    logError(`Team invite token ${inviteToken} deletion failed`, error);
+    logError(`Team invite ${inviteId} deletion failed`, error);
     // throw error //* NOT throwing an error since req-res
     //*  flow should not be interrupted with this cleanup operation
   }

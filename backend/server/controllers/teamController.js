@@ -12,6 +12,7 @@ import {
   getCompanyPendingInvitesInDb,
   getTeamInviteByCompanyAndEmailInDb,
   getTeamInviteByIdInDb,
+  rotateTeamInviteTokenInDb,
 } from '../models/teamInvitesModel.js';
 import {
   getAllPermissionNames,
@@ -35,10 +36,12 @@ const toMemberShape = (member) => ({
   companyRoles: member.UserRoles.map((userRole) => userRole.Role.name),
 });
 
-const toInviteShape = (invite, roleId) => ({
+//* Whitelisted shape - the token digest never reaches a response and the raw
+//* invite token only ever travels inside the invite email
+const toInviteShape = (invite, roleName) => ({
   id: invite.id,
   email: invite.email,
-  role: roleId,
+  role: roleName,
   token_expires: invite.token_expires,
   created_at: invite.created_at,
 });
@@ -125,10 +128,10 @@ export const createTeamInvite = async (req, res) => {
     }
   }
 
-  let invite;
+  let createdInvite;
 
   try {
-    invite = await createTeamInviteInDb({
+    createdInvite = await createTeamInviteInDb({
       email,
       companyId,
       roleId: role.id,
@@ -146,11 +149,13 @@ export const createTeamInvite = async (req, res) => {
     throw error;
   }
 
+  const { invite, inviteToken } = createdInvite;
+
   const company = await getCompanyByIdInDb(companyId);
 
   //* Fire-and-forget - the function swallows its own errors so an email
   //* provider outage never changes this response
-  sendTeamInviteToUser(email, invite.id, company?.name, inviterEmail);
+  sendTeamInviteToUser(invite.email, inviteToken, company?.name, inviterEmail);
 
   return res.status(201).json({
     invite: toInviteShape(invite, role.name),
@@ -185,18 +190,34 @@ export const resendTeamInvite = async (req, res) => {
     });
   }
 
-  //* Re-creating rotates the token (previous link becomes unusable) and
-  //* resets the expiry window
-  const rotatedInvite = await createTeamInviteInDb({
-    email: invite.email,
-    companyId,
-    roleId: invite.role_id,
-    invitedBy: inviterId,
-  });
+  let rotation;
+
+  try {
+    //* Single atomic UPDATE - the previous link stops working, the expiry
+    //* window resets and the invite id stays the same
+    rotation = await rotateTeamInviteTokenInDb(inviteId, companyId, inviterId);
+  } catch (error) {
+    if (error.code === 'P2002') {
+      return res.status(409).json({
+        message: 'The invite could not be rotated - please try again',
+      });
+    }
+
+    throw error;
+  }
+
+  if (!rotation) {
+    //* Revoked or accepted between the lookup and the rotation
+    return res.status(404).json({
+      message: 'Invite does not exist',
+    });
+  }
+
+  const { invite: rotatedInvite, inviteToken } = rotation;
 
   const company = await getCompanyByIdInDb(companyId);
 
-  sendTeamInviteToUser(invite.email, rotatedInvite.id, company?.name, inviterEmail); // Fire-and-forget
+  sendTeamInviteToUser(rotatedInvite.email, inviteToken, company?.name, inviterEmail); // Fire-and-forget
 
   return res.status(200).json({
     invite: toInviteShape(rotatedInvite, invite.Role.name),

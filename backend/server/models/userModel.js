@@ -12,24 +12,37 @@ export const createUserInDB = async (userData) => {
     password,
     companyId,
     roleId,
+    inviteId,
   } = userData;
 
   //* Invite acceptance path: the user joins an existing company with the
-  //* invited role - no nested company/subscription creation, no trial
+  //* invited role - no nested company/subscription creation, no trial.
+  //* The invite is consumed in the same transaction so a link can never
+  //* create an account and stay usable
   if (companyId && roleId) {
-    const invitedUser = await prisma.user.create({
-      data: {
-        email: username,
-        password,
-        role: 'user',
-        company_id: companyId,
-        UserRoles: {
-          create: {
-            role_id: roleId,
+    const [invitedUser] = await prisma.$transaction([
+      prisma.user.create({
+        data: {
+          email: username,
+          password,
+          role: 'user',
+          company_id: companyId,
+          UserRoles: {
+            create: {
+              role_id: roleId,
+            },
           },
         },
-      },
-    });
+        omit: {
+          password: true,
+        },
+      }),
+      prisma.teamInvites.deleteMany({
+        where: {
+          id: inviteId,
+        },
+      }),
+    ]);
 
     logInfo(`User ${invitedUser.id} (${invitedUser.role}) created in DB via team invite`, invitedUser);
 

@@ -1,3 +1,5 @@
+import { SECURE_TOKEN_PATTERN } from '../secureToken.js';
+
 export const recoverPasswordSchema = {
   newPassword: {
     notEmpty: {
@@ -50,6 +52,9 @@ export const recoverPasswordSchema = {
     isString: {
       errorMessage: 'Password reset token must be a string',
     },
-    isUUID: true,
+    matches: {
+      options: SECURE_TOKEN_PATTERN,
+      errorMessage: 'Password reset token is malformed',
+    },
   },
 };

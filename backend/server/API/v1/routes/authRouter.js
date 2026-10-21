@@ -127,7 +127,8 @@ authRouter.post('/register', authLimiter, checkSchema(createUserValidationSchema
  *         required: true
  *         schema:
  *           type: string
- *           format: uuid
+ *           pattern: '^[A-Za-z0-9_-]{43}$'
+ *           description: Opaque base64url token from the email link (only its SHA-256 hash is stored)
  *     responses:
  *       200:
  *         description: Token exists and is valid
@@ -136,7 +137,7 @@ authRouter.post('/register', authLimiter, checkSchema(createUserValidationSchema
  *             schema:
  *               $ref: '#/components/schemas/SuccessMessage'
  *       400:
- *         description: Token is missing from the query string, is not a valid UUID or has expired
+ *         description: Token is missing from the query string, is malformed or has expired
  *         content:
  *           application/json:
  *             schema:
@@ -206,13 +207,7 @@ authRouter.post('/password-reset', passwordResetLimiter, checkSchema(requestNewP
  *             schema:
  *               $ref: '#/components/schemas/SuccessMessage'
  *       400:
- *         description: Token expired or passwords do not match
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorMessage'
- *       404:
- *         description: Token does not exist
+ *         description: Token is unknown, expired or already used, or the passwords do not match
  *         content:
  *           application/json:
  *             schema:
@@ -239,7 +234,8 @@ authRouter.patch('/password-reset', checkSchema(recoverPasswordSchema), sanitize
  *         required: true
  *         schema:
  *           type: string
- *           format: uuid
+ *           pattern: '^[A-Za-z0-9_-]{43}$'
+ *           description: Opaque base64url token from the email link (only its SHA-256 hash is stored)
  *     responses:
  *       200:
  *         description: Invite exists and is valid
@@ -257,7 +253,7 @@ authRouter.patch('/password-reset', checkSchema(recoverPasswordSchema), sanitize
  *                 roleName:
  *                   type: string
  *       400:
- *         description: Token is missing from the query string, is not a valid UUID or has expired
+ *         description: Token is missing from the query string, is malformed or has expired
  *         content:
  *           application/json:
  *             schema:
@@ -292,7 +288,7 @@ authRouter.get('/invite', checkSchema(teamInviteTokenQuerySchema), sanitizerResu
  *             schema:
  *               $ref: '#/components/schemas/SuccessMessage'
  *       400:
- *         description: Token is not a valid UUID or has expired
+ *         description: Token is malformed or has expired
  *         content:
  *           application/json:
  *             schema:

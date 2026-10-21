@@ -10,27 +10,42 @@ import {
   getUserPassword,
   updateUserLastLoginDate,
 } from '../models/userModel.js';
-import { createPasswordResetToken, getPasswordResetTokenData, deletePasswordResetTokens } from '../models/passwordResetTokensModel.js';
-import { getTeamInviteByToken, deleteTeamInviteByTokenSafe } from '../models/teamInvitesModel.js';
+import {
+  createPasswordResetToken,
+  getPasswordResetTokenData,
+  resetUserPasswordWithTokenInDb,
+} from '../models/passwordResetTokensModel.js';
+import { getTeamInviteByTokenInDb, deleteTeamInviteByIdSafe } from '../models/teamInvitesModel.js';
 import { deleteUserSessions, linkSessionToUser } from '../models/sessionModel.js';
 import { sendResetPasswordTokenToUser } from '../integrations/brevo/transactionalEmails/sendResetPasswordTokenToUser.js';
 import { sendExistingAccountNoticeToUser } from '../integrations/brevo/transactionalEmails/sendExistingAccountNoticeToUser.js';
 
+//* Detached from the request: the lookup, token creation and email all run
+//* after the response was sent, so neither the body nor the timing of the
+//* response depends on whether the account exists. Swallows its own errors
+const issuePasswordResetToken = async (email) => {
+  try {
+    const user = await getUserByEmail(email);
+
+    if (!user) {
+      return;
+    }
+
+    const passwordResetToken = await createPasswordResetToken(user.id);
+
+    //* The function swallows its own errors - recipient is the stored address
+    await sendResetPasswordTokenToUser(user.email, passwordResetToken);
+  } catch (error) {
+    logError('Password reset token issuance failed', error);
+  }
+};
+
 export const requestPasswordResetToken = async (req, res) => {
   const { email } = req.body;
 
-  const user = await getUserByEmail(email);
-
-  if (user) {
-    const tokenCreation = await createPasswordResetToken(user.id);
-
-    //* Fire-and-forget - the function swallows its own errors so an email
-    //* provider outage never changes this response
-    sendResetPasswordTokenToUser(email, tokenCreation.id);
-  }
+  issuePasswordResetToken(email); // Fire-and-forget
 
   //* Not checking / notifying for user existence to prevent security leaks
-
   return res.status(200).json({
     message: 'If this email exists, a reset link will be sent',
   });
@@ -64,31 +79,18 @@ export const updateRecoveredUserPassword = async (req, res) => {
     passwordResetToken,
   } = req.body;
 
-  const passwordResetTokenData = await getPasswordResetTokenData(passwordResetToken);
-
-  if (!passwordResetTokenData) {
-    return res.status(404).json({});
-  }
-
-  const {
-    user_id: userId,
-    token_expires: tokenExpires,
-  } = passwordResetTokenData;
-
-  if (new Date(tokenExpires) < new Date()) {
-    return res.status(400).json({
-      message: 'Password reset token expired',
-    });
-  }
-
+  //* Hashed before the transaction so the slow bcrypt never holds row locks
   const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 
-  await updateUserPasswordInDB(userId, hashedPassword);
+  //* Consumes the token (single use), updates the password and revokes every
+  //* reset token and session of the user in one transaction
+  const resetResult = await resetUserPasswordWithTokenInDb(passwordResetToken, hashedPassword);
 
-  await deletePasswordResetTokens(userId);
-
-  //* Revoke every active session of the user - the old credential is no longer valid
-  await deleteUserSessions(userId);
+  if (!resetResult) {
+    return res.status(400).json({
+      message: 'Password reset token is invalid or expired',
+    });
+  }
 
   return res.status(200).json({});
 };
@@ -96,7 +98,7 @@ export const updateRecoveredUserPassword = async (req, res) => {
 export const checkTeamInviteValidity = async (req, res) => {
   const { inviteToken } = req.query;
 
-  const inviteData = await getTeamInviteByToken(inviteToken);
+  const inviteData = await getTeamInviteByTokenInDb(inviteToken);
 
   if (!inviteData) {
     return res.status(404).json({
@@ -125,7 +127,7 @@ export const acceptTeamInvite = async (req, res) => {
     password,
   } = req.body;
 
-  const inviteData = await getTeamInviteByToken(inviteToken);
+  const inviteData = await getTeamInviteByTokenInDb(inviteToken);
 
   if (!inviteData) {
     return res.status(404).json({
@@ -145,7 +147,7 @@ export const acceptTeamInvite = async (req, res) => {
 
   if (existingUser) {
     //* The invitee registered on their own in the meantime - the invite is void
-    await deleteTeamInviteByTokenSafe(inviteToken);
+    await deleteTeamInviteByIdSafe(inviteData.id);
 
     return res.status(409).json({
       message: 'Email is already registered - Please log in instead',
@@ -160,12 +162,13 @@ export const acceptTeamInvite = async (req, res) => {
       password: hashedPassword,
       companyId: inviteData.company_id,
       roleId: inviteData.role_id,
+      inviteId: inviteData.id, //* Consumed in the same transaction as the user creation
     });
   } catch (error) {
     //* Concurrent self-registration with the same email can beat the check
     //* above - the unique constraint resolves the race
     if (error.code === 'P2002') {
-      await deleteTeamInviteByTokenSafe(inviteToken);
+      await deleteTeamInviteByIdSafe(inviteData.id);
 
       return res.status(409).json({
         message: 'Email is already registered - Please log in instead',
@@ -174,8 +177,6 @@ export const acceptTeamInvite = async (req, res) => {
 
     throw error;
   }
-
-  await deleteTeamInviteByTokenSafe(inviteToken);
 
   //* No auto-login here - consistent with the register endpoint
   return res.status(201).json({});

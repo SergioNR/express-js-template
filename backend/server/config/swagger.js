@@ -124,7 +124,8 @@ const swaggerOptions = {
             },
             passwordResetToken: {
               type: 'string',
-              format: 'uuid',
+              pattern: '^[A-Za-z0-9_-]{43}$',
+              description: 'Opaque base64url token from the email link',
             },
           },
         },
@@ -174,7 +175,8 @@ const swaggerOptions = {
           properties: {
             inviteToken: {
               type: 'string',
-              format: 'uuid',
+              pattern: '^[A-Za-z0-9_-]{43}$',
+              description: 'Opaque base64url token from the email link',
             },
             password: {
               type: 'string',

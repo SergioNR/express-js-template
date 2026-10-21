@@ -11,12 +11,12 @@ jest.unstable_mockModule('../server/models/userModel.js', () => ({
 jest.unstable_mockModule('../server/models/passwordResetTokensModel.js', () => ({
   createPasswordResetToken: jest.fn(),
   getPasswordResetTokenData: jest.fn(),
-  deletePasswordResetTokens: jest.fn(),
+  resetUserPasswordWithTokenInDb: jest.fn(),
 }));
 
 jest.unstable_mockModule('../server/models/teamInvitesModel.js', () => ({
-  getTeamInviteByToken: jest.fn(),
-  deleteTeamInviteByTokenSafe: jest.fn().mockResolvedValue(undefined),
+  getTeamInviteByTokenInDb: jest.fn(),
+  deleteTeamInviteByIdSafe: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.unstable_mockModule('../server/models/sessionModel.js', () => ({
@@ -42,7 +42,7 @@ jest.unstable_mockModule('../server/integrations/brevo/transactionalEmails/sendE
 
 const { checkTeamInviteValidity, acceptTeamInvite } = await import('../server/controllers/authController.js');
 const { getUserByEmail, createUserInDB } = await import('../server/models/userModel.js');
-const { getTeamInviteByToken, deleteTeamInviteByTokenSafe } = await import('../server/models/teamInvitesModel.js');
+const { getTeamInviteByTokenInDb, deleteTeamInviteByIdSafe } = await import('../server/models/teamInvitesModel.js');
 
 const mockRes = () => {
   const res = {
@@ -53,7 +53,7 @@ const mockRes = () => {
 };
 
 const validInvite = {
-  id: 'invite-token',
+  id: 'invite-1',
   email: 'new@acme.test',
   company_id: 'company-1',
   role_id: 'role-member',
@@ -68,7 +68,7 @@ describe('checkTeamInviteValidity', () => {
   });
 
   it('returns 404 when the token does not exist', async () => {
-    getTeamInviteByToken.mockResolvedValue(null);
+    getTeamInviteByTokenInDb.mockResolvedValue(null);
     const res = mockRes();
 
     await checkTeamInviteValidity({ query: { inviteToken: 'missing' } }, res);
@@ -77,7 +77,7 @@ describe('checkTeamInviteValidity', () => {
   });
 
   it('returns 400 when the invite has expired', async () => {
-    getTeamInviteByToken.mockResolvedValue({ ...validInvite, token_expires: new Date(Date.now() - 1000) });
+    getTeamInviteByTokenInDb.mockResolvedValue({ ...validInvite, token_expires: new Date(Date.now() - 1000) });
     const res = mockRes();
 
     await checkTeamInviteValidity({ query: { inviteToken: 'invite-token' } }, res);
@@ -85,8 +85,17 @@ describe('checkTeamInviteValidity', () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
+  it('looks the invite up by the raw token (the model hashes it)', async () => {
+    getTeamInviteByTokenInDb.mockResolvedValue(validInvite);
+    const res = mockRes();
+
+    await checkTeamInviteValidity({ query: { inviteToken: 'raw-token' } }, res);
+
+    expect(getTeamInviteByTokenInDb).toHaveBeenCalledWith('raw-token');
+  });
+
   it('returns the invited email, company name and role for a valid invite', async () => {
-    getTeamInviteByToken.mockResolvedValue(validInvite);
+    getTeamInviteByTokenInDb.mockResolvedValue(validInvite);
     const res = mockRes();
 
     await checkTeamInviteValidity({ query: { inviteToken: 'invite-token' } }, res);
@@ -106,7 +115,7 @@ describe('acceptTeamInvite', () => {
   });
 
   it('returns 404 when the token does not exist', async () => {
-    getTeamInviteByToken.mockResolvedValue(null);
+    getTeamInviteByTokenInDb.mockResolvedValue(null);
     const res = mockRes();
 
     await acceptTeamInvite({ body: { inviteToken: 'missing', password: 'Password123' } }, res);
@@ -116,30 +125,30 @@ describe('acceptTeamInvite', () => {
   });
 
   it('returns 400 when the invite has expired', async () => {
-    getTeamInviteByToken.mockResolvedValue({ ...validInvite, token_expires: new Date(Date.now() - 1000) });
+    getTeamInviteByTokenInDb.mockResolvedValue({ ...validInvite, token_expires: new Date(Date.now() - 1000) });
     const res = mockRes();
 
     await acceptTeamInvite({ body: { inviteToken: 'invite-token', password: 'Password123' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(createUserInDB).not.toHaveBeenCalled();
-    expect(deleteTeamInviteByTokenSafe).not.toHaveBeenCalled();
+    expect(deleteTeamInviteByIdSafe).not.toHaveBeenCalled();
   });
 
   it('returns 409 and voids the invite when the email registered on its own', async () => {
-    getTeamInviteByToken.mockResolvedValue(validInvite);
+    getTeamInviteByTokenInDb.mockResolvedValue(validInvite);
     getUserByEmail.mockResolvedValue({ id: 'existing-user' });
     const res = mockRes();
 
     await acceptTeamInvite({ body: { inviteToken: 'invite-token', password: 'Password123' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(409);
-    expect(deleteTeamInviteByTokenSafe).toHaveBeenCalledWith('invite-token');
+    expect(deleteTeamInviteByIdSafe).toHaveBeenCalledWith('invite-1');
     expect(createUserInDB).not.toHaveBeenCalled();
   });
 
-  it('creates the user in the invited company with the invited role and consumes the invite', async () => {
-    getTeamInviteByToken.mockResolvedValue(validInvite);
+  it('creates the user in the invited company and consumes the invite in the same transaction', async () => {
+    getTeamInviteByTokenInDb.mockResolvedValue(validInvite);
     getUserByEmail.mockResolvedValue(null);
     createUserInDB.mockResolvedValue({ id: 'new-user' });
     const res = mockRes();
@@ -150,14 +159,16 @@ describe('acceptTeamInvite', () => {
       username: 'new@acme.test',
       companyId: 'company-1',
       roleId: 'role-member',
+      inviteId: 'invite-1',
     }));
-    expect(deleteTeamInviteByTokenSafe).toHaveBeenCalledWith('invite-token');
+    //* Consumed inside the user-creation transaction, not afterwards
+    expect(deleteTeamInviteByIdSafe).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith({});
   });
 
   it('maps a concurrent-registration P2002 to 409 and voids the invite', async () => {
-    getTeamInviteByToken.mockResolvedValue(validInvite);
+    getTeamInviteByTokenInDb.mockResolvedValue(validInvite);
     getUserByEmail.mockResolvedValue(null);
     createUserInDB.mockRejectedValue(Object.assign(new Error('unique'), { code: 'P2002' }));
     const res = mockRes();
@@ -165,6 +176,6 @@ describe('acceptTeamInvite', () => {
     await acceptTeamInvite({ body: { inviteToken: 'invite-token', password: 'Password123' } }, res);
 
     expect(res.status).toHaveBeenCalledWith(409);
-    expect(deleteTeamInviteByTokenSafe).toHaveBeenCalledWith('invite-token');
+    expect(deleteTeamInviteByIdSafe).toHaveBeenCalledWith('invite-1');
   });
 });

@@ -1,33 +1,41 @@
 import { prisma } from '../config/prismaClient.js';
-import { logError, logPasswordResetTokenCreated } from '../config/loggerFunctions.js';
+import { logPasswordResetTokenCreated } from '../config/loggerFunctions.js';
+import { generateSecureToken, hashSecureToken } from '../utils/secureToken.js';
 
+const PASSWORD_RESET_TOKEN_TTL_MS = 3600000; // 1 hour
+
+//* Returns the raw token - it only ever goes into the reset email; the row
+//* stores its sha256 digest
 export const createPasswordResetToken = async (userId) => {
-  //* Invalidate previous tokens so only the most recently requested link is usable
-  await prisma.passwordResetTokens.deleteMany({
-    where: {
-      user_id: userId,
-    },
-  });
+  const passwordResetToken = generateSecureToken();
 
-  const createPasswordResetTokenQuery = await prisma.passwordResetTokens.create({
-    data: {
-      user_id: userId,
-      token_expires: new Date(Date.now() + 3600000),
-    },
-  });
+  //* Invalidate previous tokens so only the most recently requested link is
+  //* usable - both writes commit together
+  await prisma.$transaction([
+    prisma.passwordResetTokens.deleteMany({
+      where: {
+        user_id: userId,
+      },
+    }),
+    prisma.passwordResetTokens.create({
+      data: {
+        user_id: userId,
+        token_hash: hashSecureToken(passwordResetToken),
+        token_expires: new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS),
+      },
+    }),
+  ]);
 
   logPasswordResetTokenCreated(userId);
 
-  return createPasswordResetTokenQuery;
+  return passwordResetToken;
 };
 
 export const getPasswordResetTokenData = async (token) => {
-  const whereClause = {
-    id: token,
-  };
-
-  const getPasswordResetTokenDataQuery = await prisma.passwordResetTokens.findFirst({
-    where: whereClause,
+  const getPasswordResetTokenDataQuery = await prisma.passwordResetTokens.findUnique({
+    where: {
+      token_hash: hashSecureToken(token),
+    },
     select: {
       user_id: true,
       token_expires: true,
@@ -37,24 +45,68 @@ export const getPasswordResetTokenData = async (token) => {
   return getPasswordResetTokenDataQuery;
 };
 
-export const deletePasswordResetTokens = async (userId) => {
-  try {
-    const whereClause = {
-      user_id: userId,
-    };
+//* Single-use consumption + password change in one transaction. The token is
+//* consumed with a conditional delete (matching digest AND not expired): two
+//* concurrent resets with the same link serialize on the row lock and only
+//* one of them sees count === 1. Every other reset token and every session
+//* of the user are revoked in the same commit. Returns null when the token is
+//* unknown, expired or already used; errors are thrown, never swallowed
+export const resetUserPasswordWithTokenInDb = async (token, hashedPassword) => {
+  const tokenHash = hashSecureToken(token);
 
-    const deleteResult = await prisma.passwordResetTokens.deleteMany({
-      where: whereClause,
+  return prisma.$transaction(async (tx) => {
+    const tokenRow = await tx.passwordResetTokens.findUnique({
+      where: {
+        token_hash: tokenHash,
+      },
+      select: {
+        user_id: true,
+      },
     });
 
-    return {
-      deletedCount: deleteResult.count,
-    };
-  } catch (error) {
-    return logError(`Token for user ID ${userId} deletion failed`, error);
-    // throw error //* NOT throwing an error since req-res
-    //*  flow should not be interrupted with this cleanup operation
-  }
+    if (!tokenRow) {
+      return null;
+    }
+
+    const consumeResult = await tx.passwordResetTokens.deleteMany({
+      where: {
+        token_hash: tokenHash,
+        token_expires: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    if (consumeResult.count !== 1) {
+      return null;
+    }
+
+    const { user_id: userId } = tokenRow;
+
+    await tx.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    await tx.passwordResetTokens.deleteMany({
+      where: {
+        user_id: userId,
+      },
+    });
+
+    //* The old credential is no longer valid - every active session goes
+    await tx.session.deleteMany({
+      where: {
+        user_id: userId,
+      },
+    });
+
+    return { userId };
+  });
 };
 
 export const deleteExpiredPasswordResetTokens = async () => {

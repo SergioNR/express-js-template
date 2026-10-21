@@ -38,7 +38,7 @@ Rules describe how this codebase is written today. Follow them for all new and m
 - Every page renders `<Seo>` (`src/components/Seo.jsx`, React 19 meta hoisting): public pages pass `title`/`description`/`path`; internal pages pass `title` only. Static defaults live in `index.html`.
 - Full-page/wrapper loads → `PageLoader` (`src/components/PageLoader.jsx`); in-content loads → inline `Skeleton` (`UserDashboard.jsx` is the reference).
 - `ErrorBoundary` (`src/components/ErrorBoundary.jsx`, wired in `main.jsx` via `RoutedErrorBoundary`) catches render errors app-wide, shows the Spanish fallback and reports to PostHog when analytics are enabled; navigation resets it.
-- Server state pattern: context provider + `useX()` hook + `refresh` function (`SubscriptionContext.jsx` is the reference). No global state library.
+- Server state pattern: context provider + `useX()` hook + `refresh` function (`SubscriptionContext.jsx` + `useSubscription.js` is the reference — keep the context object and hook out of the `.jsx` provider file for Fast Refresh). No global state library.
 
 ## Environment & build
 

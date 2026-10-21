@@ -1,6 +1,6 @@
 import { Alert, Button, Group, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
-import { useSubscription } from '../../contexts/SubscriptionContext.jsx';
+import { useSubscription } from '../../contexts/useSubscription.js';
 import { useNavigate } from 'react-router';
 
 const NoActiveSubscriptionBanner = () => {

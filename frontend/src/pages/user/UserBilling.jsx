@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../config/API/axiosConfig.mjs';
 import { Container, Stack, Card, Title, Text, Group, Button, SimpleGrid, Alert, Tooltip } from '@mantine/core';
-import { useSubscription } from '../../contexts/SubscriptionContext.jsx';
+import { useSubscription } from '../../contexts/useSubscription.js';
 import PageLoader from '../../components/PageLoader.jsx';
 import Seo from '../../components/Seo.jsx';
 import { notifyError } from '../../utils/notifications.js';

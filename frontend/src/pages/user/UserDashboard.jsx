@@ -35,7 +35,7 @@ import {
   IconReceipt2,
 } from '@tabler/icons-react';
 import apiClient from '../../config/API/axiosConfig.mjs';
-import { useSubscription } from '../../contexts/SubscriptionContext.jsx';
+import { useSubscription } from '../../contexts/useSubscription.js';
 import NoActiveSubscriptionBanner from '../../components/partials/NoActiveSubscriptionBanner.jsx';
 import Seo from '../../components/Seo.jsx';
 

@@ -1,5 +1,5 @@
 import { getUserById } from '../models/userModel.js';
-import { SESSION_COOKIE_NAME } from '../config/security.js';
+import { SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS } from '../config/security.js';
 import { deleteUserAndCleanup } from '../utils/userDeletionCleanup.js';
 
 export const getUserProfile = async (req, res) => {
@@ -51,7 +51,7 @@ export const deleteUser = async (req, res) => {
 
   //* Best-effort destruction of the (now revoked) current session
   return req.session.destroy(() => {
-    res.clearCookie(SESSION_COOKIE_NAME);
+    res.clearCookie(SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS); //* Same attributes it was set with, or the browser keeps it
 
     return res.status(200).json({});
   });

@@ -1,10 +1,11 @@
 import bcrypt from 'bcryptjs';
-import { BCRYPT_SALT_ROUNDS, SESSION_COOKIE_NAME } from '../config/security.js';
+import { BCRYPT_SALT_ROUNDS, SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS } from '../config/security.js';
 import { logError } from '../config/loggerFunctions.js';
 import passport from '../auth/passportjs.js';
 import { posthogUserSuccessLoggedIn } from '../models/posthogModel.js';
 import {
   getUserByEmail,
+  getOneCompanyMemberInDb,
   updateUserPasswordInDB,
   createUserInDB,
   getUserPassword,
@@ -16,7 +17,8 @@ import {
   resetUserPasswordWithTokenInDb,
 } from '../models/passwordResetTokensModel.js';
 import { getTeamInviteByTokenInDb, deleteTeamInviteByIdSafe } from '../models/teamInvitesModel.js';
-import { deleteUserSessions, linkSessionToUser } from '../models/sessionModel.js';
+import { linkSessionToUser } from '../models/sessionModel.js';
+import { canGrantRole } from '../utils/companyRoleHierarchy.js';
 import { sendResetPasswordTokenToUser } from '../integrations/brevo/transactionalEmails/sendResetPasswordTokenToUser.js';
 import { sendExistingAccountNoticeToUser } from '../integrations/brevo/transactionalEmails/sendExistingAccountNoticeToUser.js';
 
@@ -95,6 +97,23 @@ export const updateRecoveredUserPassword = async (req, res) => {
   return res.status(200).json({});
 };
 
+//* An invite is only as good as its inviter: when they left the company or
+//* were demoted below the invited role in the meantime, the invite must not
+//* grant what they could no longer grant themselves
+const isInviterStillAbleToGrant = async (inviteData) => {
+  const inviter = await getOneCompanyMemberInDb(inviteData.invited_by, inviteData.company_id);
+
+  if (!inviter) {
+    return false;
+  }
+
+  const inviterRoleNames = inviter.UserRoles.map((userRole) => userRole.Role.name);
+
+  return canGrantRole(inviterRoleNames, inviteData.Role.name);
+};
+
+const INVITER_INVALID_MESSAGE = 'Invite is no longer valid - the inviter left the company or lost the required role';
+
 export const checkTeamInviteValidity = async (req, res) => {
   const { inviteToken } = req.query;
 
@@ -111,6 +130,12 @@ export const checkTeamInviteValidity = async (req, res) => {
   if (new Date(tokenExpirationDate) < new Date()) {
     return res.status(400).json({
       message: 'Invite expired - Please ask a team admin for a new invite',
+    });
+  }
+
+  if (!(await isInviterStillAbleToGrant(inviteData))) {
+    return res.status(400).json({
+      message: INVITER_INVALID_MESSAGE,
     });
   }
 
@@ -143,6 +168,15 @@ export const acceptTeamInvite = async (req, res) => {
     });
   }
 
+  if (!(await isInviterStillAbleToGrant(inviteData))) {
+    //* Void it - a dead inviter cannot be revived by a later resend either
+    await deleteTeamInviteByIdSafe(inviteData.id);
+
+    return res.status(400).json({
+      message: INVITER_INVALID_MESSAGE,
+    });
+  }
+
   const existingUser = await getUserByEmail(inviteData.email);
 
   if (existingUser) {
@@ -156,13 +190,19 @@ export const acceptTeamInvite = async (req, res) => {
 
   const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
+  let createdUser;
+
   try {
-    await createUserInDB({
+    createdUser = await createUserInDB({
       username: inviteData.email,
       password: hashedPassword,
       companyId: inviteData.company_id,
       roleId: inviteData.role_id,
-      inviteId: inviteData.id, //* Consumed in the same transaction as the user creation
+      //* Consumed in the same transaction as the user creation, with a
+      //* conditional delete on id + digest + expiry - the lookup above is
+      //* only a fast path, the transaction is the real guard
+      inviteId: inviteData.id,
+      inviteToken,
     });
   } catch (error) {
     //* Concurrent self-registration with the same email can beat the check
@@ -178,22 +218,24 @@ export const acceptTeamInvite = async (req, res) => {
     throw error;
   }
 
+  if (!createdUser) {
+    //* Consumed, revoked or expired between the lookup and the transaction
+    return res.status(400).json({
+      message: 'Invite is invalid or expired - Please ask a team admin for a new invite',
+    });
+  }
+
   //* No auto-login here - consistent with the register endpoint
   return res.status(201).json({});
 };
 
-export const checkSession = async (req, res) => {
-  if (req.user) {
-    return res.status(200).json({
-      user: {
-        id: req.user.id,
-        role: req.user.role,
-      },
-    });
-  }
-
-  return res.status(401).json({});
-};
+//* Mounted behind checkAuthentication(), so req.user is always present here
+export const checkSession = async (req, res) => res.status(200).json({
+  user: {
+    id: req.user.id,
+    role: req.user.role,
+  },
+});
 
 export const loginLocal = (req, res, next) => passport.authenticate('local', (err, user) => {
   if (err) {
@@ -317,11 +359,12 @@ export const updateUserPassword = async (req, res) => {
   // Hash the new password
   const newHashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 
-  // Update password in database
-  const updatedUser = await updateUserPasswordInDB(userId, newHashedPassword);
-
-  //* Revoke every other session of the user - the current one is kept alive
-  await deleteUserSessions(userId, req.sessionID);
+  //* One transaction: new hash, every outstanding reset token revoked and
+  //* every other session revoked - the current one is kept alive. A failure
+  //* throws (500) instead of leaving a half-applied credential change
+  const updatedUser = await updateUserPasswordInDB(userId, newHashedPassword, {
+    keepSessionId: req.sessionID,
+  });
 
   return res.status(200).json({
     userId: updatedUser.id,
@@ -341,8 +384,9 @@ export const logoutUser = (req, res, next) => req.logout((err) => {
       return next(error);
     }
 
-    // Clear cookie on client side
-    res.clearCookie(SESSION_COOKIE_NAME);
+    //* Clear cookie on client side - same attributes it was set with, or the
+    //* browser keeps it
+    res.clearCookie(SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS);
 
     return res.status(200).json({});
   });

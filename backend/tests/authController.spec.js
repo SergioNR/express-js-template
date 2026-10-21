@@ -1,7 +1,9 @@
 import { jest } from '@jest/globals';
+import bcrypt from 'bcryptjs';
 
 jest.unstable_mockModule('../server/models/userModel.js', () => ({
   getUserByEmail: jest.fn(),
+  getOneCompanyMemberInDb: jest.fn(),
   createUserInDB: jest.fn(),
   getUserPassword: jest.fn(),
   updateUserPasswordInDB: jest.fn(),
@@ -46,12 +48,21 @@ jest.unstable_mockModule('../server/integrations/brevo/transactionalEmails/sendE
 
 const {
   checkPasswordResetTokenValidity,
+  checkSession,
   loginLocal,
+  logoutUser,
   registerUser,
   requestPasswordResetToken,
   updateRecoveredUserPassword,
+  updateUserPassword,
 } = await import('../server/controllers/authController.js');
-const { getUserByEmail, createUserInDB } = await import('../server/models/userModel.js');
+const {
+  getUserByEmail,
+  createUserInDB,
+  getUserPassword,
+  updateUserPasswordInDB,
+} = await import('../server/models/userModel.js');
+const { SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS } = await import('../server/config/security.js');
 const {
   createPasswordResetToken,
   getPasswordResetTokenData,
@@ -250,6 +261,70 @@ describe('registerUser', () => {
     expect(res.json).toHaveBeenCalledWith({});
     expect(sendExistingAccountNoticeToUser).toHaveBeenCalledWith('stored@acme.test');
     expect(createUserInDB).not.toHaveBeenCalled();
+  });
+});
+
+const currentHash = await bcrypt.hash('OldPassword1', 4);
+
+describe('updateUserPassword', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    getUserPassword.mockResolvedValue({ password: currentHash });
+  });
+
+  it('answers 400 with a stable code when the current password does not match', async () => {
+    const res = mockRes();
+
+    await updateUserPassword({ user: { id: 'user-1' }, sessionID: 'sid-1', body: { currentPassword: 'Wrong1234', newPassword: 'NewPassword1' } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'AUTH_CURRENT_PASSWORD_INCORRECT' }));
+    expect(updateUserPasswordInDB).not.toHaveBeenCalled();
+  });
+
+  it('updates the hash and revokes tokens and other sessions in one model transaction, keeping the current session', async () => {
+    updateUserPasswordInDB.mockResolvedValue({ id: 'user-1' });
+    const res = mockRes();
+
+    await updateUserPassword({ user: { id: 'user-1' }, sessionID: 'sid-1', body: { currentPassword: 'OldPassword1', newPassword: 'NewPassword1' } }, res);
+
+    expect(updateUserPasswordInDB).toHaveBeenCalledWith('user-1', expect.stringMatching(/^\$2[aby]\$/), { keepSessionId: 'sid-1' });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ userId: 'user-1' });
+  });
+
+  it('propagates transaction errors instead of swallowing them', async () => {
+    updateUserPasswordInDB.mockRejectedValue(new Error('db down'));
+    const res = mockRes();
+
+    await expect(updateUserPassword({ user: { id: 'user-1' }, sessionID: 'sid-1', body: { currentPassword: 'OldPassword1', newPassword: 'NewPassword1' } }, res)).rejects.toThrow('db down');
+  });
+});
+
+describe('checkSession', () => {
+  it('answers the authenticated user (the 401 case is handled by checkAuthentication)', async () => {
+    const res = mockRes();
+
+    await checkSession({ user: { id: 'user-1', role: 'user', email: 'hidden@acme.test' } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ user: { id: 'user-1', role: 'user' } });
+  });
+});
+
+describe('logoutUser', () => {
+  it('clears the session cookie with the same attributes it was set with', () => {
+    const req = {
+      logout: (callback) => callback(),
+      session: { destroy: (callback) => callback() },
+    };
+    const res = { ...mockRes(), clearCookie: jest.fn() };
+
+    logoutUser(req, res, jest.fn());
+
+    expect(res.clearCookie).toHaveBeenCalledWith(SESSION_COOKIE_NAME, SESSION_COOKIE_OPTIONS);
+    expect(SESSION_COOKIE_OPTIONS).toEqual(expect.objectContaining({ httpOnly: true }));
+    expect(res.status).toHaveBeenCalledWith(200);
   });
 });
 

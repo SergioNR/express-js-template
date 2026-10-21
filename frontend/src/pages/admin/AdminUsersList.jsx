@@ -159,7 +159,7 @@ const AdminUsersList = () => {
 
   const roleOptions = [
     { value: 'user', label: t('admin.roles.user') },
-    { value: 'admin', label: t('admin.roles.admin') },
+    { value: 'superadmin', label: t('admin.roles.superadmin') },
   ];
 
   const rows = users.map((user) => (
@@ -170,7 +170,7 @@ const AdminUsersList = () => {
         </Anchor>
       </Table.Td>
       <Table.Td>
-        <Badge color={user.role === 'admin' ? 'violet' : 'gray'} variant="light">
+        <Badge color={user.role === 'superadmin' ? 'violet' : 'gray'} variant="light">
           {t(`admin.roles.${user.role}`)}
         </Badge>
       </Table.Td>
@@ -286,7 +286,7 @@ const AdminUsersList = () => {
           <Text size="sm">
             {t('admin.users.deleteModal.description', { email: deleteTarget?.email ?? '' })}
           </Text>
-          {deleteTarget?.role === 'admin' && (
+          {deleteTarget?.role === 'superadmin' && (
             <Alert color="red" variant="light">
               {t('admin.users.deleteModal.adminWarning')}
             </Alert>

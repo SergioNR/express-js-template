@@ -133,7 +133,7 @@ const AdminUserDetail = () => {
           <Title order={2}>{user.email}</Title>
           <Text c="dimmed" mt={4} size="sm">{user.id}</Text>
         </Box>
-        <Badge color={user.role === 'admin' ? 'violet' : 'gray'} variant="light" size="lg">
+        <Badge color={user.role === 'superadmin' ? 'violet' : 'gray'} variant="light" size="lg">
           {t(`admin.roles.${user.role}`)}
         </Badge>
       </Group>

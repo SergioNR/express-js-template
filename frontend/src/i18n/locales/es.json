@@ -422,7 +422,7 @@
     },
     "roles": {
       "user": "Usuario",
-      "admin": "Administrador"
+      "superadmin": "Superadministrador"
     },
     "fields": {
       "email": "Email",

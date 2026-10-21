@@ -21,7 +21,7 @@ export const AdminDashboardWrapper = () => {
           return;
         }
 
-        if (response.data?.user?.role === 'admin') {
+        if (response.data?.user?.role === 'superadmin') {
           setAuthorized(true);
         } else {
           navigate('/dashboard', { replace: true });

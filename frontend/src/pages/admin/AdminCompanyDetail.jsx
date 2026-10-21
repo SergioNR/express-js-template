@@ -123,7 +123,7 @@ const AdminCompanyDetail = () => {
         </Anchor>
       </Table.Td>
       <Table.Td>
-        <Badge color={user.role === 'admin' ? 'violet' : 'gray'} variant="light">
+        <Badge color={user.role === 'superadmin' ? 'violet' : 'gray'} variant="light">
           {t(`admin.roles.${user.role}`)}
         </Badge>
       </Table.Td>

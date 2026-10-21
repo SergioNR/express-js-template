@@ -237,7 +237,7 @@ export function Team() {
       </Table.Td>
       <Table.Td>
         <Group gap="sm" justify="flex-end" wrap="nowrap">
-          {member.role !== 'admin' && (
+          {member.role !== 'superadmin' && (
             <LockedTooltip locked={!canManageRoles} label={t('team.locked.manageRoles')}>
               <Select
                 size="xs"
@@ -250,7 +250,7 @@ export function Team() {
               />
             </LockedTooltip>
           )}
-          {member.role !== 'admin' && (
+          {member.role !== 'superadmin' && (
             <LockedTooltip locked={!canRemove} label={t('team.locked.remove')}>
               <ActionIcon
                 variant="subtle"

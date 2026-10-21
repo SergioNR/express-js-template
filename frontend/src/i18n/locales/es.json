@@ -386,11 +386,15 @@
       "portalDisabled": "Disponible después de iniciar tu primera suscripción"
     },
     "errors": {
-      "existingSubscription": "El usuario ya tiene una suscripción existente",
       "invalid": "Los datos de la solicitud no son válidos. Por favor, inténtalo de nuevo.",
       "load": "No se pudo obtener la información de la suscripción",
       "checkout": "Se ha producido un error generando el enlace de pago. Por favor, inténtalo más tarde",
-      "portal": "Se ha producido un error obteniendo el área de usuario. Por favor, inténtalo más tarde"
+      "portal": "Se ha producido un error obteniendo el área de usuario. Por favor, inténtalo más tarde",
+      "forbidden": "Solo el propietario de la empresa puede gestionar la facturación.",
+      "subscriptionActive": "Tu empresa ya tiene una suscripción activa. Gestiónala desde el portal del cliente."
+    },
+    "locked": {
+      "manage": "Solo el propietario de la empresa puede gestionar la facturación"
     }
   },
   "admin": {

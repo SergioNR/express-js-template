@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
 import {
   ActionIcon,
@@ -14,6 +15,7 @@ import {
   Text,
   TextInput,
   Title,
+  Tooltip,
 } from '@mantine/core';
 import {
   IconMailForward,
@@ -26,6 +28,24 @@ import { notifyError, notifySuccess } from '../../utils/notifications.js';
 import { formatDateTime } from '../../utils/formatDate.js';
 
 const roleLabel = (t, roleName) => t(`team.roles.${roleName}`, roleName);
+
+function LockedTooltip({ locked, label, children }) {
+  if (!locked) {
+    return children;
+  }
+
+  return (
+    <Tooltip label={label}>
+      <span style={{ display: 'inline-flex' }}>{children}</span>
+    </Tooltip>
+  );
+}
+
+LockedTooltip.propTypes = {
+  locked: PropTypes.bool,
+  label: PropTypes.string.isRequired,
+  children: PropTypes.node.isRequired,
+};
 
 export function Team() {
   const { t } = useTranslation();
@@ -210,25 +230,31 @@ export function Team() {
       </Table.Td>
       <Table.Td>
         <Group gap="sm" justify="flex-end" wrap="nowrap">
-          {canManageRoles && member.role !== 'admin' && assignableRoleOptions.length > 0 && (
-            <Select
-              size="xs"
-              w={160}
-              data={assignableRoleOptions}
-              value={member.companyRoles.length === 1 ? member.companyRoles[0] : null}
-              onChange={(roleName) => changeMemberRole(member.id, roleName)}
-              aria-label={t('team.members.roleChange', { email: member.email })}
-            />
+          {member.role !== 'admin' && (
+            <LockedTooltip locked={!canManageRoles} label={t('team.locked.manageRoles')}>
+              <Select
+                size="xs"
+                w={160}
+                disabled={!canManageRoles || assignableRoleOptions.length === 0}
+                data={assignableRoleOptions}
+                value={member.companyRoles.length === 1 ? member.companyRoles[0] : null}
+                onChange={(roleName) => changeMemberRole(member.id, roleName)}
+                aria-label={t('team.members.roleChange', { email: member.email })}
+              />
+            </LockedTooltip>
           )}
-          {canRemove && member.role !== 'admin' && (
-            <ActionIcon
-              variant="subtle"
-              color="red"
-              aria-label={t('team.members.removeAction', { email: member.email })}
-              onClick={() => setRemoveTarget(member)}
-            >
-              <IconTrash size={16} stroke={1.5} />
-            </ActionIcon>
+          {member.role !== 'admin' && (
+            <LockedTooltip locked={!canRemove} label={t('team.locked.remove')}>
+              <ActionIcon
+                variant="subtle"
+                color="red"
+                disabled={!canRemove}
+                aria-label={t('team.members.removeAction', { email: member.email })}
+                onClick={() => setRemoveTarget(member)}
+              >
+                <IconTrash size={16} stroke={1.5} />
+              </ActionIcon>
+            </LockedTooltip>
           )}
         </Group>
       </Table.Td>
@@ -260,22 +286,28 @@ export function Team() {
         </Table.Td>
         <Table.Td>
           <Group gap={0} justify="flex-end" wrap="nowrap">
-            <ActionIcon
-              variant="subtle"
-              color="blue"
-              aria-label={t('team.invites.resend', { email: invite.email })}
-              onClick={() => resendInvite(invite.id)}
-            >
-              <IconMailForward size={16} stroke={1.5} />
-            </ActionIcon>
-            <ActionIcon
-              variant="subtle"
-              color="red"
-              aria-label={t('team.invites.revoke', { email: invite.email })}
-              onClick={() => revokeInvite(invite.id)}
-            >
-              <IconTrash size={16} stroke={1.5} />
-            </ActionIcon>
+            <LockedTooltip locked={!canInvite} label={t('team.locked.invite')}>
+              <ActionIcon
+                variant="subtle"
+                color="blue"
+                disabled={!canInvite}
+                aria-label={t('team.invites.resend', { email: invite.email })}
+                onClick={() => resendInvite(invite.id)}
+              >
+                <IconMailForward size={16} stroke={1.5} />
+              </ActionIcon>
+            </LockedTooltip>
+            <LockedTooltip locked={!canInvite} label={t('team.locked.invite')}>
+              <ActionIcon
+                variant="subtle"
+                color="red"
+                disabled={!canInvite}
+                aria-label={t('team.invites.revoke', { email: invite.email })}
+                onClick={() => revokeInvite(invite.id)}
+              >
+                <IconTrash size={16} stroke={1.5} />
+              </ActionIcon>
+            </LockedTooltip>
           </Group>
         </Table.Td>
       </Table.Tr>
@@ -288,11 +320,15 @@ export function Team() {
 
       <Group justify="space-between" align="flex-start" wrap="wrap">
         <Title order={2}>{t('team.title')}</Title>
-        {canInvite && (
-          <Button leftSection={<IconUserPlus size={16} />} onClick={() => setInviteModalOpened(true)}>
+        <LockedTooltip locked={!canInvite} label={t('team.locked.invite')}>
+          <Button
+            leftSection={<IconUserPlus size={16} />}
+            disabled={!canInvite}
+            onClick={() => setInviteModalOpened(true)}
+          >
             {t('team.inviteButton')}
           </Button>
-        )}
+        </LockedTooltip>
       </Group>
 
       {error ? (
